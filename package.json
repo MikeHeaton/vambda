@@ -4,7 +4,8 @@
   "description": "Visual programming over Scheme",
   "main": "webpack.config.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "webpack",
+    "watch": "webpack --watch"
   },
   "repository": {
     "type": "git",
@@ -15,5 +16,11 @@
   "bugs": {
     "url": "https://github.com/MikeHeaton/vambda/issues"
   },
-  "homepage": "https://github.com/MikeHeaton/vambda#readme"
+  "homepage": "https://github.com/MikeHeaton/vambda#readme",
+  "dependencies": {
+    "lodash": "^4.17.4"
+  },
+  "devDependencies": {
+    "webpack": "^3.10.0"
+  }
 }
