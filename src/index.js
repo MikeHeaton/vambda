@@ -1,11 +1,3 @@
-import _ from 'lodash';
+import build_editor from './editor';
 
-function component() {
-  var element = document.createElement('div');
-
-  element.innerHTML = _.join(['Foo', 'webpack'], ' ');
-
-  return element;
-}
-
-document.body.appendChild(component());
+var editor = build_editor();

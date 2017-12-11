@@ -5,7 +5,8 @@
   "main": "webpack.config.js",
   "scripts": {
     "build": "webpack",
-    "watch": "webpack --watch"
+    "watch": "webpack --watch --display-error-details",
+    "start": "webpack --config webpack.config.js"
   },
   "repository": {
     "type": "git",
@@ -18,7 +19,17 @@
   },
   "homepage": "https://github.com/MikeHeaton/vambda#readme",
   "dependencies": {
-    "lodash": "^4.17.4"
+    "@babel/core": "^7.0.0-beta.34",
+    "@babel/preset-env": "^7.0.0-beta.34",
+    "babel-loader": "^8.0.0-beta.0",
+    "biwascheme": "^0.6.8",
+    "colormap": "^2.3.0",
+    "cytoscape-undo-redo": "^1.2.14",
+    "cytoscape.js-undo-redo": "^1.0.1",
+    "fs": "0.0.1-security",
+    "lodash": "^4.17.4",
+    "mousetrap": "^1.6.1",
+    "readline": "^1.3.0"
   },
   "devDependencies": {
     "webpack": "^3.10.0"
