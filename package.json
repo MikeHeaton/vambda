@@ -1,0 +1,19 @@
+{
+  "name": "vambda",
+  "version": "0.2.1",
+  "description": "Visual programming over Scheme",
+  "main": "webpack.config.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MikeHeaton/vambda.git"
+  },
+  "author": "Mike Heaton",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MikeHeaton/vambda/issues"
+  },
+  "homepage": "https://github.com/MikeHeaton/vambda#readme"
+}
