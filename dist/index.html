@@ -9,16 +9,17 @@
   </head>
   <body>
     <div id="cy"></div>
+    <script src="bundle.js"></script>
     <div id="resultsButton">
-      <button onclick="parse(cy.$('node:selected'))">PARSE</button>
+      <button onclick="parseButton()">PARSE</button>
     </div>
     <div id="lispOutput"></div>
+
     <div id="svld">
       <button onclick="saveState()">SAVE</button>
       <button onclick="loadState('loadFile')">LOAD</button>
       <input type="file" id="loadFile">
       <button onclick="resetGraph()">NEW</button>
     </div>
-    <script src="bundle.js"></script>
   </body>
 </html>

@@ -6,7 +6,7 @@ import Mousetrap from 'mousetrap';
 import colormap from 'colormap';
 
 
-function build_editor() {
+function buildEditor() {
   var cy = create_canvas();
   undoRedo(cytoscape);
 
@@ -22,21 +22,19 @@ function build_editor() {
   // =====================
 
   function newNode(pos) {
-    var name = getName()
-    console.log(name)
-    console.log(pos)
-    if (!(name === null)) {
-      var color = getColor(name)
-      var createdNode = cy.add({group: 'nodes',
-                          position: pos,
-                          data: {'variable': false,
-                          'name': name,
-                          'defaultColor': color}
-                        });
-      cy.$().deselect();
-      createdNode.select();
-      return createdNode
-    }
+    // var name = getName()
+    //if (!(name === null)) {
+    var color = getColor(name)
+    var createdNode = cy.add({group: 'nodes',
+                        position: pos,
+                        data: {'variable': false,
+                        'name': "",
+                        'defaultColor': color}
+                      });
+    cy.$().deselect();
+    createdNode.select();
+    return createdNode
+    //}
   };
 
   function newEdge(origin, dest) {
@@ -59,7 +57,6 @@ function build_editor() {
     // set origin's parent to dest's parent,
     // and the same for everything origin is attached to.
     var incomers = dest.predecessors("node");
-    console.log("incomers:", incomers, "current dest parent", dest.parent());
     if (incomers.length > 0) {
       incomers.setParent(dest.parent());
     }
@@ -79,7 +76,6 @@ function build_editor() {
 
       // Look for something named the same, and make this node the same color.
       if (sameNamedEles.length > 0 && name != "") {
-        console.log("found similar", sameNamedEles.data("defaultColor"));
         return sameNamedEles.data("defaultColor");
       }
       // If the name represents a string, make the node green.
@@ -95,16 +91,14 @@ function build_editor() {
     // Else generate a random color from a colormap (and convert it to hash).
     var ncolors = 72
     var index = Math.floor(Math.random() * ncolors);
-    console.log(colormap('prism', 72, 'hex')[index])
     return colormap('prism', 72, 'hex')[index];
 
     //'#' + interpolateLinearly(Math.random(), prism).map(x => Math.floor(255 * x).toString(16).padStart(2, "0")).join("");
   }
-  cytoscape('collection', 'getColor', function() {return getColor(this.data('name'), node=this)});
+  cytoscape('collection', 'getColor', function() {return getColor(this.data('name'), this)});
 
   function setColor() {
-    color = this.getColor();
-    console.log("new color:", color)
+    var color = this.getColor();
     this.data('defaultColor', color);
   }
   cytoscape('collection', 'setColor', setColor);
@@ -115,7 +109,6 @@ function build_editor() {
     }
     if (!(newName === null)) {
       node.data('name', newName);
-      console.log("name:", node.data('name'))
       node.setColor()
     }
   };
@@ -123,16 +116,14 @@ function build_editor() {
 
   function setParent(newParent) {
     if (newParent != null && newParent.id()) {
-    console.log(this.nodes())
     ur.do("changeParent", {"parentData": newParent.id(), "nodes": this,
   "posDiffX": 0, "posDiffY": 0});
     }
     else {
-      oldParent = this.parent()
+      var oldParent = this.parent()
       ur.do("changeParent", {"parentData": null, "nodes": this,
     "posDiffX": 0, "posDiffY": 0});
-      if (oldParent.children().length == 0) {
-        console.log("deleting rudderless parent")
+      if (oldParent.length > 0 && oldParent.children().length == 0) {
         oldParent.remove()
       }
     }
@@ -141,7 +132,6 @@ function build_editor() {
 
   function toggleVariable () {
     this.data('variable', (!this.data('variable')))
-    console.log(this.data('variable'))
   }
   cytoscape('collection', 'toggleVariable', toggleVariable);
 
@@ -152,7 +142,6 @@ function build_editor() {
   function getName() {
     var newName = window.prompt("name:", "")
     var keys_pressed = new Set();
-    console.log((newName === null), "nullness", name)
     return newName
   }
 
@@ -169,25 +158,33 @@ function build_editor() {
       newNode(Object.assign({}, pos));
   });
 
-  var dclick_tappedBefore;
+  var dclick_prevTap;
   var dclick_tappedTimeout;
 
   cy.on('tap', function(event) {
-    var dclick_tappedNow = event.target;
-    if (dclick_tappedTimeout && dclick_tappedBefore) {
+    var tap_target = event.target;
+    if(tap_target === cy && keys_pressed.has('e')){
+      // Click on the background with 'e'
+      newNode(event.position);
+      dclick_tappedTimeout = false;
+    }
+
+    if (dclick_tappedTimeout && dclick_prevTap) {
       clearTimeout(dclick_tappedTimeout);
     }
-    if(dclick_tappedBefore === dclick_tappedNow) {
-      if(dclick_tappedNow === cy){
+    // If double clicked:
+    if(dclick_prevTap === tap_target) {
+      if(tap_target === cy){
         newNode(event.position);
       }
       else {
         rename(event.target);
       }
-      dclick_tappedBefore = null;
+      dclick_prevTap = null;
     } else {
-      dclick_tappedTimeout = setTimeout(function(){ dclick_tappedBefore = null; }, 300);
-      dclick_tappedBefore = dclick_tappedNow;
+      // Update doubleclick handlers
+      dclick_tappedTimeout = setTimeout(function(){ dclick_prevTap = null; }, 300);
+      dclick_prevTap = tap_target;
     }
   });
 
@@ -196,6 +193,15 @@ function build_editor() {
     var sources = cy.$('node:selected').difference(event.target)
     if (sources.length > 0 && keys_pressed.has('e')) {
       sources.map(source => newEdge(source, event.target))
+      event.target.select()
+    }
+  });
+
+  // Hold 'r' and tap a node to rename it.
+  cy.on('tap', 'node, edge', function(event) {
+    var sources = cy.$('node:selected').difference(event.target)
+    if (keys_pressed.has('r')) {
+      event.target.rename()
     }
   });
 
@@ -237,19 +243,16 @@ function build_editor() {
   var keys_pressed = new Set()
   Mousetrap.bind('e', function() { keys_pressed.add('e');}, 'keypress');
   Mousetrap.bind('e', function() { keys_pressed.delete('e');}, 'keyup');
-
-  // save & load
-  function saveState() {
-    var fileName = window.prompt("File name:", "")
-    if (!(fileName === null)) {
-      var jsonData = JSON.stringify(cy.json())
-      var a = document.createElement("a");
-      var file = new Blob([jsonData], {type: 'text/plain'});
-      a.href = URL.createObjectURL(file);
-      a.download = fileName + '.txt';
-      a.click();
-    }
-  }
+  Mousetrap.bind('r',
+    function() {
+      keys_pressed.add('r');
+      var selected = cy.$(':selected');
+      if (selected.length == 1) {
+        selected.rename();
+        keys_pressed.delete('r');
+      }
+    }, 'keypress');
+  Mousetrap.bind('r', function() { keys_pressed.delete('r');}, 'keyup');
 
   function loadState(objectId) {
     var x = document.getElementById(objectId).files[0];
@@ -263,6 +266,18 @@ function build_editor() {
     reader.readAsText(x, "UTF-8");
   }
 
+  function saveState() {
+    var fileName = window.prompt("File name:", "")
+    if (!(fileName === null)) {
+      var jsonData = JSON.stringify(cy.json())
+      var a = document.createElement("a");
+      var file = new Blob([jsonData], {type: 'text/plain'});
+      a.href = URL.createObjectURL(file);
+      a.download = fileName + '.txt';
+      a.click();
+    }
+  }
+
   function resetGraph() {
     if (confirm("REALLY CLEAR ALL? (There's no autosave and no undo!)")) {
       console.log("RESET")
@@ -270,7 +285,12 @@ function build_editor() {
     }
   }
 
-  return cy
+  return {'cy': cy,
+          'loadState': loadState,
+          'saveState': saveState,
+          'resetGraph': resetGraph}
 }
 
-module.exports = build_editor;
+
+
+module.exports = buildEditor;

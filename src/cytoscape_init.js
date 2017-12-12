@@ -27,7 +27,8 @@ function create_canvas() {
       'text-halign': 'center',
       'border-width': 5,
       'shape': 'roundrectangle',
-      'border-color': 'gray'
+      'border-color': 'gray',
+      'padding': '10px'
       }
     },{
     selector: 'edge',

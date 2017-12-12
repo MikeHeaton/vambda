@@ -1,0 +1,51 @@
+FUNCTIONALITY
+> deal with zero-arity.
+> Allow 'insertions' into names: (- {} 0) <- 3
+  >> Evaluate whether this is a good idea! Readability versus purity.
+> Deal with what happens when there's more than one execution node in a lambda
+> When you select a lambda, select only the outside node not the insides.
+  >> or ignore the insides whenever doing anything interesting.
+> SICP wants define to be more general, can define constants as well.
+
+UI
+http://js.cytoscape.org/#extensions
+> Order (unnamed) edges by anti-clockwise order
+> snap to grid
+> Better save/load interface
+> make a proper repl, with scrolling.
+> When creating common functions, it should prepopulate argument nodes.
+  >> if, +-*/, iota, map, mod etc.
+  >> In fact, most predefined functions if I can be bothered.
+> Force-directed layout!!!
+> Confirmation box on load
+> COMMENTS
+> Shortcut 'E' for making an edge coming into a node,
+> Allow e-clicking to make a node with an edge already coming out of it.
+> Bug in recursive lambdaing
+> Ordering bug, see newton4 in sqrt-iter
+
+
+META
+> Write tests
+> Register domain name
+> Make a post / statement / presentation
+> Docs
+
+
+DONE
+> colour strings (25/11/17)
+> Undo
+> make defines happen alongside executions.
+> When adding an arrow into an L'd node, the source/sink should be added to the L too.
+> If there's no label on the arrow, it shoudl use the name of the source instead.
+> Deleting a parent shouldn't delete the children.
+  >> Related: option to remove nodes from lambda.
+> Have color check happen when renaming, as well as creating.
+
+
+Packages:
+Elesfn.remove can be found in line ~2500 of cytoscape.js.
+The package should /probably/ use
+  var elesfn = Element.prototype = Collection.prototype;
+and then define/redefine elesfn.foo like in cytoscape.js.
+But I'm not exactly sure how packages work, look at another eg.

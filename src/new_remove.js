@@ -31,7 +31,12 @@ new_remove = function (notifyRenderer) {
     }
   }
 
-  /* THIS SECTION REMOVED FROM ORIGINAL
+  /*
+  THIS SECTION REMOVED FROM ORIGINAL
+  THIS SECTION REMOVED FROM ORIGINAL
+  THIS SECTION REMOVED FROM ORIGINAL
+  THIS SECTION REMOVED FROM ORIGINAL
+
   // add descendant nodes
   function addChildren(node) {
     var children = node._private.children;
@@ -39,7 +44,24 @@ new_remove = function (notifyRenderer) {
     for (var i = 0; i < children.length; i++) {
       add(children[i]);
     }
-  }*/
+  }
+  THIS SECTION REMOVED FROM ORIGINAL
+  THIS SECTION REMOVED FROM ORIGINAL
+  THIS SECTION REMOVED FROM ORIGINAL
+  THIS SECTION REMOVED FROM ORIGINAL
+  */
+
+  function addAbandonedParents(ele, elessToRemoveIds) {
+    var parent = ele.parent();
+    if (parent.length > 0) {
+      var undeletedSiblings = parent.children().filter(function(ele, i, eles) {
+        return !elesToRemoveIds[ele.id()]
+      });
+      if (undeletedSiblings.length == 0) {
+        add(parent)
+      }
+    }
+  }
 
   function add(ele) {
     var alreadyAdded = elesToRemoveIds[ele.id()];
@@ -51,7 +73,7 @@ new_remove = function (notifyRenderer) {
 
     if (ele.isNode()) {
       elesToRemove.push(ele); // nodes are removed last
-
+      addAbandonedParents(ele, elesToRemoveIds)
       addConnectedEdges(ele);
       // addChildren(ele);
     } else {
@@ -59,12 +81,24 @@ new_remove = function (notifyRenderer) {
     }
   }
 
+  /* THIS SECTION ADDED TO ORIGINAL
+  THIS SECTION ADDED TO ORIGINAL
+  THIS SECTION ADDED TO ORIGINAL
+  THIS SECTION ADDED TO ORIGINAL
+  */
+
+  /*
+  THIS SECTION ADDED TO ORIGINAL
+  THIS SECTION ADDED TO ORIGINAL
+  THIS SECTION ADDED TO ORIGINAL
+  THIS SECTION ADDED TO ORIGINAL
+  */
+
   // make the list of elements to remove
   // (may be removing more than specified due to connected edges etc)
 
   for (var i = 0, l = self.length; i < l; i++) {
     var ele = self[i];
-
     add(ele);
   }
 
@@ -145,7 +179,6 @@ new_remove = function (notifyRenderer) {
 
   if (removed.length > 0) {
     var removedElements = this.cy().$(removed.map(e => '#'+e.id()).join(','));
-    console.log(removedElements)
     if (notifyRenderer) {
       this.cy().notify({
         type: 'remove',
