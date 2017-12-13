@@ -21,8 +21,15 @@ function displayResult(compiledLisp) {
 
 function getRef(ele) {
   // Gets name if there is one; else refer to the node by its id.
-  var name = ele.data("name");
-  return (name != "") ? name : ele.id();
+  if (ele.data("name") != "") {
+    return ele.data("name");
+  }
+  else if (ele.isEdge()) {
+    return getRef(ele.source());
+  }
+  else {
+    return ele.id();
+  }
 }
 
 function evaluateNode(node) {
@@ -72,11 +79,13 @@ function evaluateLambda(node) {
   var subNodes = node.children();
 
   // Set up variables of the function.
-  var boundVariables = subNodes.filter("[?variable]").map(n => getRef(n)).sort();
+  /*var boundVariables = subNodes.filter("[?variable]").map(n => getRef(n)).sort();
   var stringedBoundVariables = boundVariables.filter(function (el, i, arr) {
-                                             return arr.indexOf(el) === i;}).join(" ")
+                                             return arr.indexOf(el) === i;}).join(" ")*/
+  var stringedBoundVariables = node.data("name")
 
-  return "(lambda (" + stringedBoundVariables + ") " + evaluateContext(subNodes) + ")";
+  //return "(lambda (" + stringedBoundVariables + ") " + evaluateContext(subNodes) + ")";
+  return "(lambda " + stringedBoundVariables + " " + evaluateContext(subNodes) + ")";
 }
 
 function evaluateContext(context) {
@@ -93,7 +102,10 @@ function evaluateContext(context) {
 
 
 function typ(node) {
-  if (node.isParent() && (node.data("name")) != "") {return 'define'}
+  if (node.isParent() &&
+      node.data("name").charAt(0) == '(' &&
+      node.data("name").charAt(node.data("name").length - 1) == ')') {return 'lambda'}
+  else if (node.isParent()) {return 'define'}
   else if (node.isParent() && (node.data("name")) == "") {return 'lambda'}
   else {return 'other'}
 }

@@ -28,7 +28,25 @@ function create_canvas() {
       'border-width': 5,
       'shape': 'roundrectangle',
       'border-color': 'gray',
-      'padding': '10px'
+      'padding': '5px',
+      'font-size': '20px',
+      }
+    },{
+    selector: '$node[name ^= "("][name $= ")"] > node',
+    style: {
+      'background-color': 'white',
+      'text-valign': 'top',
+      'text-halign': 'center',
+      'border-width': 5,
+      'shape': 'roundrectangle',
+      'border-color': 'gray',
+      'padding': '15px',
+      'font-size': '12px',
+      'text-margin-y': '18px',
+      'text-margin-x': '-20px',
+      'text-outline-width': 0,
+      'text-outline-color': 'blue',
+      'color': 'black'
       }
     },{
     selector: 'edge',

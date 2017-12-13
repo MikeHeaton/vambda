@@ -5,7 +5,11 @@ FUNCTIONALITY
 > Deal with what happens when there's more than one execution node in a lambda
 > When you select a lambda, select only the outside node not the insides.
   >> or ignore the insides whenever doing anything interesting.
-> SICP wants define to be more general, can define constants as well.
+> If no (foo) defined for lambda function name, should assume it's a 'normal'
+  lambda function (no funny business with inheritance) and take all variables
+  inside immediate scope to be bound.
+  >> Actually, need to do that recursively so that you get all
+  variables not defined in deeper scopes.
 
 UI
 http://js.cytoscape.org/#extensions
@@ -22,8 +26,7 @@ http://js.cytoscape.org/#extensions
 > Shortcut 'E' for making an edge coming into a node,
 > Allow e-clicking to make a node with an edge already coming out of it.
 > Bug in recursive lambdaing
-> Ordering bug, see newton4 in sqrt-iter
-
+> Saveload: take out style
 
 META
 > Write tests
@@ -33,6 +36,7 @@ META
 
 
 DONE
+> Deal with nested defns
 > colour strings (25/11/17)
 > Undo
 > make defines happen alongside executions.
@@ -41,7 +45,7 @@ DONE
 > Deleting a parent shouldn't delete the children.
   >> Related: option to remove nodes from lambda.
 > Have color check happen when renaming, as well as creating.
-
+> Ordering bug, see newton4 in sqrt-iter
 
 Packages:
 Elesfn.remove can be found in line ~2500 of cytoscape.js.

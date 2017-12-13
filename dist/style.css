@@ -3,7 +3,7 @@ body {
 }
 
 #cy {
-  height: 90%;
+  height: 80%;
   width: 100%;
   position: absolute;
   left: 0;
@@ -14,7 +14,7 @@ body {
   position:absolute;
   bottom:20px;
   width:5%;
-  height:50px;
+  height:15%;
 }
 
 #lispOutput {
@@ -22,7 +22,7 @@ body {
   bottom:20px;
   width:95%;
   left: 70px;
-  height:50px;
+  height:15%;
 }
 
 #svld {
