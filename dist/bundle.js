@@ -72,20 +72,18 @@
 
 var _editor = _interopRequireDefault(__webpack_require__(26));
 
-var _parse = __webpack_require__(34);
+var _parse = _interopRequireDefault(__webpack_require__(34));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-//import parse from './parse';
 var c = (0, _editor.default)();
 window.loadState = c['loadState'];
 window.saveState = c['saveState'];
 window.resetGraph = c['resetGraph'];
 
 window.parseButton = function () {
-  var cy = c['cy']; //return parse(cy.$('node:selected'));
-
-  return (0, _parse.parseContext)(cy.$('node:orphan'));
+  var cy = c['cy'];
+  return (0, _parse.default)(cy.$('node:orphan'));
 };
 
 /***/ }),
@@ -101,51 +99,88 @@ __webpack_require__(11);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-function create_canvas() {
-  //cytoscape.use( require('undo-redo') );
+function createCanvas() {
+  // cytoscape.use( require('undo-redo') );
   return (0, _cytoscape.default)({
     container: document.getElementById('cy'),
     boxSelectionEnabled: true,
     style: [{
       selector: 'node',
       style: {
-        'content': 'data(name)',
-        'text-valign': 'center',
-        'text-outline-width': 2,
-        'text-outline-color': 'blue',
-        'color': 'white',
-        'border-color': 'blue',
+        'background-color': 'data(defaultColor)',
         'border-width': 0,
-        'background-color': 'data(defaultColor)'
+        'content': 'UNKNOWN TYPE',
+        // text
+        'text-outline-width': 2,
+        'text-outline-color': 'black',
+        'color': 'white',
+        // font color
+        'text-valign': 'center'
       }
     }, {
-      selector: '$node > node',
+      selector: 'node[type = "NearBoundVariable"]',
       style: {
+        'shape': 'diamond',
+        'border-width': 1,
+        'border-color': 'black',
+        'background-color': 'cyan',
+        'content': 'data(name)' // text
+
+      }
+    }, {
+      selector: 'node[type = "FarBoundVariable"]',
+      style: {
+        'shape': 'square',
+        'border-width': 1,
+        'border-color': 'black',
+        'background-color': 'cyan',
+        'content': 'data(name)' // text
+
+      }
+    }, {
+      selector: 'node[type = "Free"]',
+      style: {
+        'content': 'data(name)' // text
+
+      }
+    }, {
+      selector: 'node[type = "Lambda"]',
+      style: {
+        // Compound node, by definition.
         'background-color': 'white',
-        'text-valign': 'top',
+        'text-valign': 'bottom',
         'text-halign': 'center',
         'border-width': 5,
         'shape': 'roundrectangle',
         'border-color': 'gray',
-        'padding': '5px',
-        'font-size': '20px'
+        'padding': '10px',
+        'font-size': '15px',
+        'text-margin-y': '-10px',
+        'text-background-color': 'gray',
+        'text-background-opacity': 1,
+        'text-background-shape': 'roundedRectangle',
+        'text-background-padding': '3px',
+        'content': 'data(name)'
       }
     }, {
-      selector: '$node[name ^= "("][name $= ")"] > node',
+      selector: 'node[type = "Define"]',
       style: {
+        // Compound node, by definition.
         'background-color': 'white',
         'text-valign': 'top',
         'text-halign': 'center',
         'border-width': 5,
+        'border-style': 'dashed',
         'shape': 'roundrectangle',
-        'border-color': 'gray',
-        'padding': '15px',
-        'font-size': '12px',
-        'text-margin-y': '18px',
-        'text-margin-x': '-20px',
-        'text-outline-width': 0,
-        'text-outline-color': 'blue',
-        'color': 'black'
+        'border-color': 'blue',
+        'padding': '4px',
+        'text-margin-y': '3px',
+        'font-size': '20px',
+        'text-background-color': 'blue',
+        'text-background-opacity': 1,
+        'text-background-shape': 'roundedRectangle',
+        'text-background-padding': '1px',
+        'content': 'data(name)'
       }
     }, {
       selector: 'edge',
@@ -171,33 +206,15 @@ function create_canvas() {
     }, {
       selector: 'node:selected',
       style: {
-        //'text-outline-color': 'red',
-        //  'background-color': 'red',
         'border-color': 'red',
-        'border-width': 5
-      }
-    }, {
-      selector: "node[?variable]",
-      style: {
-        'shape': 'diamond',
         'border-width': 5,
-        'border-color': 'cyan',
-        'background-color': 'cyan'
-      }
-    }, {
-      selector: "node:selected[?variable]",
-      style: {
-        'shape': 'diamond',
-        'border-width': 5,
-        'background-color': 'cyan',
-        'border-color': 'red'
+        'text-background-color': 'red'
       }
     }]
   });
 }
 
-;
-module.exports = create_canvas;
+module.exports = createCanvas;
 
 /***/ }),
 /* 2 */
@@ -43886,217 +43903,7 @@ if (typeof Object.create === 'function') {
 
 
 /***/ }),
-/* 25 */
-/***/ (function(module, exports) {
-
-// We need to override the 'remove' method so that it doesn't remove children.
-// Maybe we can do other interesting stuff too, later?
-new_remove = function new_remove(notifyRenderer) {
-  removeFromArray = function removeFromArray(arr, ele, manyCopies) {
-    for (var i = arr.length; i >= 0; i--) {
-      if (arr[i] === ele) {
-        arr.splice(i, 1);
-
-        if (!manyCopies) {
-          break;
-        }
-      }
-    }
-  };
-
-  var self = this;
-  var removed = [];
-  var elesToRemove = [];
-  var elesToRemoveIds = {};
-  var cy = self._private.cy;
-
-  if (notifyRenderer === undefined) {
-    notifyRenderer = true;
-  } // add connected edges
-
-
-  function addConnectedEdges(node) {
-    var edges = node._private.edges;
-
-    for (var i = 0; i < edges.length; i++) {
-      add(edges[i]);
-    }
-  }
-  /*
-  THIS SECTION REMOVED FROM ORIGINAL
-  THIS SECTION REMOVED FROM ORIGINAL
-  THIS SECTION REMOVED FROM ORIGINAL
-  THIS SECTION REMOVED FROM ORIGINAL
-   // add descendant nodes
-  function addChildren(node) {
-    var children = node._private.children;
-     for (var i = 0; i < children.length; i++) {
-      add(children[i]);
-    }
-  }
-  THIS SECTION REMOVED FROM ORIGINAL
-  THIS SECTION REMOVED FROM ORIGINAL
-  THIS SECTION REMOVED FROM ORIGINAL
-  THIS SECTION REMOVED FROM ORIGINAL
-  */
-
-
-  function addAbandonedParents(ele, elessToRemoveIds) {
-    var parent = ele.parent();
-
-    if (parent.length > 0) {
-      var undeletedSiblings = parent.children().filter(function (ele, i, eles) {
-        return !elesToRemoveIds[ele.id()];
-      });
-
-      if (undeletedSiblings.length == 0) {
-        add(parent);
-      }
-    }
-  }
-
-  function add(ele) {
-    var alreadyAdded = elesToRemoveIds[ele.id()];
-
-    if (alreadyAdded) {
-      return;
-    } else {
-      elesToRemoveIds[ele.id()] = true;
-    }
-
-    if (ele.isNode()) {
-      elesToRemove.push(ele); // nodes are removed last
-
-      addAbandonedParents(ele, elesToRemoveIds);
-      addConnectedEdges(ele); // addChildren(ele);
-    } else {
-      elesToRemove.unshift(ele); // edges are removed first
-    }
-  }
-  /* THIS SECTION ADDED TO ORIGINAL
-  THIS SECTION ADDED TO ORIGINAL
-  THIS SECTION ADDED TO ORIGINAL
-  THIS SECTION ADDED TO ORIGINAL
-  */
-
-  /*
-  THIS SECTION ADDED TO ORIGINAL
-  THIS SECTION ADDED TO ORIGINAL
-  THIS SECTION ADDED TO ORIGINAL
-  THIS SECTION ADDED TO ORIGINAL
-  */
-  // make the list of elements to remove
-  // (may be removing more than specified due to connected edges etc)
-
-
-  for (var i = 0, l = self.length; i < l; i++) {
-    var ele = self[i];
-    add(ele);
-  }
-
-  function removeEdgeRef(node, edge) {
-    var connectedEdges = node._private.edges;
-    removeFromArray(connectedEdges, edge); // removing an edges invalidates the traversal cache for its nodes
-
-    node.clearTraversalCache();
-  }
-
-  function removeParallelRefs(edge) {
-    // removing an edge invalidates the traversal caches for the parallel edges
-    edge.parallelEdges().clearTraversalCache();
-  }
-
-  var alteredParents = [];
-  alteredParents.ids = {};
-
-  function removeChildRef(parent, ele) {
-    ele = ele[0];
-    parent = parent[0];
-    var children = parent._private.children;
-    var pid = parent.id();
-    removeFromArray(children, ele);
-
-    if (!alteredParents.ids[pid]) {
-      alteredParents.ids[pid] = true;
-      alteredParents.push(parent);
-    }
-  }
-
-  self.dirtyCompoundBoundsCache();
-  cy.removeFromPool(elesToRemove); // remove from core pool
-
-  for (var _i5 = 0; _i5 < elesToRemove.length; _i5++) {
-    var _ele3 = elesToRemove[_i5]; // mark as removed
-
-    _ele3._private.removed = true; // add to list of removed elements
-
-    removed.push(_ele3);
-
-    if (_ele3.isEdge()) {
-      // remove references to this edge in its connected nodes
-      var src = _ele3.source()[0];
-
-      var tgt = _ele3.target()[0];
-
-      removeEdgeRef(src, _ele3);
-      removeEdgeRef(tgt, _ele3);
-      removeParallelRefs(_ele3);
-    } else {
-      // remove reference to parent
-      var parent = _ele3.parent();
-
-      if (parent.length !== 0) {
-        removeChildRef(parent, _ele3);
-      }
-    }
-  } // check to see if we have a compound graph or not
-
-
-  var elesStillInside = cy._private.elements;
-  cy._private.hasCompoundNodes = false;
-
-  for (var _i6 = 0; _i6 < elesStillInside.length; _i6++) {
-    var _ele4 = elesStillInside[_i6];
-
-    if (_ele4.isParent()) {
-      cy._private.hasCompoundNodes = true;
-      break;
-    }
-  }
-
-  if (removed.length > 0) {
-    var removedElements = this.cy().$(removed.map(function (e) {
-      return '#' + e.id();
-    }).join(','));
-
-    if (notifyRenderer) {
-      this.cy().notify({
-        type: 'remove',
-        eles: removedElements
-      });
-    }
-
-    removedElements.emit('remove');
-  }
-  /*if (removedElements.size() > 0) {
-    // must manually notify since trigger won't do this automatically once removed
-  }*/
-  // the parents who were modified by the removal need their style updated
-
-
-  for (var _i7 = 0; _i7 < alteredParents.length; _i7++) {
-    var _ele5 = alteredParents[_i7];
-
-    if (!_ele5.removed()) {
-      _ele5.updateStyle();
-    }
-  } //return new Collection(cy, removed);
-
-};
-
-module.exports = new_remove;
-
-/***/ }),
+/* 25 */,
 /* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -44105,7 +43912,7 @@ module.exports = new_remove;
 
 var _cytoscape_init = _interopRequireDefault(__webpack_require__(1));
 
-var _new_remove = _interopRequireDefault(__webpack_require__(25));
+var _newRemove = _interopRequireDefault(__webpack_require__(37));
 
 var _cytoscapeUndoRedo = _interopRequireDefault(__webpack_require__(28));
 
@@ -44122,8 +43929,8 @@ function buildEditor() {
   (0, _cytoscapeUndoRedo.default)(_cytoscape.default); // Register undo/redo, and other imported functions
 
   var ur = cy.undoRedo();
-  (0, _cytoscape.default)('collection', 'delete', _new_remove.default);
-  ur.action("deleteEles", function (eles) {
+  (0, _cytoscape.default)('collection', 'delete', _newRemove.default);
+  ur.action('deleteEles', function (eles) {
     eles.delete();
     return eles;
   }, function (eles) {
@@ -44133,71 +43940,74 @@ function buildEditor() {
   // || GRAPH FUNCTIONS ||
   // =====================
 
+  function setType(ele, newtype) {
+    ele.data('type', newtype);
+  }
+
+  (0, _cytoscape.default)('collection', 'setType', function (newType) {
+    setType(this, newType);
+  });
+
   function newNode(pos) {
-    // var name = getName()
-    //if (!(name === null)) {
-    var color = getColor(name);
+    var color = getColor();
     var createdNode = cy.add({
       group: 'nodes',
       position: pos,
       data: {
         'variable': false,
-        'name': "",
+        'name': '',
+        'type': 'Free',
         'defaultColor': color
       }
     });
     cy.$().deselect();
     createdNode.select();
-    return createdNode; //}
+    return createdNode;
   }
-
-  ;
 
   function newEdge(origin, dest) {
     var newEdge = cy.add({
-      group: "edges",
+      group: 'edges',
       style: {
         'target-arrow-shape': 'triangle'
       },
       data: {
         source: origin.id(),
         target: dest.id(),
-        name: name
+        name: ''
       },
       selectable: true
     });
-    fixParent(dest); //origin.setParent(dest.parent())
-
+    fixParent(dest);
     origin.deselect();
     dest.select();
     return newEdge;
   }
 
-  ;
-
   function fixParent(dest) {
     // set origin's parent to dest's parent,
     // and the same for everything origin is attached to.
-    var incomers = dest.predecessors("node");
+    var incomers = dest.predecessors('node');
 
     if (incomers.length > 0) {
       incomers.setParent(dest.parent());
     }
   }
 
-  function getColor(name) {
+  function getColor() {
+    var name = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
     var node = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
 
     // Method to generate a color for the node that the method is called on.
     function isString(name) {
       function matchBrackets(bra, n) {
-        return n[0] == bra && n[n.length - 1] == bra;
+        return n[0] === bra && n[n.length - 1] === bra;
       }
 
-      return matchBrackets('\'', name) || matchBrackets('\"', name) || matchBrackets('\`', name);
+      return matchBrackets('\'', name) || matchBrackets('"', name) || matchBrackets('`', name);
     }
 
-    if (name != "") {
+    if (name !== '') {
       if (node === null) {
         var sameNamedEles = cy.$("[name='" + name + "']");
       } else {
@@ -44205,21 +44015,21 @@ function buildEditor() {
       } // Look for something named the same, and make this node the same color.
 
 
-      if (sameNamedEles.length > 0 && name != "") {
-        return sameNamedEles.data("defaultColor");
-      } // If the name represents a string, make the node green.
-      else if (isString(name)) {
-          return 'lime';
-        } // We want numbers (including floats, ints, etc) to be one color.
-        else if (!isNaN(name)) {
-            return 'blue';
-          }
+      if (sameNamedEles.length > 0 && name !== '') {
+        return sameNamedEles.data('defaultColor');
+      } else if (isString(name)) {
+        // If the name represents a string, make the node green.
+        return 'lime';
+      } else if (!isNaN(name)) {
+        // We want numbers (including floats, ints, etc) to be one color.
+        return 'blue';
+      }
     } // Else generate a random color from a colormap (and convert it to hash).
 
 
     var ncolors = 72;
     var index = Math.floor(Math.random() * ncolors);
-    return (0, _colormap.default)('prism', 72, 'hex')[index]; //'#' + interpolateLinearly(Math.random(), prism).map(x => Math.floor(255 * x).toString(16).padStart(2, "0")).join("");
+    return (0, _colormap.default)('prism', 72, 'hex')[index];
   }
 
   (0, _cytoscape.default)('collection', 'getColor', function () {
@@ -44246,13 +44056,13 @@ function buildEditor() {
     }
   }
 
-  ;
   (0, _cytoscape.default)('collection', 'rename', function () {
     var newName = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
     rename(this, newName = newName);
   });
 
   function setParent(newParent) {
+    // Set self's parent to newParent.
     if (newParent != null && newParent.id()) {
       ur.do("changeParent", {
         "parentData": newParent.id(),
@@ -44261,15 +44071,16 @@ function buildEditor() {
         "posDiffY": 0
       });
     } else {
+      // If newParent is null, remove the parent from the node.
       var oldParent = this.parent();
-      ur.do("changeParent", {
-        "parentData": null,
-        "nodes": this,
-        "posDiffX": 0,
-        "posDiffY": 0
-      });
+      ur.do('changeParent', {
+        'parentData': null,
+        'nodes': this,
+        'posDiffX': 0,
+        'posDiffY': 0
+      }); // Remove childless parents
 
-      if (oldParent.length > 0 && oldParent.children().length == 0) {
+      if (oldParent.length > 0 && oldParent.children().length === 0) {
         oldParent.remove();
       }
     }
@@ -44278,7 +44089,19 @@ function buildEditor() {
   (0, _cytoscape.default)('collection', 'setParent', setParent);
 
   function toggleVariable() {
-    this.data('variable', !this.data('variable'));
+    switch (this.data('type')) {
+      case 'Free':
+        this.setType('NearBoundVariable');
+        break;
+
+      case 'NearBoundVariable':
+        this.setType('FarBoundVariable');
+        break;
+
+      case 'FarBoundVariable':
+        this.setType('Free');
+        break;
+    }
   }
 
   (0, _cytoscape.default)('collection', 'toggleVariable', toggleVariable); // =========================
@@ -44286,8 +44109,8 @@ function buildEditor() {
   // =========================
 
   function getName() {
-    var newName = window.prompt("name:", "");
-    var keys_pressed = new Set();
+    var newName = window.prompt('name:', '');
+    var keysPressed = new Set();
     return newName;
   } // Double-tap to add a new node, or press n
 
@@ -44302,48 +44125,47 @@ function buildEditor() {
   }, false);
 
   _mousetrap.default.bind('n', function (e) {
-    // If all of them belong to the same parent, take them out of the parent.
     var pos = mousePosition;
     newNode(Object.assign({}, pos));
   });
 
-  var dclick_prevTap;
-  var dclick_tappedTimeout;
+  var dclickPrevTap;
+  var dclickTappedTimeout;
   cy.on('tap', function (event) {
-    var tap_target = event.target;
+    var tapTarget = event.target;
 
-    if (tap_target === cy && keys_pressed.has('e')) {
+    if (tapTarget === cy && keysPressed.has('e')) {
       // Click on the background with 'e'
       newNode(event.position);
-      dclick_tappedTimeout = false;
+      dclickTappedTimeout = false;
     }
 
-    if (dclick_tappedTimeout && dclick_prevTap) {
-      clearTimeout(dclick_tappedTimeout);
+    if (dclickTappedTimeout && dclickPrevTap) {
+      clearTimeout(dclickTappedTimeout);
     } // If double clicked:
 
 
-    if (dclick_prevTap === tap_target) {
-      if (tap_target === cy) {
+    if (dclickPrevTap === tapTarget) {
+      if (tapTarget === cy) {
         newNode(event.position);
       } else {
         rename(event.target);
       }
 
-      dclick_prevTap = null;
+      dclickPrevTap = null;
     } else {
       // Update doubleclick handlers
-      dclick_tappedTimeout = setTimeout(function () {
-        dclick_prevTap = null;
+      dclickTappedTimeout = setTimeout(function () {
+        dclickPrevTap = null;
       }, 300);
-      dclick_prevTap = tap_target;
+      dclickPrevTap = tapTarget;
     }
   }); // Hold 'e' and tap a node to make a new edge
 
   cy.on('tap', 'node', function (event) {
     var sources = cy.$('node:selected').difference(event.target);
 
-    if (sources.length > 0 && keys_pressed.has('e')) {
+    if (sources.length > 0 && keysPressed.has('e')) {
       sources.map(function (source) {
         return newEdge(source, event.target);
       });
@@ -44352,9 +44174,7 @@ function buildEditor() {
   }); // Hold 'r' and tap a node to rename it.
 
   cy.on('tap', 'node, edge', function (event) {
-    var sources = cy.$('node:selected').difference(event.target);
-
-    if (keys_pressed.has('r')) {
+    if (keysPressed.has('r')) {
       event.target.rename();
     }
   }); // l to 'lambda': wrap selection in a hypernode, containing the selection
@@ -44368,6 +44188,7 @@ function buildEditor() {
       selected.setParent(null);
     } else {
       var parent = newNode();
+      parent.setType('Lambda');
       var componentz = selected.closedNeighbourhood();
       componentz.forEach(function (component) {
         component.setParent(parent);
@@ -44377,14 +44198,38 @@ function buildEditor() {
     }
 
     var selected = cy.$('node:selected');
-    console.log("fixing parent for", selected);
+    console.log('fixing parent for', selected);
+    fixParent(selected);
+  }, 'keypress'); // d to 'define': wrap selection in a hypernode, containing the selection
+  // and its closed neighbourhood, corresponding to a define statement.
+
+
+  _mousetrap.default.bind('d', function () {
+    // If all of them belong to the same parent, take them out of the parent.
+    var selected = cy.$('node:selected');
+
+    if (selected.parents().length == 1) {
+      selected.setParent(null);
+    } else {
+      var parent = newNode();
+      parent.setType('Define');
+      var componentz = selected.closedNeighbourhood();
+      componentz.forEach(function (component) {
+        component.setParent(parent);
+      });
+      selected.deselect();
+      parent.select();
+    }
+
+    var selected = cy.$('node:selected');
+    console.log('fixing parent for', selected);
     fixParent(selected);
   }, 'keypress'); // Backspace to delete selection
 
 
   _mousetrap.default.bind('backspace', function () {
-    ur.do("deleteEles", cy.$(':selected'));
-  }); //.delete ();});
+    ur.do('deleteEles', cy.$(':selected'));
+  }); //.delete ()})
 
 
   _mousetrap.default.bind('V', function () {
@@ -44400,28 +44245,28 @@ function buildEditor() {
   }); // Recognise keys pressed down
 
 
-  var keys_pressed = new Set();
+  var keysPressed = new Set();
 
   _mousetrap.default.bind('e', function () {
-    keys_pressed.add('e');
+    keysPressed.add('e');
   }, 'keypress');
 
   _mousetrap.default.bind('e', function () {
-    keys_pressed.delete('e');
+    keysPressed.delete('e');
   }, 'keyup');
 
   _mousetrap.default.bind('r', function () {
-    keys_pressed.add('r');
+    keysPressed.add('r');
     var selected = cy.$(':selected');
 
-    if (selected.length == 1) {
+    if (selected.length === 1) {
       selected.rename();
-      keys_pressed.delete('r');
+      keysPressed.delete('r');
     }
   }, 'keypress');
 
   _mousetrap.default.bind('r', function () {
-    keys_pressed.delete('r');
+    keysPressed.delete('r');
   }, 'keyup');
 
   function loadState(objectId) {
@@ -44435,15 +44280,15 @@ function buildEditor() {
       cy.json(graphJson);
     };
 
-    reader.readAsText(x, "UTF-8");
+    reader.readAsText(x, 'UTF-8');
   }
 
   function saveState() {
-    var fileName = window.prompt("File name:", "");
+    var fileName = window.prompt('File name:', '');
 
     if (!(fileName === null)) {
       var jsonData = JSON.stringify(cy.json());
-      var a = document.createElement("a");
+      var a = document.createElement('a');
       var file = new Blob([jsonData], {
         type: 'text/plain'
       });
@@ -44455,8 +44300,8 @@ function buildEditor() {
 
   function resetGraph() {
     if (confirm("REALLY CLEAR ALL? (There's no autosave and no undo!)")) {
-      console.log("RESET");
-      cy.remove(cy.$(""));
+      console.log('RESET');
+      cy.remove(cy.$(''));
     }
   }
 
@@ -46383,8 +46228,8 @@ function parse(node) {
 
 function displayResult(compiledLisp) {
   function writeToDisplay(lispOutput) {
-    var newHtml = compiledLisp + " :<br />" + "\>\> " + lispOutput;
-    document.getElementById("lispOutput").innerHTML = newHtml;
+    var newHtml = compiledLisp + ' :<br />' + '\>\> ' + lispOutput;
+    document.getElementById('lispOutput').innerHTML = newHtml;
   }
 
   var biwa = new _BiwaScheme.default.Interpreter(writeToDisplay);
@@ -46392,9 +46237,9 @@ function displayResult(compiledLisp) {
 }
 
 function getRef(ele) {
-  // Gets name if there is one; else refer to the node by its id.
-  if (ele.data("name") != "") {
-    return ele.data("name");
+  // Gets name if there is one else refer to the node by its id.
+  if (ele.data('name') != '') {
+    return ele.data('name');
   } else if (ele.isEdge()) {
     return getRef(ele.source());
   } else {
@@ -46416,10 +46261,10 @@ function evaluateNode(node) {
   if (selfType == 'lambda') {
     var topLevelCompiledTerm = evaluateLambda(node);
   } else if (selfType == 'define') {
-    var topLevelCompiledTerm = "(define " + getRef(node) + " " + evaluateContext(node.children()) + ")";
+    var topLevelCompiledTerm = '(define ' + getRef(node) + ' ' + evaluateContext(node.children()) + ')';
   } else {
-    var name = node.data("name");
-    var topLevelCompiledTerm = name != "" ? name : node.id();
+    var name = node.data('name');
+    var topLevelCompiledTerm = name != '' ? name : node.id();
   }
 
   var inbounds = node.incomers('edge');
@@ -46430,8 +46275,8 @@ function evaluateNode(node) {
     }).map(function (edge) {
       return evaluateNode(edge.source());
     });
-    var stringedEdges = edgeRefs.join(" ");
-    var closedRepr = "(" + topLevelCompiledTerm + " " + stringedEdges + ")";
+    var stringedEdges = edgeRefs.join(' ');
+    var closedRepr = '(' + topLevelCompiledTerm + ' ' + stringedEdges + ')';
   } else {
     var closedRepr = topLevelCompiledTerm;
   }
@@ -46449,22 +46294,17 @@ function evaluateLambda(node) {
   */
   var subNodes = node.children(); // Set up variables of the function.
 
-  /*var boundVariables = subNodes.filter("[?variable]").map(n => getRef(n)).sort();
-  var stringedBoundVariables = boundVariables.filter(function (el, i, arr) {
-                                             return arr.indexOf(el) === i;}).join(" ")*/
-
-  var stringedBoundVariables = node.data("name"); //return "(lambda (" + stringedBoundVariables + ") " + evaluateContext(subNodes) + ")";
-
-  return "(lambda " + stringedBoundVariables + " " + evaluateContext(subNodes) + ")";
+  var stringedBoundVariables = node.data('name');
+  return '(lambda ' + stringedBoundVariables + ' ' + evaluateContext(subNodes) + ')';
 }
 
 function evaluateContext(context) {
   var definitionNodes = context.filter(function (n) {
-    return typ(n) == 'define';
+    return typ(n) === 'define';
   }); // Hopefully there's exactly one execution node (?)
 
   var executionNodes = context.filter(function (n) {
-    return typ(n) != 'define' && context.leaves().contains(n);
+    return typ(n) !== 'define' && context.leaves().contains(n);
   }); // Evaluate definitions first, then the execution.
 
   var definitions = definitionNodes.map(function (ele, i, eles) {
@@ -46473,19 +46313,11 @@ function evaluateContext(context) {
   var executions = executionNodes.map(function (ele, i, eles) {
     return evaluateNode(ele);
   });
-  return definitions.concat(executions).join("\n");
+  return definitions.concat(executions).join('\n');
 }
 
 function typ(node) {
-  if (node.isParent() && node.data("name").charAt(0) == '(' && node.data("name").charAt(node.data("name").length - 1) == ')') {
-    return 'lambda';
-  } else if (node.isParent()) {
-    return 'define';
-  } else if (node.isParent() && node.data("name") == "") {
-    return 'lambda';
-  } else {
-    return 'other';
-  }
+  return node.data('type');
 }
 
 module.exports = {
@@ -54664,6 +54496,217 @@ webpackEmptyContext.keys = function() { return []; };
 webpackEmptyContext.resolve = webpackEmptyContext;
 module.exports = webpackEmptyContext;
 webpackEmptyContext.id = 36;
+
+/***/ }),
+/* 37 */
+/***/ (function(module, exports) {
+
+// We need to override the 'remove' method so that it doesn't remove children.
+// Maybe we can do other interesting stuff too, later?
+newRemove = function newRemove(notifyRenderer) {
+  removeFromArray = function removeFromArray(arr, ele, manyCopies) {
+    for (var i = arr.length; i >= 0; i--) {
+      if (arr[i] === ele) {
+        arr.splice(i, 1);
+
+        if (!manyCopies) {
+          break;
+        }
+      }
+    }
+  };
+
+  var self = this;
+  var removed = [];
+  var elesToRemove = [];
+  var elesToRemoveIds = {};
+  var cy = self._private.cy;
+
+  if (notifyRenderer === undefined) {
+    notifyRenderer = true;
+  } // add connected edges
+
+
+  function addConnectedEdges(node) {
+    var edges = node._private.edges;
+
+    for (var i = 0; i < edges.length; i++) {
+      add(edges[i]);
+    }
+  }
+  /*
+  THIS SECTION REMOVED FROM ORIGINAL
+  THIS SECTION REMOVED FROM ORIGINAL
+  THIS SECTION REMOVED FROM ORIGINAL
+  THIS SECTION REMOVED FROM ORIGINAL
+   // add descendant nodes
+  function addChildren(node) {
+    var children = node._private.children;
+     for (var i = 0; i < children.length; i++) {
+      add(children[i]);
+    }
+  }
+  THIS SECTION REMOVED FROM ORIGINAL
+  THIS SECTION REMOVED FROM ORIGINAL
+  THIS SECTION REMOVED FROM ORIGINAL
+  THIS SECTION REMOVED FROM ORIGINAL
+  */
+
+
+  function addAbandonedParents(ele, elessToRemoveIds) {
+    var parent = ele.parent();
+
+    if (parent.length > 0) {
+      var undeletedSiblings = parent.children().filter(function (ele, i, eles) {
+        return !elesToRemoveIds[ele.id()];
+      });
+
+      if (undeletedSiblings.length == 0) {
+        add(parent);
+      }
+    }
+  }
+
+  function add(ele) {
+    var alreadyAdded = elesToRemoveIds[ele.id()];
+
+    if (alreadyAdded) {
+      return;
+    } else {
+      elesToRemoveIds[ele.id()] = true;
+    }
+
+    if (ele.isNode()) {
+      elesToRemove.push(ele); // nodes are removed last
+
+      addAbandonedParents(ele, elesToRemoveIds);
+      addConnectedEdges(ele); // addChildren(ele);
+    } else {
+      elesToRemove.unshift(ele); // edges are removed first
+    }
+  }
+  /* THIS SECTION ADDED TO ORIGINAL
+  THIS SECTION ADDED TO ORIGINAL
+  THIS SECTION ADDED TO ORIGINAL
+  THIS SECTION ADDED TO ORIGINAL
+  */
+
+  /*
+  THIS SECTION ADDED TO ORIGINAL
+  THIS SECTION ADDED TO ORIGINAL
+  THIS SECTION ADDED TO ORIGINAL
+  THIS SECTION ADDED TO ORIGINAL
+  */
+  // make the list of elements to remove
+  // (may be removing more than specified due to connected edges etc)
+
+
+  for (var i = 0, l = self.length; i < l; i++) {
+    var ele = self[i];
+    add(ele);
+  }
+
+  function removeEdgeRef(node, edge) {
+    var connectedEdges = node._private.edges;
+    removeFromArray(connectedEdges, edge); // removing an edges invalidates the traversal cache for its nodes
+
+    node.clearTraversalCache();
+  }
+
+  function removeParallelRefs(edge) {
+    // removing an edge invalidates the traversal caches for the parallel edges
+    edge.parallelEdges().clearTraversalCache();
+  }
+
+  var alteredParents = [];
+  alteredParents.ids = {};
+
+  function removeChildRef(parent, ele) {
+    ele = ele[0];
+    parent = parent[0];
+    var children = parent._private.children;
+    var pid = parent.id();
+    removeFromArray(children, ele);
+
+    if (!alteredParents.ids[pid]) {
+      alteredParents.ids[pid] = true;
+      alteredParents.push(parent);
+    }
+  }
+
+  self.dirtyCompoundBoundsCache();
+  cy.removeFromPool(elesToRemove); // remove from core pool
+
+  for (var _i5 = 0; _i5 < elesToRemove.length; _i5++) {
+    var _ele3 = elesToRemove[_i5]; // mark as removed
+
+    _ele3._private.removed = true; // add to list of removed elements
+
+    removed.push(_ele3);
+
+    if (_ele3.isEdge()) {
+      // remove references to this edge in its connected nodes
+      var src = _ele3.source()[0];
+
+      var tgt = _ele3.target()[0];
+
+      removeEdgeRef(src, _ele3);
+      removeEdgeRef(tgt, _ele3);
+      removeParallelRefs(_ele3);
+    } else {
+      // remove reference to parent
+      var parent = _ele3.parent();
+
+      if (parent.length !== 0) {
+        removeChildRef(parent, _ele3);
+      }
+    }
+  } // check to see if we have a compound graph or not
+
+
+  var elesStillInside = cy._private.elements;
+  cy._private.hasCompoundNodes = false;
+
+  for (var _i6 = 0; _i6 < elesStillInside.length; _i6++) {
+    var _ele4 = elesStillInside[_i6];
+
+    if (_ele4.isParent()) {
+      cy._private.hasCompoundNodes = true;
+      break;
+    }
+  }
+
+  if (removed.length > 0) {
+    var removedElements = this.cy().$(removed.map(function (e) {
+      return '#' + e.id();
+    }).join(','));
+
+    if (notifyRenderer) {
+      this.cy().notify({
+        type: 'remove',
+        eles: removedElements
+      });
+    }
+
+    removedElements.emit('remove');
+  }
+  /*if (removedElements.size() > 0) {
+    // must manually notify since trigger won't do this automatically once removed
+  }*/
+  // the parents who were modified by the removal need their style updated
+
+
+  for (var _i7 = 0; _i7 < alteredParents.length; _i7++) {
+    var _ele5 = alteredParents[_i7];
+
+    if (!_ele5.removed()) {
+      _ele5.updateStyle();
+    }
+  } //return new Collection(cy, removed);
+
+};
+
+module.exports = newRemove;
 
 /***/ })
 /******/ ]);

@@ -1,34 +1,34 @@
-import BiwaScheme from 'BiwaScheme';
+import BiwaScheme from 'BiwaScheme'
 
 function parseContext(graph) {
-  var compiledLisp = evaluateContext(graph);
-  displayResult(compiledLisp);
+  var compiledLisp = evaluateContext(graph)
+  displayResult(compiledLisp)
 }
 
 function parse(node) {
-  var compiledLisp = evaluateNode(node);
-  displayResult(compiledLisp);
+  var compiledLisp = evaluateNode(node)
+  displayResult(compiledLisp)
 }
 
 function displayResult(compiledLisp) {
   function writeToDisplay(lispOutput) {
-    var newHtml = compiledLisp + " :<br />" + "\>\> " + lispOutput;
-    document.getElementById("lispOutput").innerHTML = newHtml;
+    var newHtml = compiledLisp + ' :<br />' + '\>\> ' + lispOutput
+    document.getElementById('lispOutput').innerHTML = newHtml
   }
-  var biwa = new BiwaScheme.Interpreter(writeToDisplay);
-  biwa.evaluate(compiledLisp, writeToDisplay);
+  var biwa = new BiwaScheme.Interpreter(writeToDisplay)
+  biwa.evaluate(compiledLisp, writeToDisplay)
 }
 
 function getRef(ele) {
-  // Gets name if there is one; else refer to the node by its id.
-  if (ele.data("name") != "") {
-    return ele.data("name");
+  // Gets name if there is one else refer to the node by its id.
+  if (ele.data('name') != '') {
+    return ele.data('name')
   }
   else if (ele.isEdge()) {
-    return getRef(ele.source());
+    return getRef(ele.source())
   }
   else {
-    return ele.id();
+    return ele.id()
   }
 }
 
@@ -41,27 +41,27 @@ function evaluateNode(node) {
       Sink nodes are to be evaluated at this level,
       nonsinks are evaluated later in the recursion.
   */
-  var selfType = typ(node);
+  var selfType = typ(node)
 
   if (selfType == 'lambda') {
     var topLevelCompiledTerm = evaluateLambda(node)
   }
   else if (selfType == 'define') {
-    var topLevelCompiledTerm = "(define " + getRef(node)+ " " + evaluateContext(node.children()) + ")";
+    var topLevelCompiledTerm = '(define ' + getRef(node)+ ' ' + evaluateContext(node.children()) + ')'
   }
   else {
-    var name = node.data("name");
-    var topLevelCompiledTerm = (name != "") ? name : node.id();
+    var name = node.data('name')
+    var topLevelCompiledTerm = (name != '') ? name : node.id()
   }
 
   var inbounds = node.incomers('edge')
   if (inbounds.length > 0) {
-    var edgeRefs = inbounds.sort(function(a,b) {
+    var edgeRefs = inbounds.sort(function (a,b) {
         return getRef(a).localeCompare(getRef(b))})
-      .map(edge => evaluateNode(edge.source()));
+      .map(edge => evaluateNode(edge.source()))
 
-    var stringedEdges = edgeRefs.join(" ")
-    var closedRepr = "(" + topLevelCompiledTerm + " " + stringedEdges + ")";
+    var stringedEdges = edgeRefs.join(' ')
+    var closedRepr = '(' + topLevelCompiledTerm + ' ' + stringedEdges + ')'
   }
   else {
     var closedRepr = topLevelCompiledTerm
@@ -69,45 +69,35 @@ function evaluateNode(node) {
   return closedRepr
 }
 
-function evaluateLambda(node) {
+function evaluateLambda (node) {
   // A lambda looks like:
   /* (LAMBDA (bound-variables) (
         (define functionname (recursivecall))
         (some expression to evaluate)
       ))
   */
-  var subNodes = node.children();
+  var subNodes = node.children()
 
   // Set up variables of the function.
-  /*var boundVariables = subNodes.filter("[?variable]").map(n => getRef(n)).sort();
-  var stringedBoundVariables = boundVariables.filter(function (el, i, arr) {
-                                             return arr.indexOf(el) === i;}).join(" ")*/
-  var stringedBoundVariables = node.data("name")
+  var stringedBoundVariables = node.data('name')
 
-  //return "(lambda (" + stringedBoundVariables + ") " + evaluateContext(subNodes) + ")";
-  return "(lambda " + stringedBoundVariables + " " + evaluateContext(subNodes) + ")";
+  return '(lambda ' + stringedBoundVariables + ' ' + evaluateContext(subNodes) + ')'
 }
 
-function evaluateContext(context) {
-  var definitionNodes = context.filter(n => (typ(n) == 'define'));
+function evaluateContext (context) {
+  var definitionNodes = context.filter(n => (typ(n) === 'define'))
   // Hopefully there's exactly one execution node (?)
-  var executionNodes = context.filter(n => (typ(n) != 'define' && context.leaves().contains(n)));
+  var executionNodes = context.filter(n => (typ(n) !== 'define' && context.leaves().contains(n)))
 
   // Evaluate definitions first, then the execution.
-  var definitions = definitionNodes.map(function(ele, i, eles) {return evaluateNode(ele);});
-  var executions = executionNodes.map(function(ele, i, eles) {return evaluateNode(ele);});
+  var definitions = definitionNodes.map(function (ele, i, eles) { return evaluateNode(ele) })
+  var executions = executionNodes.map(function (ele, i, eles) { return evaluateNode(ele) })
 
-  return definitions.concat(executions).join("\n")
+  return definitions.concat(executions).join('\n')
 }
 
-
-function typ(node) {
-  if (node.isParent() &&
-      node.data("name").charAt(0) == '(' &&
-      node.data("name").charAt(node.data("name").length - 1) == ')') {return 'lambda'}
-  else if (node.isParent()) {return 'define'}
-  else if (node.isParent() && (node.data("name")) == "") {return 'lambda'}
-  else {return 'other'}
+function typ (node) {
+  return node.data('type')
 }
 
-module.exports = {parse, parseContext};
+module.exports = {parse, parseContext}
