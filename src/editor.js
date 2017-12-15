@@ -104,7 +104,9 @@ function buildEditor () {
     // Else generate a random color from a colormap (and convert it to hash).
     var ncolors = 72
     var index = Math.floor(Math.random() * ncolors)
-    return colormap('prism', 72, 'hex')[index]
+    var col = colormap('nature', ncolors, 'hex')[index]
+    console.log(col)
+    return col
   }
   cytoscape('collection', 'getColor', function () { return getColor(this.data('name'), this) })
 
@@ -316,15 +318,18 @@ function buildEditor () {
     reader.readAsText(x, 'UTF-8')
   }
 
-  function saveState () {
-    var fileName = window.prompt('File name:', '')
+  function saveState() {
+    var fileName = window.prompt("File name:", "")
     if (!(fileName === null)) {
-      var jsonData = JSON.stringify(cy.json())
-      var a = document.createElement('a')
-      var file = new Blob([jsonData], {type: 'text/plain'})
-      a.href = URL.createObjectURL(file)
-      a.download = fileName + '.txt'
-      a.click()
+      var jsonData = JSON.stringify(
+        {'elements': cy.json()['elements']}
+      )
+      //console.log("keys:", jsonData.keys)
+      var a = document.createElement("a");
+      var file = new Blob([jsonData], {type: 'text/plain'});
+      a.href = URL.createObjectURL(file);
+      a.download = fileName + '.txt';
+      a.click();
     }
   }
 

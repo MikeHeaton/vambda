@@ -57,7 +57,7 @@ function createCanvas () {
           'text-margin-y': '-10px',
           'text-background-color': 'gray',
           'text-background-opacity': 1,
-          'text-background-shape': 'roundedRectangle',
+          'text-background-shape': 'roundrectangle',
           'text-background-padding': '3px',
           'content': 'data(name)'
         }
@@ -71,13 +71,13 @@ function createCanvas () {
           'border-width': 5,
           'border-style': 'dashed',
           'shape': 'roundrectangle',
-          'border-color': 'blue',
+          'border-color': 'data(defaultColor)',
           'padding': '4px',
           'text-margin-y': '3px',
           'font-size': '20px',
-          'text-background-color': 'blue',
+          'text-background-color': 'data(defaultColor)',
           'text-background-opacity': 1,
-          'text-background-shape': 'roundedRectangle',
+          'text-background-shape': 'roundrectangle',
           'text-background-padding': '1px',
           'content': 'data(name)'
         }

@@ -158,7 +158,7 @@ function createCanvas() {
         'text-margin-y': '-10px',
         'text-background-color': 'gray',
         'text-background-opacity': 1,
-        'text-background-shape': 'roundedRectangle',
+        'text-background-shape': 'roundrectangle',
         'text-background-padding': '3px',
         'content': 'data(name)'
       }
@@ -172,13 +172,13 @@ function createCanvas() {
         'border-width': 5,
         'border-style': 'dashed',
         'shape': 'roundrectangle',
-        'border-color': 'blue',
+        'border-color': 'data(defaultColor)',
         'padding': '4px',
         'text-margin-y': '3px',
         'font-size': '20px',
-        'text-background-color': 'blue',
+        'text-background-color': 'data(defaultColor)',
         'text-background-opacity': 1,
-        'text-background-shape': 'roundedRectangle',
+        'text-background-shape': 'roundrectangle',
         'text-background-padding': '1px',
         'content': 'data(name)'
       }
@@ -44029,7 +44029,9 @@ function buildEditor() {
 
     var ncolors = 72;
     var index = Math.floor(Math.random() * ncolors);
-    return (0, _colormap.default)('prism', 72, 'hex')[index];
+    var col = (0, _colormap.default)('nature', ncolors, 'hex')[index];
+    console.log(col);
+    return col;
   }
 
   (0, _cytoscape.default)('collection', 'getColor', function () {
@@ -44284,11 +44286,14 @@ function buildEditor() {
   }
 
   function saveState() {
-    var fileName = window.prompt('File name:', '');
+    var fileName = window.prompt("File name:", "");
 
     if (!(fileName === null)) {
-      var jsonData = JSON.stringify(cy.json());
-      var a = document.createElement('a');
+      var jsonData = JSON.stringify({
+        'elements': cy.json()['elements']
+      }); //console.log("keys:", jsonData.keys)
+
+      var a = document.createElement("a");
       var file = new Blob([jsonData], {
         type: 'text/plain'
       });
@@ -46216,19 +46221,14 @@ var _BiwaScheme = _interopRequireDefault(__webpack_require__(35));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-function parseContext(graph) {
-  var compiledLisp = evaluateContext(graph);
-  displayResult(compiledLisp);
-}
-
-function parse(node) {
-  var compiledLisp = evaluateNode(node);
+function compileCanvas(graph) {
+  var compiledLisp = evaluateContext(graph, []);
   displayResult(compiledLisp);
 }
 
 function displayResult(compiledLisp) {
   function writeToDisplay(lispOutput) {
-    var newHtml = compiledLisp + ' :<br />' + '\>\> ' + lispOutput;
+    var newHtml = '>> ' + lispOutput + '<br />' + compiledLisp;
     document.getElementById('lispOutput').innerHTML = newHtml;
   }
 
@@ -46238,7 +46238,7 @@ function displayResult(compiledLisp) {
 
 function getRef(ele) {
   // Gets name if there is one else refer to the node by its id.
-  if (ele.data('name') != '') {
+  if (ele.data('name') !== '') {
     return ele.data('name');
   } else if (ele.isEdge()) {
     return getRef(ele.source());
@@ -46247,71 +46247,63 @@ function getRef(ele) {
   }
 }
 
-function evaluateNode(node) {
-  /* A node has two relevant properties:
-  - is it a parent?
-      Parents === defs and lambdas,
-      nonparents are primitive.
-  - is it a sink node? (leaf)
-      Sink nodes are to be evaluated at this level,
-      nonsinks are evaluated later in the recursion.
-  */
+function nodeEval(node) {
   var selfType = typ(node);
 
-  if (selfType == 'lambda') {
-    var topLevelCompiledTerm = evaluateLambda(node);
-  } else if (selfType == 'define') {
-    var topLevelCompiledTerm = '(define ' + getRef(node) + ' ' + evaluateContext(node.children()) + ')';
+  if (selfType === 'Lambda') {
+    // Find variables of the lambda function.
+    var subNodes = node.children();
+    var nearBoundVariables = subNodes.filter("node[type = 'NearBoundVariable']").map(function (n) {
+      return getRef(n);
+    });
+    var extraBoundVariables = node.data('name').split(' ');
+    var boundVariables = nearBoundVariables.concat(extraBoundVariables).sort();
+    var stringedBoundVariables = boundVariables.filter(function (el, i, arr) {
+      return arr.indexOf(el) === i;
+    }).join(' ');
+    return '(lambda (' + stringedBoundVariables + ') ' + evaluateContext(subNodes) + ')';
+  } else if (selfType === 'Define') {
+    return '(define ' + getRef(node) + ' ' + evaluateContext(node.children(), boundVariables) + ')';
   } else {
-    var name = node.data('name');
-    var topLevelCompiledTerm = name != '' ? name : node.id();
+    // Else the evaluation is just the name.
+    return getRef(node);
   }
+}
 
-  var inbounds = node.incomers('edge');
+function evaluateNode(node) {
+  var contextualBoundVariables = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : [];
+  var compiledNode = nodeEval(node);
 
-  if (inbounds.length > 0) {
-    var edgeRefs = inbounds.sort(function (a, b) {
+  if (node.incomers('edge').length > 0) {
+    // It's some kind of execution.
+    // Evaluate the incomers recursively.
+    var edgeRefs = node.incomers('edge').sort(function (a, b) {
       return getRef(a).localeCompare(getRef(b));
     }).map(function (edge) {
       return evaluateNode(edge.source());
     });
     var stringedEdges = edgeRefs.join(' ');
-    var closedRepr = '(' + topLevelCompiledTerm + ' ' + stringedEdges + ')';
+    return '(' + compiledNode + ' ' + stringedEdges + ')';
   } else {
-    var closedRepr = topLevelCompiledTerm;
+    return compiledNode;
   }
-
-  return closedRepr;
-}
-
-function evaluateLambda(node) {
-  // A lambda looks like:
-
-  /* (LAMBDA (bound-variables) (
-        (define functionname (recursivecall))
-        (some expression to evaluate)
-      ))
-  */
-  var subNodes = node.children(); // Set up variables of the function.
-
-  var stringedBoundVariables = node.data('name');
-  return '(lambda ' + stringedBoundVariables + ' ' + evaluateContext(subNodes) + ')';
 }
 
 function evaluateContext(context) {
+  var boundVariables = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : [];
   var definitionNodes = context.filter(function (n) {
-    return typ(n) === 'define';
+    return typ(n) === 'Define';
   }); // Hopefully there's exactly one execution node (?)
 
   var executionNodes = context.filter(function (n) {
-    return typ(n) !== 'define' && context.leaves().contains(n);
+    return typ(n) !== 'Define' && context.leaves().contains(n);
   }); // Evaluate definitions first, then the execution.
 
   var definitions = definitionNodes.map(function (ele, i, eles) {
-    return evaluateNode(ele);
+    return evaluateNode(ele, boundVariables);
   });
   var executions = executionNodes.map(function (ele, i, eles) {
-    return evaluateNode(ele);
+    return evaluateNode(ele, boundVariables);
   });
   return definitions.concat(executions).join('\n');
 }
@@ -46320,10 +46312,7 @@ function typ(node) {
   return node.data('type');
 }
 
-module.exports = {
-  parse: parse,
-  parseContext: parseContext
-};
+module.exports = compileCanvas;
 
 /***/ }),
 /* 35 */

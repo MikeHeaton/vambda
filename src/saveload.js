@@ -16,11 +16,14 @@ function loadState(objectId) {
 function saveState() {
   var fileName = window.prompt("File name:", "")
   if (!(fileName === null)) {
-    var jsonData = JSON.stringify(cy.json())
+    var jsonData = JSON.stringify(
+      {'elements': cy.json()['elements']}
+    )
+    console.log("keys:", jsonData.keys)
     var a = document.createElement("a");
     var file = new Blob([jsonData], {type: 'text/plain'});
     a.href = URL.createObjectURL(file);
-    a.download = fileName + '.txt';
+    //a.download = fileName + '.vda';
     a.click();
   }
 }

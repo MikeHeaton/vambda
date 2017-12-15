@@ -1,5 +1,5 @@
 import buildEditor from './editor'
-import parseContext from './parse'
+import compileCanvas from './parse'
 
 var c = buildEditor()
 
@@ -8,5 +8,5 @@ window.saveState = c['saveState']
 window.resetGraph = c['resetGraph']
 window.parseButton = function () {
   var cy = c['cy']
-  return parseContext(cy.$('node:orphan'))
+  return compileCanvas(cy.$('node:orphan'))
 }
