@@ -4,10 +4,13 @@ import undoRedo from 'cytoscape-undo-redo'
 import cytoscape from 'cytoscape'
 import Mousetrap from 'mousetrap'
 import colormap from 'colormap'
+import cyCanvas from 'cytoscape-canvas'
+import * as fab from 'fabric'
 
 function buildEditor () {
   var cy = createCanvas()
   undoRedo(cytoscape)
+  cyCanvas(cytoscape)
 
   // Register undo/redo, and other imported functions
   var ur = cy.undoRedo()
@@ -339,6 +342,32 @@ function buildEditor () {
       cy.remove(cy.$(''))
     }
   }
+
+  var layer = cy.cyCanvas({
+    zIndex: 10,
+    pixelRatio: "auto",
+  })
+  var canvas = layer.getCanvas()
+  canvas.setAttribute("id", "drawCanvas");
+  console.log(document.getElementById("drawCanvas"))
+
+  var ctx = canvas.getContext('2d')
+
+  cy.on("render cyCanvas.resize", function(evt) {
+      layer.resetTransform(ctx);
+      layer.clear(ctx);
+
+      // Draw fixed elements
+      ctx.fillRect(0, 0, 100, 100); // Top left corner
+      layer.setTransform(ctx)
+      // Draw model elements
+      cy.nodes().forEach(function(node) {
+          var pos = node.position();
+          ctx.fillRect(pos.x, pos.y, 100, 100); // At node position
+      });
+  });
+
+
 
   return {'cy': cy,
     'loadState': loadState,

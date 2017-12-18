@@ -5,15 +5,11 @@ FUNCTIONALITY
 > Deal with what happens when there's more than one execution node in a lambda
 > When you select a lambda, select only the outside node not the insides.
   >> or ignore the insides whenever doing anything interesting.
-> If no (foo) defined for lambda function name, should assume it's a 'normal'
-  lambda function (no funny business with inheritance) and take all variables
-  inside immediate scope to be bound.
-  >> Actually, need to do that recursively so that you get all
-  variables not defined in deeper scopes.
 
 UI
 http://js.cytoscape.org/#extensions
 > Order (unnamed) edges by anti-clockwise order
+  >> ? Like the idea but dunno where it could fit now
 > snap to grid
 > Better save/load interface
 > make a proper repl, with scrolling.
@@ -26,13 +22,17 @@ http://js.cytoscape.org/#extensions
 > Shortcut 'E' for making an edge coming into a node,
 > Allow e-clicking to make a node with an edge already coming out of it.
 > Bug in recursive lambdaing
-> Saveload: take out style
+
 
 META
 > Write tests
 > Register domain name
 > Make a post / statement / presentation
 > Docs
+
+LONG-TERM
+> vr
+> Debug mode: display while executing
 
 
 DONE
@@ -46,6 +46,12 @@ DONE
   >> Related: option to remove nodes from lambda.
 > Have color check happen when renaming, as well as creating.
 > Ordering bug, see newton4 in sqrt-iter
+> If no (foo) defined for lambda function name, should assume it's a 'normal'
+  lambda function (no funny business with inheritance) and take all variables
+  inside immediate scope to be bound.
+  >> Actually, need to do that recursively so that you get all
+  variables not defined in deeper scopes.
+> Saveload: take out style
 
 Packages:
 Elesfn.remove can be found in line ~2500 of cytoscape.js.
