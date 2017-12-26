@@ -5,6 +5,8 @@ FUNCTIONALITY
 > Deal with what happens when there's more than one execution node in a lambda
 > When you select a lambda, select only the outside node not the insides.
   >> or ignore the insides whenever doing anything interesting.
+> Deleting a node, its children inherit its parent
+> Adding a lambda or define, the new node inherits parents of the children.
 
 UI
 http://js.cytoscape.org/#extensions
@@ -19,9 +21,10 @@ http://js.cytoscape.org/#extensions
 > Force-directed layout!!!
 > Confirmation box on load
 > COMMENTS
-> Shortcut 'E' for making an edge coming into a node,
-> Allow e-clicking to make a node with an edge already coming out of it.
-> Bug in recursive lambdaing
+> Move connected nodes all at once
+> mass rename
+> copy/paste
+> 'p' + click to add things to parent
 
 
 META
@@ -34,6 +37,9 @@ LONG-TERM
 > vr
 > Debug mode: display while executing
 
+I THINK the loading problem is to do with order of loading.
+Therefore need to load in order: load everything in position first, THEN set the parents for everything once it already exists.
+Although this might not solve it, of course, because fml.
 
 DONE
 > Deal with nested defns
@@ -52,6 +58,9 @@ DONE
   >> Actually, need to do that recursively so that you get all
   variables not defined in deeper scopes.
 > Saveload: take out style
+> Shortcut 'E' for making an edge coming into a node,
+> Allow e-clicking to make a node with an edge already coming out of it.
+> Bug in recursive lambdaing
 
 Packages:
 Elesfn.remove can be found in line ~2500 of cytoscape.js.

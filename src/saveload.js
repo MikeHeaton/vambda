@@ -17,7 +17,7 @@ function saveState() {
   var fileName = window.prompt("File name:", "")
   if (!(fileName === null)) {
     var jsonData = JSON.stringify(
-      {'elements': cy.json()['elements']}
+      {'elements': cy.json()}
     )
     console.log("keys:", jsonData.keys)
     var a = document.createElement("a");

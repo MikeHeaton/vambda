@@ -21,7 +21,6 @@ function buildEditor () {
       return eles
     },
     eles => {
-      console.log(eles)
       eles.restore()
     })
 
@@ -45,35 +44,23 @@ function buildEditor () {
         'defaultColor': color
       }
     })
-    cy.$().deselect()
-    createdNode.select()
     return createdNode
   }
 
-  function newEdge (origin, dest) {
-    var newEdge = cy.add({
-      group: 'edges',
-      style: {'target-arrow-shape': 'triangle'},
-      data: {
-        source: origin.id(),
-        target: dest.id(),
-        name: ''
-      },
-      selectable: true
+  function newEdge (origins, dest) {
+    var newEdges = origins.map(source => {
+      cy.add({
+        group: 'edges',
+        style: {'target-arrow-shape': 'triangle'},
+        data: {
+          source: source.id(),
+          target: dest.id(),
+          name: ''
+        },
+        selectable: true
+      })
     })
-    fixParent(dest)
-    origin.deselect()
-    dest.select()
-    return newEdge
-  }
-
-  function fixParent (dest) {
-    // set origin's parent to dest's parent,
-    // and the same for everything origin is attached to.
-    var incomers = dest.predecessors('node')
-    if (incomers.length > 0) {
-      incomers.setParent(dest.parent())
-    }
+    return newEdges
   }
 
   function getColor (name = '', node = null) {
@@ -108,7 +95,6 @@ function buildEditor () {
     var ncolors = 72
     var index = Math.floor(Math.random() * ncolors)
     var col = colormap('nature', ncolors, 'hex')[index]
-    console.log(col)
     return col
   }
   cytoscape('collection', 'getColor', function () { return getColor(this.data('name'), this) })
@@ -151,6 +137,7 @@ function buildEditor () {
         oldParent.remove()
       }
     }
+    return cy.$id(this.id())
   }
   cytoscape('collection', 'setParent', setParent)
 
@@ -178,54 +165,90 @@ function buildEditor () {
     var keysPressed = new Set()
     return newName
   }
-
-  // Double-tap to add a new node, or press n
+  var dclickPrevTap
+  var dclickTappedTimeout
+  var eSelected
+  // Track mouse position
   var mousePosition = {x: 0, y: 0}
   document.addEventListener('mousemove', function (mouseMoveEvent) {
     mousePosition.x = mouseMoveEvent.pageX
     mousePosition.y = mouseMoveEvent.pageY
   }, false)
 
-  Mousetrap.bind('n', function (e) {
-    var pos = mousePosition
-    newNode(Object.assign({}, pos))
-  })
-
-  var dclickPrevTap
-  var dclickTappedTimeout
-
+  // __Handlers for clicking on the background__
+  // Double-tap or single-tap with 'e'/'w' to add a new node.
   cy.on('tap', function (event) {
     var tapTarget = event.target
-    if (tapTarget === cy && keysPressed.has('e')) {
-      // Click on the background with 'e'
-      newNode(event.position)
-      dclickTappedTimeout = false
-    }
+    if (tapTarget === cy) {
 
-    if (dclickTappedTimeout && dclickPrevTap) {
+      if (keysPressed.has('e')) {
+        // Click on the background with 'e'
+
+        var n = newNode(event.position)
+
+        dclickTappedTimeout = false
+        if (eSelected.length > 0 && eSelected.parent().length <= 1) {
+          newEdge(eSelected, n)
+          n = n.setParent(eSelected.parent())
+        }
+        selectOnly(n)
+      }
+      else if (tapTarget === cy && keysPressed.has('w')) {
+        // Click on the background with 'e'
+        var n = newNode(event.position)
+        dclickTappedTimeout = false
+        if (eSelected.length === 1) {
+          newEdge(n, eSelected)
+          n = n.setParent(eSelected.parent())
+        }
+        selectOnly(eSelected)
+      }
+      else if (dclickTappedTimeout && dclickPrevTap) {
+        clearTimeout(dclickTappedTimeout)
+      }
+      // If double clicked:
+      if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
+        var n = newNode(event.position)
+        selectOnly(n)
+        dclickPrevTap = null
+      }
+
+    }
+  else {
+    if (tapTarget.isNode() && dclickTappedTimeout && dclickPrevTap) {
       clearTimeout(dclickTappedTimeout)
     }
     // If double clicked:
-    if (dclickPrevTap === tapTarget) {
-      if (tapTarget === cy) {
-        newNode(event.position)
-      } else {
-        rename(event.target)
-      }
-      dclickPrevTap = null
-    } else {
-      // Update doubleclick handlers
-      dclickTappedTimeout = setTimeout(function(){ dclickPrevTap = null }, 300)
-      dclickPrevTap = tapTarget
+    if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
+      rename(tapTarget)
     }
+  }
+
+  // Update doubleclick handlers
+  dclickTappedTimeout = setTimeout(function(){ dclickPrevTap = null }, 300)
+  dclickPrevTap = tapTarget
   })
 
-  // Hold 'e' and tap a node to make a new edge
+  // Hold 'e/w' and tap a node to make a new edge
   cy.on('tap', 'node', function (event) {
+    console.log(event.target)
+    var target = event.target
     var sources = cy.$('node:selected').difference(event.target)
-    if (sources.length > 0 && keysPressed.has('e')) {
-      sources.map(source => newEdge(source, event.target))
-      event.target.select()
+    if (sources.length > 0) {
+      if (keysPressed.has('e')) {
+        newEdge(sources, target)
+        selectOnly(target)
+        sources.connectedClosure().setParent(target.parent())
+      }
+      else if (keysPressed.has('w')) {
+        sources.map(source => newEdge(target, source))
+
+        sources = sources.connectedClosure().setParent(target.parent())
+        console.log(sources)
+        selectOnly(sources)
+      }
+
+
     }
   })
 
@@ -247,17 +270,10 @@ function buildEditor () {
       else {
         var parent = newNode()
         parent.setType('Lambda')
-        var componentz = selected.closedNeighbourhood()
-
-        componentz.forEach(function(component){
-          component.setParent(parent)
-          })
-        selected.deselect()
-        parent.select()
+        var closure = selected.connectedClosure()
+        closure.setParent(parent)
+        selectOnly(parent)
       }
-      var selected = cy.$('node:selected')
-      console.log('fixing parent for', selected)
-      fixParent(selected)
     },
     'keypress')
 
@@ -272,17 +288,12 @@ function buildEditor () {
       else {
         var parent = newNode()
         parent.setType('Define')
-        var componentz = selected.closedNeighbourhood()
+        var closure = selected.connectedClosure()
+        parent.rename()
+        closure.setParent(parent)
+        selectOnly(parent)
 
-        componentz.forEach(function(component){
-          component.setParent(parent)
-          })
-        selected.deselect()
-        parent.select()
       }
-      var selected = cy.$('node:selected')
-      console.log('fixing parent for', selected)
-      fixParent(selected)
     },
     'keypress')
 
@@ -296,8 +307,20 @@ function buildEditor () {
 
   // Recognise keys pressed down
   var keysPressed = new Set()
-  Mousetrap.bind('e', function() { keysPressed.add('e')}, 'keypress')
+  Mousetrap.bind('e', function() {
+    keysPressed.add('e')
+    eSelected = cy.$('node:selected')
+  },
+  'keypress')
   Mousetrap.bind('e', function() { keysPressed.delete('e')}, 'keyup')
+
+  Mousetrap.bind('w', function() {
+    keysPressed.add('w')
+    eSelected = cy.$('node:selected')
+  },
+  'keypress')
+  Mousetrap.bind('w', function() { keysPressed.delete('w')}, 'keyup')
+
   Mousetrap.bind('r',
     function () {
       keysPressed.add('r')
@@ -315,8 +338,23 @@ function buildEditor () {
     reader.onload = function (e) {
       var graphString = e.target.result
       var graphJson = JSON.parse(graphString)
-      console.log(graphJson)
-      cy.json(graphJson)
+
+      // We HAVE to double-load elements here: once to get them into the
+      // graph, and once to set their parents correctly. If we don't, when
+      // elements are loaded and don't have a parent in place already,
+      // not only do they set the parent to 'undefined', they also
+      // _edit the fucking json_ so that the parent is thereafter undefined.
+      //
+      // That means that if you try to use the same JSON object twice for the
+      // two loads, it WON'T WORK because it's been modified by the first.
+      // WHAT THE HELL, CYTOSCAPE??? (Yes I lost several hours to this bug.)
+      cy.json(JSON.parse(graphString))
+      JSON.parse(graphString).elements.nodes.map(function (jsn) {
+        var nodeId = jsn.data.id
+        var nodeParent = jsn.data.parent
+        cy.$id(nodeId).setParent(cy.$id(nodeParent))
+      })
+
     }
     reader.readAsText(x, 'UTF-8')
   }
@@ -327,7 +365,6 @@ function buildEditor () {
       var jsonData = JSON.stringify(
         {'elements': cy.json()['elements']}
       )
-      //console.log("keys:", jsonData.keys)
       var a = document.createElement("a");
       var file = new Blob([jsonData], {type: 'text/plain'});
       a.href = URL.createObjectURL(file);
@@ -348,8 +385,8 @@ function buildEditor () {
     pixelRatio: "auto",
   })
   var canvas = layer.getCanvas()
-  canvas.setAttribute("id", "drawCanvas");
-  console.log(document.getElementById("drawCanvas"))
+  canvas.setAttribute("id", "drawCanvas")
+  /*console.log(document.getElementById("drawCanvas"))
 
   var ctx = canvas.getContext('2d')
 
@@ -365,7 +402,23 @@ function buildEditor () {
           var pos = node.position();
           ctx.fillRect(pos.x, pos.y, 100, 100); // At node position
       });
-  });
+  });*/
+
+  function selectOnly(ele) {
+    cy.$().deselect()
+    ele.select()
+  }
+
+  function connectedClosure() {
+    // Returns the closure (union with all-depth family) of the eles.
+    var nextLevel = this.closedNeighborhood('node')
+    if (nextLevel.length === this.length) {
+      return this
+    } else {
+      return nextLevel.connectedClosure()
+    }
+  }
+  cytoscape('collection', 'connectedClosure', connectedClosure)
 
 
 
