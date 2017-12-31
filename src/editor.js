@@ -348,6 +348,7 @@ function buildEditor () {
       // That means that if you try to use the same JSON object twice for the
       // two loads, it WON'T WORK because it's been modified by the first.
       // WHAT THE HELL, CYTOSCAPE??? (Yes I lost several hours to this bug.)
+      cy.json()
       cy.json(JSON.parse(graphString))
       JSON.parse(graphString).elements.nodes.map(function (jsn) {
         var nodeId = jsn.data.id

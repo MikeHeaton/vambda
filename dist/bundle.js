@@ -33874,6 +33874,7 @@ function buildEditor() {
       // two loads, it WON'T WORK because it's been modified by the first.
       // WHAT THE HELL, CYTOSCAPE??? (Yes I lost several hours to this bug.)
 
+      cy.json();
       cy.json(JSON.parse(graphString));
       JSON.parse(graphString).elements.nodes.map(function (jsn) {
         var nodeId = jsn.data.id;
@@ -74734,8 +74735,11 @@ function compileCanvas(graph) {
 }
 
 function displayResult(compiledLisp) {
-  /*compiledLisp = `
-   (define foo ((lambda () (define ? ((lambda () 0 )) ) (define grid ((lambda () (list (list 1 2 3 4 5 6 7 8 ?) (list 4 5 6 7 8 9 1 2 ?) (list 7 8 9 1 2 3 ? 5 ?)) )) ) (lambda( x y) (list-ref (list-ref grid y) x)) )) ) (define box ((lambda () (lambda(x y) (define xs ((lambda () (iota 3 (min x)) )) ) (define ys ((lambda () (iota 3 (min y)) )) ) (define min ((lambda () (lambda( n) (* 3 (floor (/ n 3)))) )) ) (define flatten ((lambda () (lambda( list-of-lists) (fold-left append (list) list-of-lists)) )) ) (flatten (map (lambda(y1) (map (lambda( x1) (foo x1 y1)) xs)) ys))) )) ) (define contains? ((lambda () (lambda( a list) (pair? (member a list))) )) ) (define col ((lambda () (lambda(x) (map (lambda( y) (foo x y)) (iota 3 0))) )) ) (define row ((lambda () (lambda(y) (map (lambda( x) (foo x y)) (iota 9 0))) )) ) (define get-possibilities ((lambda () (lambda( x y) (fold-right (lambda( a list-so-far) (remove a list-so-far)) (list 1 2 3 4 5 6 7 8 9) (append (box x y) (col x) (row y)))) )) ) (get-possibilities 8 2)`*/
+  compiledLisp = "\n(define x (delay (force (delay y))))\n(define y (delay (force (delay (lambda (t) ((force (delay +)) (force (delay t)) (force (delay 1))))))))\n((force (delay x)) (force (delay 2)))\n  ";
+  /*So we add...
+  x -> (force (delay x)) for any evaluation
+  define y foo -> define y (delay foo) for any define*/
+
   function writeToDisplay(lispOutput) {
     var newHtml = '>> ' + lispOutput + '<br />' + compiledLisp;
     document.getElementById('lispOutput').innerHTML = newHtml;

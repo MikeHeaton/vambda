@@ -1,7 +1,5 @@
 FUNCTIONALITY
 > deal with zero-arity.
-> Allow 'insertions' into names: (- {} 0) <- 3
-  >> Evaluate whether this is a good idea! Readability versus purity.
 > Deal with what happens when there's more than one execution node in a lambda
 > When you select a lambda, select only the outside node not the insides.
   >> or ignore the insides whenever doing anything interesting.
@@ -25,6 +23,7 @@ http://js.cytoscape.org/#extensions
 > mass rename
 > copy/paste
 > 'p' + click to add things to parent
+> 'gray out' nodes to deactivate them. 'c' for comment?
 
 
 META
