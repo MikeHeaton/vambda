@@ -64,6 +64,8 @@ newRemove = function (notifyRenderer) {
   }
 
   function add(ele) {
+    // This element will be deleted.
+
     var alreadyAdded = elesToRemoveIds[ele.id()];
     if (alreadyAdded) {
       return;
@@ -72,6 +74,9 @@ newRemove = function (notifyRenderer) {
     }
 
     if (ele.isNode()) {
+      // Its children are passed to their grandparents.
+      ele.children().setParent(ele.parent())
+      
       elesToRemove.push(ele); // nodes are removed last
       addAbandonedParents(ele, elesToRemoveIds)
       addConnectedEdges(ele);

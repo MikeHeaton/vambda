@@ -38,7 +38,7 @@ function createCanvas () {
           'content': 'data(name)' // text
         }
       }, {
-        selector: 'node[type = "Free"]',
+        selector: 'node[type = "Free"], node[type = "If"]',
         style: {
           'content': 'data(name)' // text
         }
@@ -69,10 +69,10 @@ function createCanvas () {
           'text-valign': 'top',
           'text-halign': 'center',
           'border-width': 5,
-          'border-style': 'dashed',
+          'border-style': 'double',
           'shape': 'roundrectangle',
           'border-color': 'data(defaultColor)',
-          'padding': '4px',
+          'padding': '3px',
           'text-margin-y': '3px',
           'font-size': '20px',
           'text-background-color': 'data(defaultColor)',
@@ -80,6 +80,20 @@ function createCanvas () {
           'text-background-shape': 'roundrectangle',
           'text-background-padding': '1px',
           'content': 'data(name)'
+        }
+      }, {
+        selector: 'node[type = "Parens"]',
+        style: {
+          // Compound node, by definition.
+          'background-color': 'white',
+          'border-width': 5,
+          'border-style': 'dotted',
+          'shape': 'roundrectangle',
+          'border-color': '#DEDDC5',
+          'padding': '10px',
+          'text-margin-y': '3px',
+          'font-size': '20px',
+          'content': ''
         }
       }, {
         selector: 'edge',

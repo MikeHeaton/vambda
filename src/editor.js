@@ -105,13 +105,13 @@ function buildEditor () {
   }
   cytoscape('collection', 'setColor', setColor)
 
-  function rename (node, newName = null) {
+  function rename (ele, newName = null) {
     if (newName === null) {
       newName = getName()
     }
     if (!(newName === null)) {
-      node.data('name', newName)
-      node.setColor()
+      ele.data('name', newName)
+      ele.setColor()
     }
   }
   cytoscape('collection', 'rename', function(newName=null) {rename(this, newName=newName)})
@@ -276,6 +276,24 @@ function buildEditor () {
       }
     },
     'keypress')
+
+    // p to 'parens': wrap selection in a hypernode representing 'evaluate all this together',
+    // corresponding to wrapping () around a group.
+    Mousetrap.bind('p', function () {
+      // If all of them belong to the same parent, take them out of the parent.
+        var selected = cy.$('node:selected')
+        if (selected.parents().length == 1) {
+          selected.setParent(null)
+        }
+        else {
+          var parent = newNode()
+          parent.setType('Parens')
+          var closure = selected.connectedClosure()
+          closure.setParent(parent)
+          selectOnly(parent)
+        }
+      },
+      'keypress')
 
   // d to 'define': wrap selection in a hypernode, containing the selection
   // and its closed neighbourhood, corresponding to a define statement.

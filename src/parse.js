@@ -6,19 +6,21 @@ function compileCanvas (graph) {
 }
 
 function displayResult (compiledLisp) {
-  compiledLisp = `
-(define x (delay (force (delay y))))
-(define y (delay (force (delay (lambda (t) ((force (delay +)) (force (delay t)) (force (delay 1))))))))
-((force (delay x)) (force (delay 2)))
+/*var compiledLisp = `
+(
+  ((lambda ()
+    (define x ((lambda () + )))
+    x
+)) 1 2)
+
+
   `
-/*So we add...
+/*
+So we add...
 x -> (force (delay x)) for any evaluation
 define y foo -> define y (delay foo) for any define*/
 
-
-
-
-  function writeToDisplay (lispOutput) {
+function writeToDisplay (lispOutput) {
     var newHtml = '>> ' + lispOutput + '<br />' + compiledLisp
     document.getElementById('lispOutput').innerHTML = newHtml
   }
@@ -42,6 +44,9 @@ function nodeEval (node) {
   var selfType = typ(node)
   var subNodes = node.children()
 
+  if (selfType === 'Parens') {
+    return '((lambda ()' + evaluateContext(subNodes, boundVariables) + '))'
+  }
   if (selfType === 'Lambda') {
     // Find variables of the lambda function.
     var nearBoundVariables = subNodes
@@ -63,9 +68,18 @@ function nodeEval (node) {
 
     return '(lambda' + stringedBoundVariables + ' ' + evaluateContext(subNodes, boundVariables) + ')'
   } else if (selfType === 'Define') {
-    return '(define ' + getRef(node) + ' ((lambda () ' + evaluateContext(subNodes, boundVariables) + ' )) )'
+    //return '(define ' + getRef(node) + ' (delay ((lambda ()' + evaluateContext(subNodes, boundVariables) + '))))'
+    return '(define ' + getRef(node) + ' ((lambda () ' + evaluateContext(subNodes, boundVariables) + ' )))'
   } else {
-    // Else the evaluation is just the name.
+    // Else we have a variable to evaluate, with force-delay to make the evaluation lazy.
+    // 'if' can't be force-delayed, so we need a special rule for this evaluation.
+    // (TODO: this is an ugly fix!)
+    /*var nodeName = getRef(node)
+    if (nodeName === 'if') {
+      return nodeName
+    } else {
+      return '(force (delay ' + getRef(node) + '))'
+    }*/
     return getRef(node)
   }
 }
@@ -89,6 +103,7 @@ function evaluateNode (node, contextualBoundVariables = []) {
 }
 
 function evaluateContext (context, boundVariables = []) {
+  // A context is a list of nodes to be evaluated in an order.
   var definitionNodes = context.filter(
     n => (typ(n) === 'Define'))
   // Hopefully there's exactly one execution node (?)

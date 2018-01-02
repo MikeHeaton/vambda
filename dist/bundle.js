@@ -33603,7 +33603,7 @@ function buildEditor() {
 
   (0, _cytoscape.default)('collection', 'setColor', setColor);
 
-  function rename(node) {
+  function rename(ele) {
     var newName = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
 
     if (newName === null) {
@@ -33611,8 +33611,8 @@ function buildEditor() {
     }
 
     if (!(newName === null)) {
-      node.data('name', newName);
-      node.setColor();
+      ele.data('name', newName);
+      ele.setColor();
     }
   }
 
@@ -33781,6 +33781,23 @@ function buildEditor() {
     } else {
       var parent = newNode();
       parent.setType('Lambda');
+      var closure = selected.connectedClosure();
+      closure.setParent(parent);
+      selectOnly(parent);
+    }
+  }, 'keypress'); // p to 'parens': wrap selection in a hypernode representing 'evaluate all this together',
+  // corresponding to wrapping () around a group.
+
+
+  _mousetrap.default.bind('p', function () {
+    // If all of them belong to the same parent, take them out of the parent.
+    var selected = cy.$('node:selected');
+
+    if (selected.parents().length == 1) {
+      selected.setParent(null);
+    } else {
+      var parent = newNode();
+      parent.setType('Parens');
       var closure = selected.connectedClosure();
       closure.setParent(parent);
       selectOnly(parent);
@@ -34010,7 +34027,7 @@ function createCanvas() {
 
       }
     }, {
-      selector: 'node[type = "Free"]',
+      selector: 'node[type = "Free"], node[type = "If"]',
       style: {
         'content': 'data(name)' // text
 
@@ -34042,10 +34059,10 @@ function createCanvas() {
         'text-valign': 'top',
         'text-halign': 'center',
         'border-width': 5,
-        'border-style': 'dashed',
+        'border-style': 'double',
         'shape': 'roundrectangle',
         'border-color': 'data(defaultColor)',
-        'padding': '4px',
+        'padding': '3px',
         'text-margin-y': '3px',
         'font-size': '20px',
         'text-background-color': 'data(defaultColor)',
@@ -34053,6 +34070,20 @@ function createCanvas() {
         'text-background-shape': 'roundrectangle',
         'text-background-padding': '1px',
         'content': 'data(name)'
+      }
+    }, {
+      selector: 'node[type = "Parens"]',
+      style: {
+        // Compound node, by definition.
+        'background-color': 'white',
+        'border-width': 5,
+        'border-style': 'dotted',
+        'shape': 'roundrectangle',
+        'border-color': '#DEDDC5',
+        'padding': '10px',
+        'text-margin-y': '3px',
+        'font-size': '20px',
+        'content': ''
       }
     }, {
       selector: 'edge',
@@ -44462,6 +44493,7 @@ newRemove = function newRemove(notifyRenderer) {
   }
 
   function add(ele) {
+    // This element will be deleted.
     var alreadyAdded = elesToRemoveIds[ele.id()];
 
     if (alreadyAdded) {
@@ -44471,6 +44503,8 @@ newRemove = function newRemove(notifyRenderer) {
     }
 
     if (ele.isNode()) {
+      // Its children are passed to their grandparents.
+      ele.children().setParent(ele.parent());
       elesToRemove.push(ele); // nodes are removed last
 
       addAbandonedParents(ele, elesToRemoveIds);
@@ -74735,11 +74769,19 @@ function compileCanvas(graph) {
 }
 
 function displayResult(compiledLisp) {
-  compiledLisp = "\n(define x (delay (force (delay y))))\n(define y (delay (force (delay (lambda (t) ((force (delay +)) (force (delay t)) (force (delay 1))))))))\n((force (delay x)) (force (delay 2)))\n  ";
-  /*So we add...
+  /*var compiledLisp = `
+  (
+    ((lambda ()
+      (define x ((lambda () + )))
+      x
+  )) 1 2)
+  
+  
+    `
+  /*
+  So we add...
   x -> (force (delay x)) for any evaluation
   define y foo -> define y (delay foo) for any define*/
-
   function writeToDisplay(lispOutput) {
     var newHtml = '>> ' + lispOutput + '<br />' + compiledLisp;
     document.getElementById('lispOutput').innerHTML = newHtml;
@@ -74764,6 +74806,10 @@ function nodeEval(node) {
   var selfType = typ(node);
   var subNodes = node.children();
 
+  if (selfType === 'Parens') {
+    return '((lambda ()' + evaluateContext(subNodes, boundVariables) + '))';
+  }
+
   if (selfType === 'Lambda') {
     // Find variables of the lambda function.
     var nearBoundVariables = subNodes.filter("node[type = 'NearBoundVariable']").map(function (n) {
@@ -74776,9 +74822,19 @@ function nodeEval(node) {
     }).join(' ') + ')';
     return '(lambda' + stringedBoundVariables + ' ' + evaluateContext(subNodes, boundVariables) + ')';
   } else if (selfType === 'Define') {
-    return '(define ' + getRef(node) + ' ((lambda () ' + evaluateContext(subNodes, boundVariables) + ' )) )';
+    //return '(define ' + getRef(node) + ' (delay ((lambda ()' + evaluateContext(subNodes, boundVariables) + '))))'
+    return '(define ' + getRef(node) + ' ((lambda () ' + evaluateContext(subNodes, boundVariables) + ' )))';
   } else {
-    // Else the evaluation is just the name.
+    // Else we have a variable to evaluate, with force-delay to make the evaluation lazy.
+    // 'if' can't be force-delayed, so we need a special rule for this evaluation.
+    // (TODO: this is an ugly fix!)
+
+    /*var nodeName = getRef(node)
+    if (nodeName === 'if') {
+      return nodeName
+    } else {
+      return '(force (delay ' + getRef(node) + '))'
+    }*/
     return getRef(node);
   }
 }
@@ -74804,6 +74860,7 @@ function evaluateNode(node) {
 
 function evaluateContext(context) {
   var boundVariables = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : [];
+  // A context is a list of nodes to be evaluated in an order.
   var definitionNodes = context.filter(function (n) {
     return typ(n) === 'Define';
   }); // Hopefully there's exactly one execution node (?)
