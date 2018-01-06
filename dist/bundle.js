@@ -33492,6 +33492,8 @@ var _cytoscapeCanvas = _interopRequireDefault(__webpack_require__(32));
 
 var fab = _interopRequireWildcard(__webpack_require__(33));
 
+var comments = _interopRequireWildcard(__webpack_require__(40));
+
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = Object.defineProperty && Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : {}; if (desc.get || desc.set) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } } newObj.default = obj; return newObj; } }
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -33508,7 +33510,9 @@ function buildEditor() {
     return eles;
   }, function (eles) {
     eles.restore();
-  }); // =====================
+  });
+  var commentPoints = new comments.CommentsCanvas(cy);
+  var commentMode = false; // =====================
   // || GRAPH FUNCTIONS ||
   // =====================
 
@@ -33687,55 +33691,63 @@ function buildEditor() {
   document.addEventListener('mousemove', function (mouseMoveEvent) {
     mousePosition.x = mouseMoveEvent.pageX;
     mousePosition.y = mouseMoveEvent.pageY;
+
+    if (commentMode) {
+      commentPoints.addClick(mousePosition.x, mousePosition.y, true);
+      cy.emit("render cyCanvas.resize");
+    }
   }, false); // __Handlers for clicking on the background__
   // Double-tap or single-tap with 'e'/'w' to add a new node.
 
   cy.on('tap', function (event) {
-    var tapTarget = event.target;
+    if (!commentMode) {
+      var tapTarget = event.target;
 
-    if (tapTarget === cy) {
-      if (keysPressed.has('e')) {
-        // Click on the background with 'e'
-        var n = newNode(event.position);
-        dclickTappedTimeout = false;
+      if (tapTarget === cy) {
+        if (keysPressed.has('e')) {
+          // Click on the background with 'e'
+          var n = newNode(event.position);
+          dclickTappedTimeout = false;
 
-        if (eSelected.length > 0 && eSelected.parent().length <= 1) {
-          newEdge(eSelected, n);
-          n = n.setParent(eSelected.parent());
+          if (eSelected.length > 0 && eSelected.parent().length <= 1) {
+            newEdge(eSelected, n);
+            n = n.setParent(eSelected.parent());
+          }
+
+          selectOnly(n);
+        } else if (tapTarget === cy && keysPressed.has('w')) {
+          // Click on the background with 'e'
+          var n = newNode(event.position);
+          dclickTappedTimeout = false;
+
+          if (eSelected.length === 1) {
+            newEdge(n, eSelected);
+            n = n.setParent(eSelected.parent());
+          }
+
+          selectOnly(eSelected);
+        } else if (dclickTappedTimeout && dclickPrevTap) {
+          clearTimeout(dclickTappedTimeout);
+        } // If double clicked:
+
+
+        if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
+          var n = newNode(event.position);
+          selectOnly(n);
+          dclickPrevTap = null;
         }
+      } else {
+        if (tapTarget.isNode() && dclickTappedTimeout && dclickPrevTap) {
+          clearTimeout(dclickTappedTimeout);
+        } // If double clicked:
 
-        selectOnly(n);
-      } else if (tapTarget === cy && keysPressed.has('w')) {
-        // Click on the background with 'e'
-        var n = newNode(event.position);
-        dclickTappedTimeout = false;
 
-        if (eSelected.length === 1) {
-          newEdge(n, eSelected);
-          n = n.setParent(eSelected.parent());
+        if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
+          rename(tapTarget);
         }
-
-        selectOnly(eSelected);
-      } else if (dclickTappedTimeout && dclickPrevTap) {
-        clearTimeout(dclickTappedTimeout);
-      } // If double clicked:
-
-
-      if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
-        var n = newNode(event.position);
-        selectOnly(n);
-        dclickPrevTap = null;
       }
-    } else {
-      if (tapTarget.isNode() && dclickTappedTimeout && dclickPrevTap) {
-        clearTimeout(dclickTappedTimeout);
-      } // If double clicked:
-
-
-      if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
-        rename(tapTarget);
-      }
-    } // Update doubleclick handlers
+    } else {} // COMMENT MODE
+    // Update doubleclick handlers
 
 
     dclickTappedTimeout = setTimeout(function () {
@@ -33745,7 +33757,6 @@ function buildEditor() {
   }); // Hold 'e/w' and tap a node to make a new edge
 
   cy.on('tap', 'node', function (event) {
-    console.log(event.target);
     var target = event.target;
     var sources = cy.$('node:selected').difference(event.target);
 
@@ -33759,7 +33770,6 @@ function buildEditor() {
           return newEdge(target, source);
         });
         sources = sources.connectedClosure().setParent(target.parent());
-        console.log(sources);
         selectOnly(sources);
       }
     }
@@ -33861,6 +33871,35 @@ function buildEditor() {
     keysPressed.delete('w');
   }, 'keyup');
 
+  function addCommentDrag(evt) {
+    commentPoints.addClick(evt.position.x, evt.position.y, true);
+  }
+
+  function commentClick(evt) {
+    commentPoints.addClick(evt.position.x, evt.position.y, false);
+    cy.on('mousemove', addCommentDrag);
+  }
+
+  function commentUpclick(evt) {
+    cy.off('mousemove', addCommentDrag);
+  }
+
+  _mousetrap.default.bind('c', function () {
+    keysPressed.add('c');
+    cy.userPanningEnabled(false);
+    cy.boxSelectionEnabled(false);
+    cy.on('mousedown', commentClick);
+    cy.on('mouseup', commentUpclick); //commentMode = true
+  }, 'keypress');
+
+  _mousetrap.default.bind('c', function () {
+    keysPressed.delete('c');
+    cy.userPanningEnabled(true);
+    cy.boxSelectionEnabled(true);
+    cy.off('mousedown', commentClick);
+    cy.off('mouseup', commentUpclick);
+  }, 'keyup');
+
   _mousetrap.default.bind('r', function () {
     keysPressed.add('r');
     var selected = cy.$(':selected');
@@ -33898,6 +33937,7 @@ function buildEditor() {
         var nodeParent = jsn.data.parent;
         cy.$id(nodeId).setParent(cy.$id(nodeParent));
       });
+      commentPoints.load(JSON.parse(graphString).comments);
     };
 
     reader.readAsText(x, 'UTF-8');
@@ -33908,7 +33948,12 @@ function buildEditor() {
 
     if (!(fileName === null)) {
       var jsonData = JSON.stringify({
-        'elements': cy.json()['elements']
+        'elements': cy.json()['elements'],
+        'comments': {
+          x: commentPoints.clickX,
+          y: commentPoints.clickY,
+          drag: commentPoints.clickDrag
+        }
       });
       var a = document.createElement("a");
       var file = new Blob([jsonData], {
@@ -33924,29 +33969,10 @@ function buildEditor() {
     if (confirm("REALLY CLEAR ALL? (There's no autosave and no undo!)")) {
       console.log('RESET');
       cy.remove(cy.$(''));
+      commentPoints.reset();
+      cy.forceRender();
     }
   }
-
-  var layer = cy.cyCanvas({
-    zIndex: 10,
-    pixelRatio: "auto"
-  });
-  var canvas = layer.getCanvas();
-  canvas.setAttribute("id", "drawCanvas");
-  /*console.log(document.getElementById("drawCanvas"))
-   var ctx = canvas.getContext('2d')
-   cy.on("render cyCanvas.resize", function(evt) {
-      layer.resetTransform(ctx);
-      layer.clear(ctx);
-       // Draw fixed elements
-      ctx.fillRect(0, 0, 100, 100); // Top left corner
-      layer.setTransform(ctx)
-      // Draw model elements
-      cy.nodes().forEach(function(node) {
-          var pos = node.position();
-          ctx.fillRect(pos.x, pos.y, 100, 100); // At node position
-      });
-  });*/
 
   function selectOnly(ele) {
     cy.$().deselect();
@@ -46647,6 +46673,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;
 		register(cytoscape);
 	}
 })();
+
 
 /***/ }),
 /* 33 */
@@ -83062,6 +83089,99 @@ webpackEmptyContext.keys = function() { return []; };
 webpackEmptyContext.resolve = webpackEmptyContext;
 module.exports = webpackEmptyContext;
 webpackEmptyContext.id = 39;
+
+/***/ }),
+/* 40 */
+/***/ (function(module, exports) {
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+var CommentsCanvas =
+/*#__PURE__*/
+function () {
+  function CommentsCanvas(cy) {
+    _classCallCheck(this, CommentsCanvas);
+
+    /*******************\
+    || CANVAS BULLSHIT ||
+    ********************/
+    this.cy = cy;
+    var c = this;
+    var layer = cy.cyCanvas({
+      zIndex: 100,
+      pixelRatio: "auto"
+    });
+    this.canvas = layer.getCanvas();
+    this.canvas.setAttribute("id", "commentsCanvas");
+    var ctx = this.canvas.getContext("2d");
+    this.clickDrag = [];
+    this.clickX = [];
+    this.clickY = [];
+    this.text = []; // <-- TO IMPLEMENT
+
+    cy.on("render cyCanvas.resize", function (evt) {
+      var pan = cy.pan();
+      var zoom = cy.zoom();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.translate(pan.x, pan.y);
+      layer.resetTransform(ctx);
+      layer.clear(ctx);
+      ctx.globalAlpha = 1.0;
+      layer.setTransform(ctx); // DRAW LINES
+
+      for (var i = 0; i < c.clickX.length; i++) {
+        ctx.beginPath();
+
+        if (c.clickDrag[i] && i) {
+          ctx.moveTo(c.clickX[i - 1], c.clickY[i - 1]);
+        } else {
+          ctx.moveTo(c.clickX[i], c.clickY[i]);
+        }
+
+        ctx.lineTo(c.clickX[i], c.clickY[i]);
+        ctx.closePath();
+        ctx.strokeStyle = 'gray';
+        ctx.lineJoin = "round";
+        ctx.lineWidth = 5;
+        ctx.stroke();
+      }
+    });
+  }
+
+  _createClass(CommentsCanvas, [{
+    key: "addClick",
+    value: function addClick(x, y, drag) {
+      this.clickX.push(x);
+      this.clickY.push(y);
+      this.clickDrag.push(drag);
+      this.cy.emit("render");
+    }
+  }, {
+    key: "reset",
+    value: function reset() {
+      this.clickX = [];
+      this.clickY = [];
+      this.clickDrag = [];
+    }
+  }, {
+    key: "load",
+    value: function load(json) {
+      this.clickX = json.x;
+      this.clickY = json.y;
+      this.clickDrag = json.drag;
+    }
+  }]);
+
+  return CommentsCanvas;
+}();
+
+module.exports = {
+  CommentsCanvas: CommentsCanvas
+};
 
 /***/ })
 /******/ ]);

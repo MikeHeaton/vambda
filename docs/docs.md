@@ -17,3 +17,41 @@ Vambda has been my one-man project for the last couple months. As such, it's sti
 # Getting Started
 
 TBA
+
+# Using Vambda
+
+* The base unit in a Vambda program is the __node__. Nodes represent ideas: some data, or a function.
+(A)
+* Nodes are joined together by __edges__. Plugging a node A into another node B 'applies' the function B to the input A, forming another piece of data.
+(#t)->(not) = '#f'
+* Some nodes can take multiple inputs. Chain nodes together to make complex calculations. There's no limit to how long or complex these chains can be!
+(+ (* (+ 1 2) 3 4) 1 (+ 2 3)) etc
+* Many functions have been pre-defined for you [0]. But you will want to __create your own functions.__
+  * Wrap the selected chain in a function bubble (also known as a 'lambda'). The chain is now a function!
+  * A function needs its inputs to be specified. Tell Vambda which nodes are the function inputs.
+  * Treat the function bubble just like a node! Pass inputs into it, or use it as an input to something else.
+  * Can you make sense of these examples?
+((lambda (x y) (+ (* x y) (+ x 1))) 3 2)   (lambda (f) (lambda (x y) (+ x y)) (f (f 1 2) 2))
+* Give a __name__ to a function bubble, or any group of nodes, to reuse it somewhere else in the program.
+* You can nest function bubbles and definition bubbles inside each other.
+  * Careful, definitions won't be available outside of their parent bubble.
+  * You can 'pass' a variable from an outer function to inside a nested function. But you need to tell Vambda that it's a variable for the _outer_ function, not the _inner_ one.
+(define foo (...)) (foo 1)
+(define inside a lambda definition)
+* Edge names & ordering
+
+# Controlling the UI
+
+* D-click:
+  * In space: create a node.
+  * On a node or edge: rename.
+* 'e/w'-click:
+  * In space: create a node, with an edge _from/to_ currently selected node.
+  * On a node or bubble: create an edge _from/to_ current selection _to/from_ the clicked item.
+* Backspace: delete selected items.
+* 'p': Wrap selection in a parentheses bubble.
+* 'l': Wrap selection in a lambda bubble.
+* 'd': define a name for the selection.
+* 'r':
+  * On a node, edge or definition: rename.
+  * On a lambda bubble: specify inputs.

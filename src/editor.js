@@ -6,6 +6,7 @@ import Mousetrap from 'mousetrap'
 import colormap from 'colormap'
 import cyCanvas from 'cytoscape-canvas'
 import * as fab from 'fabric'
+import * as comments from './commentsCanvas'
 
 function buildEditor () {
   var cy = createCanvas()
@@ -23,6 +24,10 @@ function buildEditor () {
     eles => {
       eles.restore()
     })
+
+  var commentPoints = new comments.CommentsCanvas(cy)
+  var commentMode = false
+
 
   // =====================
   // || GRAPH FUNCTIONS ||
@@ -173,55 +178,66 @@ function buildEditor () {
   document.addEventListener('mousemove', function (mouseMoveEvent) {
     mousePosition.x = mouseMoveEvent.pageX
     mousePosition.y = mouseMoveEvent.pageY
+
+    if(commentMode){
+			commentPoints.addClick(mousePosition.x, mousePosition.y, true);
+      cy.emit("render cyCanvas.resize")
+		}
   }, false)
 
   // __Handlers for clicking on the background__
   // Double-tap or single-tap with 'e'/'w' to add a new node.
   cy.on('tap', function (event) {
-    var tapTarget = event.target
-    if (tapTarget === cy) {
+    if (!commentMode) {
+      var tapTarget = event.target
+      if (tapTarget === cy) {
 
-      if (keysPressed.has('e')) {
-        // Click on the background with 'e'
+        if (keysPressed.has('e')) {
+          // Click on the background with 'e'
 
-        var n = newNode(event.position)
+          var n = newNode(event.position)
 
-        dclickTappedTimeout = false
-        if (eSelected.length > 0 && eSelected.parent().length <= 1) {
-          newEdge(eSelected, n)
-          n = n.setParent(eSelected.parent())
+          dclickTappedTimeout = false
+          if (eSelected.length > 0 && eSelected.parent().length <= 1) {
+            newEdge(eSelected, n)
+            n = n.setParent(eSelected.parent())
+          }
+          selectOnly(n)
         }
-        selectOnly(n)
-      }
-      else if (tapTarget === cy && keysPressed.has('w')) {
-        // Click on the background with 'e'
-        var n = newNode(event.position)
-        dclickTappedTimeout = false
-        if (eSelected.length === 1) {
-          newEdge(n, eSelected)
-          n = n.setParent(eSelected.parent())
+        else if (tapTarget === cy && keysPressed.has('w')) {
+          // Click on the background with 'e'
+          var n = newNode(event.position)
+          dclickTappedTimeout = false
+          if (eSelected.length === 1) {
+            newEdge(n, eSelected)
+            n = n.setParent(eSelected.parent())
+          }
+          selectOnly(eSelected)
         }
-        selectOnly(eSelected)
+        else if (dclickTappedTimeout && dclickPrevTap) {
+          clearTimeout(dclickTappedTimeout)
+        }
+        // If double clicked:
+        if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
+          var n = newNode(event.position)
+          selectOnly(n)
+          dclickPrevTap = null
+        }
+
       }
-      else if (dclickTappedTimeout && dclickPrevTap) {
+    else {
+      if (tapTarget.isNode() && dclickTappedTimeout && dclickPrevTap) {
         clearTimeout(dclickTappedTimeout)
       }
       // If double clicked:
       if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
-        var n = newNode(event.position)
-        selectOnly(n)
-        dclickPrevTap = null
+        rename(tapTarget)
       }
-
     }
+  }
   else {
-    if (tapTarget.isNode() && dclickTappedTimeout && dclickPrevTap) {
-      clearTimeout(dclickTappedTimeout)
-    }
-    // If double clicked:
-    if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
-      rename(tapTarget)
-    }
+    // COMMENT MODE
+
   }
 
   // Update doubleclick handlers
@@ -231,7 +247,6 @@ function buildEditor () {
 
   // Hold 'e/w' and tap a node to make a new edge
   cy.on('tap', 'node', function (event) {
-    console.log(event.target)
     var target = event.target
     var sources = cy.$('node:selected').difference(event.target)
     if (sources.length > 0) {
@@ -244,7 +259,6 @@ function buildEditor () {
         sources.map(source => newEdge(target, source))
 
         sources = sources.connectedClosure().setParent(target.parent())
-        console.log(sources)
         selectOnly(sources)
       }
 
@@ -326,18 +340,53 @@ function buildEditor () {
   // Recognise keys pressed down
   var keysPressed = new Set()
   Mousetrap.bind('e', function() {
-    keysPressed.add('e')
-    eSelected = cy.$('node:selected')
-  },
-  'keypress')
+      keysPressed.add('e')
+      eSelected = cy.$('node:selected')
+    },
+    'keypress'
+  )
   Mousetrap.bind('e', function() { keysPressed.delete('e')}, 'keyup')
 
   Mousetrap.bind('w', function() {
-    keysPressed.add('w')
-    eSelected = cy.$('node:selected')
-  },
-  'keypress')
+      keysPressed.add('w')
+      eSelected = cy.$('node:selected')
+    },
+    'keypress'
+  )
   Mousetrap.bind('w', function() { keysPressed.delete('w')}, 'keyup')
+
+  function addCommentDrag (evt) {
+    commentPoints.addClick(evt.position.x, evt.position.y, true)
+  }
+
+  function commentClick (evt) {
+    commentPoints.addClick(evt.position.x, evt.position.y, false)
+    cy.on('mousemove', addCommentDrag)
+  }
+  function commentUpclick (evt) {
+    cy.off('mousemove', addCommentDrag)
+  }
+
+  Mousetrap.bind('c', function() {
+      keysPressed.add('c')
+      cy.userPanningEnabled(false)
+      cy.boxSelectionEnabled(false)
+      cy.on('mousedown', commentClick)
+      cy.on('mouseup', commentUpclick)
+      //commentMode = true
+    },
+    'keypress'
+  )
+  Mousetrap.bind('c', function() {
+      keysPressed.delete('c')
+      cy.userPanningEnabled(true)
+      cy.boxSelectionEnabled(true)
+      cy.off('mousedown', commentClick)
+      cy.off('mouseup', commentUpclick)
+
+    },
+    'keyup'
+  )
 
   Mousetrap.bind('r',
     function () {
@@ -347,7 +396,8 @@ function buildEditor () {
         selected.rename()
         keysPressed.delete('r')
       }
-    }, 'keypress')
+    },
+    'keypress')
   Mousetrap.bind('r', function () { keysPressed.delete('r') }, 'keyup')
 
   function loadState (objectId) {
@@ -373,6 +423,7 @@ function buildEditor () {
         var nodeParent = jsn.data.parent
         cy.$id(nodeId).setParent(cy.$id(nodeParent))
       })
+      commentPoints.load(JSON.parse(graphString).comments)
 
     }
     reader.readAsText(x, 'UTF-8')
@@ -382,8 +433,12 @@ function buildEditor () {
     var fileName = window.prompt("File name:", "")
     if (!(fileName === null)) {
       var jsonData = JSON.stringify(
-        {'elements': cy.json()['elements']}
-      )
+        {'elements': cy.json()['elements'],
+         'comments': {
+           x: commentPoints.clickX,
+           y: commentPoints.clickY,
+           drag: commentPoints.clickDrag,
+      }})
       var a = document.createElement("a");
       var file = new Blob([jsonData], {type: 'text/plain'});
       a.href = URL.createObjectURL(file);
@@ -396,32 +451,10 @@ function buildEditor () {
     if (confirm("REALLY CLEAR ALL? (There's no autosave and no undo!)")) {
       console.log('RESET')
       cy.remove(cy.$(''))
+      commentPoints.reset()
+      cy.forceRender()
     }
   }
-
-  var layer = cy.cyCanvas({
-    zIndex: 10,
-    pixelRatio: "auto",
-  })
-  var canvas = layer.getCanvas()
-  canvas.setAttribute("id", "drawCanvas")
-  /*console.log(document.getElementById("drawCanvas"))
-
-  var ctx = canvas.getContext('2d')
-
-  cy.on("render cyCanvas.resize", function(evt) {
-      layer.resetTransform(ctx);
-      layer.clear(ctx);
-
-      // Draw fixed elements
-      ctx.fillRect(0, 0, 100, 100); // Top left corner
-      layer.setTransform(ctx)
-      // Draw model elements
-      cy.nodes().forEach(function(node) {
-          var pos = node.position();
-          ctx.fillRect(pos.x, pos.y, 100, 100); // At node position
-      });
-  });*/
 
   function selectOnly(ele) {
     cy.$().deselect()
@@ -438,8 +471,6 @@ function buildEditor () {
     }
   }
   cytoscape('collection', 'connectedClosure', connectedClosure)
-
-
 
   return {'cy': cy,
     'loadState': loadState,
