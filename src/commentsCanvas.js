@@ -17,7 +17,9 @@ class CommentsCanvas {
     this.clickDrag = []
     this.clickX = []
     this.clickY = []
-    this.text = [] // <-- TO IMPLEMENT
+    this.textText = []
+    this.textX = []
+    this.textY = [] // <-- TO IMPLEMENT
 
     cy.on("render cyCanvas.resize", function(evt) {
       var pan = cy.pan();
@@ -31,21 +33,25 @@ class CommentsCanvas {
       layer.setTransform(ctx)
 
       // DRAW LINES
+      ctx.strokeStyle = 'gray'
+      ctx.lineJoin = "round"
+      ctx.lineWidth = 5
     	for(var i = 0; i < c.clickX.length; i++)
     	{
         ctx.beginPath();
     		if(c.clickDrag[i] && i){
-    			ctx.moveTo(c.clickX[i-1], c.clickY[i-1]);
+    			ctx.moveTo(c.clickX[i-1], c.clickY[i-1])
     		}else{
-    			ctx.moveTo(c.clickX[i], c.clickY[i]);
+    			ctx.moveTo(c.clickX[i], c.clickY[i])
     		}
-    		ctx.lineTo(c.clickX[i], c.clickY[i]);
-    		ctx.closePath();
-
-        ctx.strokeStyle = 'gray';
-        ctx.lineJoin = "round";
-        ctx.lineWidth = 5;
-        ctx.stroke();
+    		ctx.lineTo(c.clickX[i], c.clickY[i])
+        ctx.stroke()
+      }
+      // DRAW TEXT
+      ctx.font = "30px Arial"
+      for(var i = 0; i < c.textText.length; i++)
+    	{
+        ctx.fillText(c.textText[i],c.textX[i],c.textY[i]);
       }
     })
   }
@@ -57,6 +63,13 @@ class CommentsCanvas {
     this.cy.emit("render")
   }
 
+  addText(x, y, text) {
+    this.textX.push(x)
+    this.textY.push(y)
+    this.textText.push(text)
+    this.cy.emit("render")
+  }
+
   reset () {
     this.clickX = []
     this.clickY = []
@@ -64,9 +77,12 @@ class CommentsCanvas {
   }
 
   load (json) {
-    this.clickX = json.x
-    this.clickY = json.y
-    this.clickDrag = json.drag
+    this.clickX = json.clickX
+    this.clickY = json.clickY
+    this.clickDrag = json.clickDrag
+    this.textX = json.textX
+    this.textY = json.textY
+    this.textText = json.textText
   }
 
 

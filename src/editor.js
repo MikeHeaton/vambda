@@ -112,7 +112,7 @@ function buildEditor () {
 
   function rename (ele, newName = null) {
     if (newName === null) {
-      newName = getName()
+      newName = getText()
     }
     if (!(newName === null)) {
       ele.data('name', newName)
@@ -165,7 +165,7 @@ function buildEditor () {
   // || USER INPUT HANDLERS ||
   // =========================
 
-  function getName () {
+  function getText () {
     var newName = window.prompt('name:', '')
     var keysPressed = new Set()
     return newName
@@ -366,6 +366,13 @@ function buildEditor () {
   function commentUpclick (evt) {
     cy.off('mousemove', addCommentDrag)
   }
+  function textComment (evt) {
+    var text = getText()
+    if (!(text === null)) {
+      commentPoints.addText(evt.position.x, evt.position.y, text)
+    }
+    Mousetrap.trigger('c', 'keyup');
+  }
 
   Mousetrap.bind('c', function() {
       keysPressed.add('c')
@@ -373,7 +380,7 @@ function buildEditor () {
       cy.boxSelectionEnabled(false)
       cy.on('mousedown', commentClick)
       cy.on('mouseup', commentUpclick)
-      //commentMode = true
+      cy.on('tap', textComment)
     },
     'keypress'
   )
@@ -383,7 +390,7 @@ function buildEditor () {
       cy.boxSelectionEnabled(true)
       cy.off('mousedown', commentClick)
       cy.off('mouseup', commentUpclick)
-
+      cy.off('tap', textComment)
     },
     'keyup'
   )
@@ -435,9 +442,12 @@ function buildEditor () {
       var jsonData = JSON.stringify(
         {'elements': cy.json()['elements'],
          'comments': {
-           x: commentPoints.clickX,
-           y: commentPoints.clickY,
-           drag: commentPoints.clickDrag,
+           clickX: commentPoints.clickX,
+           clickY: commentPoints.clickY,
+           clickDrag: commentPoints.clickDrag,
+           textX: commentPoints.textX,
+           textY: commentPoints.textY,
+           textText:commentPoints.textText
       }})
       var a = document.createElement("a");
       var file = new Blob([jsonData], {type: 'text/plain'});

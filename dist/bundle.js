@@ -33611,7 +33611,7 @@ function buildEditor() {
     var newName = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
 
     if (newName === null) {
-      newName = getName();
+      newName = getText();
     }
 
     if (!(newName === null)) {
@@ -33674,7 +33674,7 @@ function buildEditor() {
   // || USER INPUT HANDLERS ||
   // =========================
 
-  function getName() {
+  function getText() {
     var newName = window.prompt('name:', '');
     var keysPressed = new Set();
     return newName;
@@ -33884,12 +33884,23 @@ function buildEditor() {
     cy.off('mousemove', addCommentDrag);
   }
 
+  function textComment(evt) {
+    var text = getText();
+
+    if (!(text === null)) {
+      commentPoints.addText(evt.position.x, evt.position.y, text);
+    }
+
+    _mousetrap.default.trigger('c', 'keyup');
+  }
+
   _mousetrap.default.bind('c', function () {
     keysPressed.add('c');
     cy.userPanningEnabled(false);
     cy.boxSelectionEnabled(false);
     cy.on('mousedown', commentClick);
-    cy.on('mouseup', commentUpclick); //commentMode = true
+    cy.on('mouseup', commentUpclick);
+    cy.on('tap', textComment);
   }, 'keypress');
 
   _mousetrap.default.bind('c', function () {
@@ -33898,6 +33909,7 @@ function buildEditor() {
     cy.boxSelectionEnabled(true);
     cy.off('mousedown', commentClick);
     cy.off('mouseup', commentUpclick);
+    cy.off('tap', textComment);
   }, 'keyup');
 
   _mousetrap.default.bind('r', function () {
@@ -33950,9 +33962,12 @@ function buildEditor() {
       var jsonData = JSON.stringify({
         'elements': cy.json()['elements'],
         'comments': {
-          x: commentPoints.clickX,
-          y: commentPoints.clickY,
-          drag: commentPoints.clickDrag
+          clickX: commentPoints.clickX,
+          clickY: commentPoints.clickY,
+          clickDrag: commentPoints.clickDrag,
+          textX: commentPoints.textX,
+          textY: commentPoints.textY,
+          textText: commentPoints.textText
         }
       });
       var a = document.createElement("a");
@@ -83121,7 +83136,9 @@ function () {
     this.clickDrag = [];
     this.clickX = [];
     this.clickY = [];
-    this.text = []; // <-- TO IMPLEMENT
+    this.textText = [];
+    this.textX = [];
+    this.textY = []; // <-- TO IMPLEMENT
 
     cy.on("render cyCanvas.resize", function (evt) {
       var pan = cy.pan();
@@ -83133,6 +83150,10 @@ function () {
       ctx.globalAlpha = 1.0;
       layer.setTransform(ctx); // DRAW LINES
 
+      ctx.strokeStyle = 'gray';
+      ctx.lineJoin = "round";
+      ctx.lineWidth = 5;
+
       for (var i = 0; i < c.clickX.length; i++) {
         ctx.beginPath();
 
@@ -83143,11 +83164,14 @@ function () {
         }
 
         ctx.lineTo(c.clickX[i], c.clickY[i]);
-        ctx.closePath();
-        ctx.strokeStyle = 'gray';
-        ctx.lineJoin = "round";
-        ctx.lineWidth = 5;
         ctx.stroke();
+      } // DRAW TEXT
+
+
+      ctx.font = "30px Arial";
+
+      for (var i = 0; i < c.textText.length; i++) {
+        ctx.fillText(c.textText[i], c.textX[i], c.textY[i]);
       }
     });
   }
@@ -83161,6 +83185,14 @@ function () {
       this.cy.emit("render");
     }
   }, {
+    key: "addText",
+    value: function addText(x, y, text) {
+      this.textX.push(x);
+      this.textY.push(y);
+      this.textText.push(text);
+      this.cy.emit("render");
+    }
+  }, {
     key: "reset",
     value: function reset() {
       this.clickX = [];
@@ -83170,9 +83202,12 @@ function () {
   }, {
     key: "load",
     value: function load(json) {
-      this.clickX = json.x;
-      this.clickY = json.y;
-      this.clickDrag = json.drag;
+      this.clickX = json.clickX;
+      this.clickY = json.clickY;
+      this.clickDrag = json.clickDrag;
+      this.textX = json.textX;
+      this.textY = json.textY;
+      this.textText = json.textText;
     }
   }]);
 
