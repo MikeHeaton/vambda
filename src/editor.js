@@ -172,17 +172,6 @@ function buildEditor () {
   var dclickPrevTap
   var dclickTappedTimeout
   var eSelected
-  // Track mouse position
-  var mousePosition = {x: 0, y: 0}
-  document.addEventListener('mousemove', function (mouseMoveEvent) {
-    mousePosition.x = mouseMoveEvent.pageX
-    mousePosition.y = mouseMoveEvent.pageY
-
-    if (commentMode) {
-      commentPoints.addClick(mousePosition.x, mousePosition.y, true)
-      cy.emit('render cyCanvas.resize')
-    }
-  }, false)
 
   // __Handlers for clicking on the background__
   // Double-tap or single-tap with 'e'/'w' to add a new node.
@@ -334,42 +323,17 @@ function buildEditor () {
   )
   Mousetrap.bind('w', function () { keysPressed.delete('w')}, 'keyup')
 
-  function addCommentDrag (evt) {
-    commentPoints.addClick(evt.position.x, evt.position.y, true)
-  }
-
-  function commentClick (evt) {
-    commentPoints.addClick(evt.position.x, evt.position.y, false)
-    cy.on('mousemove', addCommentDrag)
-  }
-  function commentUpclick (evt) {
-    cy.off('mousemove', addCommentDrag)
-  }
-  function textComment (evt) {
-    var text = getText()
-    if (!(text === null)) {
-      commentPoints.addText(evt.position.x, evt.position.y, text)
-    }
-    Mousetrap.trigger('c', 'keyup')
-  }
-
   Mousetrap.bind('c', function () {
-    keysPressed.add('c')
-    cy.userPanningEnabled(false)
-    cy.boxSelectionEnabled(false)
-    cy.on('mousedown', commentClick)
-    cy.on('mouseup', commentUpclick)
-    cy.on('tap', textComment)
+    if (!keysPressed.has('c')) {
+      keysPressed.add('c')
+      commentPoints.enableDrawingMode()
+    }
   },
-    'keypress'
+    'keydown'
   )
   Mousetrap.bind('c', function () {
     keysPressed.delete('c')
-    cy.userPanningEnabled(true)
-    cy.boxSelectionEnabled(true)
-    cy.off('mousedown', commentClick)
-    cy.off('mouseup', commentUpclick)
-    cy.off('tap', textComment)
+    commentPoints.disableDrawingMode()
   },
     'keyup'
   )
@@ -415,6 +379,7 @@ function buildEditor () {
 
   function saveState () {
     var fileName = window.prompt('File name:', '')
+    comments = commentPoints.save()
     if (!(fileName === null)) {
       var jsonData = JSON.stringify({
         'elements': cy.json()['elements'],
