@@ -42,16 +42,26 @@ TBA
 
 # Controlling the UI
 
-* D-click:
+* Double-click:
   * In space: create a node.
   * On a node or edge: rename.
-* 'e/w'-click:
+* 'e'/'w'-click:
   * In space: create a node, with an edge _from/to_ currently selected node.
   * On a node or bubble: create an edge _from/to_ current selection _to/from_ the clicked item.
-* Backspace: delete selected items.
 * 'p': Wrap selection in a parentheses bubble.
 * 'l': Wrap selection in a lambda bubble.
 * 'd': define a name for the selection.
 * 'r':
-  * On a node, edge or definition: rename.
+  * On a node, edge or definition bubble: rename.
   * On a lambda bubble: specify inputs.
+* 'shift-V': Toggle selected node as VARIABLE.
+  * In lambda functions, variables (cyan diamond) are the expected inputs.
+  * Cyan square has no functional effect but is conventionally used to denote NESTED (2nd order) variables, see EXPLANATION SOMEWHERE.
+* Backspace: delete selected items.
+* 'c': hold to make COMMENTS. 'c'-click-drag to draw; 'c'-click to make text;
+'c'-click-hold-backspace to delete lines or text.
+
+
+* click-drag: pan
+* scroll: zoom
+* 'shift'-drag: multiselect (code, not comments)

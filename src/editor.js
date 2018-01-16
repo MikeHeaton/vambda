@@ -6,6 +6,7 @@ import Mousetrap from 'mousetrap'
 import colormap from 'colormap'
 import cyCanvas from 'cytoscape-canvas'
 import * as comments from './commentsCanvas'
+import * as utils from './utils'
 
 function buildEditor () {
   var cy = createCanvas()
@@ -111,7 +112,7 @@ function buildEditor () {
 
   function rename (ele, newName = null) {
     if (newName === null) {
-      newName = getText()
+      newName = utils.getText()
     }
     if (!(newName === null)) {
       ele.data('name', newName)
@@ -164,11 +165,7 @@ function buildEditor () {
   // || USER INPUT HANDLERS ||
   // =========================
 
-  function getText () {
-    var newName = window.prompt('name:', '')
-    keysPressed = new Set()
-    return newName
-  }
+
   var dclickPrevTap
   var dclickTappedTimeout
   var eSelected
@@ -379,18 +376,11 @@ function buildEditor () {
 
   function saveState () {
     var fileName = window.prompt('File name:', '')
-    comments = commentPoints.save()
+    var comments = commentPoints.serialize()
     if (!(fileName === null)) {
       var jsonData = JSON.stringify({
         'elements': cy.json()['elements'],
-        'comments': {
-          clickX: commentPoints.clickX,
-          clickY: commentPoints.clickY,
-          clickDrag: commentPoints.clickDrag,
-          textX: commentPoints.textX,
-          textY: commentPoints.textY,
-          textText: commentPoints.textText
-        }})
+        'comments': comments})
       var a = document.createElement('a')
       var file = new Blob([jsonData], {type: 'text/plain'})
       a.href = URL.createObjectURL(file)

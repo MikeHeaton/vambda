@@ -33492,6 +33492,8 @@ var _cytoscapeCanvas = _interopRequireDefault(__webpack_require__(32));
 
 var comments = _interopRequireWildcard(__webpack_require__(37));
 
+var utils = _interopRequireWildcard(__webpack_require__(48));
+
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = Object.defineProperty && Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : {}; if (desc.get || desc.set) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } } newObj.default = obj; return newObj; } }
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -33611,7 +33613,7 @@ function buildEditor() {
     var newName = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
 
     if (newName === null) {
-      newName = getText();
+      newName = utils.getText();
     }
 
     if (!(newName === null)) {
@@ -33673,12 +33675,6 @@ function buildEditor() {
   (0, _cytoscape.default)('collection', 'toggleVariable', toggleVariable); // =========================
   // || USER INPUT HANDLERS ||
   // =========================
-
-  function getText() {
-    var newName = window.prompt('name:', '');
-    keysPressed = new Set();
-    return newName;
-  }
 
   var dclickPrevTap;
   var dclickTappedTimeout;
@@ -33909,21 +33905,12 @@ function buildEditor() {
 
   function saveState() {
     var fileName = window.prompt('File name:', '');
-    comments = (commentPoints.save(), function () {
-      throw new Error('"' + "comments" + '" is read-only.');
-    }());
+    var comments = commentPoints.serialize();
 
     if (!(fileName === null)) {
       var jsonData = JSON.stringify({
         'elements': cy.json()['elements'],
-        'comments': {
-          clickX: commentPoints.clickX,
-          clickY: commentPoints.clickY,
-          clickDrag: commentPoints.clickDrag,
-          textX: commentPoints.textX,
-          textY: commentPoints.textY,
-          textText: commentPoints.textText
-        }
+        'comments': comments
       });
       var a = document.createElement('a');
       var file = new Blob([jsonData], {
@@ -46657,138 +46644,140 @@ var __WEBPACK_AMD_DEFINE_RESULT__;
 
 __webpack_require__(41);
 
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+var utils = _interopRequireWildcard(__webpack_require__(48));
 
-function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
-
-function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = Object.defineProperty && Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : {}; if (desc.get || desc.set) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } } newObj.default = obj; return newObj; } }
 
 var cy;
 var stage;
 var currentShape;
+var thisThing;
 var oldX, oldY;
-var ctx;
+var haveAddedText = false;
 
-var CommentsCanvas =
-/*#__PURE__*/
-function () {
-  function CommentsCanvas(cyObj) {
-    _classCallCheck(this, CommentsCanvas);
+function CommentsCanvas(cyObj) {
+  /* ******************\
+  || CANVAS BULLSHIT ||
+  ********************/
+  thisThing = this;
+  cy = cyObj;
+  var layer = cy.cyCanvas({
+    zIndex: 100,
+    pixelRatio: 'auto'
+  });
+  var canvas = layer.getCanvas();
+  canvas.setAttribute('id', 'commentsCanvas');
+  stage = new createjs.Stage(canvas);
+  cy.on('render cyCanvas.resize', function (evt) {
+    var pan = cy.pan();
+    var zoom = cy.zoom();
+    stage.x = 2 * pan.x;
+    stage.y = 2 * pan.y;
+    stage.scaleX = zoom;
+    stage.scaleY = zoom;
+    stage.update();
+  });
 
-    /* ******************\
-    || CANVAS BULLSHIT ||
-    ********************/
-    cy = cyObj;
-    var layer = cy.cyCanvas({
-      zIndex: 100,
-      pixelRatio: 'auto'
+  this.serialize = function () {
+    /*console.log(JSON.stringify(stage.children.map(function (shape) {
+      return toBase64(shape)
+    })))*/
+    console.log(stage.children);
+    console.log(stage.children.map(serialize));
+    return stage.children.map(serialize);
+  };
+
+  this.reset = function () {};
+
+  this.enableDrawingMode = function () {
+    this.drawingMode = true;
+    cy.userPanningEnabled(false);
+    cy.boxSelectionEnabled(false);
+    cy.on('mousedown', this.startDrawing);
+    cy.on('mouseup', this.stopDrawing);
+    cy.on('tap', addText);
+    haveAddedText = false;
+  };
+
+  this.disableDrawingMode = function () {
+    this.drawingMode = false;
+    cy.userPanningEnabled(true);
+    cy.boxSelectionEnabled(true);
+    cy.off('mousedown', this.startDrawing);
+    cy.off('mouseup', this.stopDrawing);
+    cy.off('tap', addText);
+    haveAddedText = false;
+  };
+
+  this.startDrawing = function (evt) {
+    currentShape = new createjs.Shape();
+    var g = currentShape.graphics;
+    addPointListeners(currentShape);
+    g.setStrokeStyle(50, 'round', 'round');
+    g.beginStroke(createjs.Graphics.getRGB(0, 0, 0));
+    stage.addChild(currentShape);
+    cy.on('mousemove', addPoint, false);
+  };
+
+  this.stopDrawing = function () {
+    cy.off('mousemove', addPoint, false);
+  };
+
+  this.load = function (json) {
+    var pos = function pos(ele) {
+      return {
+        position: {
+          x: ele.x / 2,
+          y: ele.y / 2
+        }
+      };
+    };
+
+    json.forEach(function (element) {
+      if (element.type === "Text") {
+        addText(pos(element), element.text);
+      } else {
+        thisThing.startDrawing();
+        element.points.forEach(function (ele) {
+          addPoint(pos(ele));
+        });
+        thisThing.stopDrawing();
+      }
     });
-    this.canvas = layer.getCanvas();
-    this.canvas.setAttribute('id', 'commentsCanvas');
-    ctx = this.canvas.getContext('2d');
-    stage = new createjs.Stage(this.canvas);
-    cy.on('render cyCanvas.resize', function (evt) {
-      var pan = cy.pan();
-      var zoom = cy.zoom();
-      stage.x = 2 * pan.x;
-      stage.y = 2 * pan.y;
-      stage.scaleX = zoom;
-      stage.scaleY = zoom;
-      stage.update();
-    });
-  }
-
-  _createClass(CommentsCanvas, [{
-    key: "save",
-    value: function save() {
-      var objects = stage.children;
-      console.log(JSON.stringify(stage.children.map(function (shape) {
-        return toBase64(shape);
-      })));
-    }
-  }, {
-    key: "reset",
-    value: function reset() {
-      this.clickX = [];
-      this.clickY = [];
-      this.clickDrag = [];
-      this.textX = [];
-      this.textY = [];
-      this.textText = [];
-    }
-  }, {
-    key: "load",
-    value: function load(json) {
-      this.clickX = json.clickX;
-      this.clickY = json.clickY;
-      this.clickDrag = json.clickDrag;
-      this.textX = json.textX;
-      this.textY = json.textY;
-      this.textText = json.textText;
-      console.log(this.clickX, this.clickY, this.clickDrag, this.textX, this.textY, this.textText);
-    }
-  }, {
-    key: "enableDrawingMode",
-    value: function enableDrawingMode() {
-      this.drawingMode = true;
-      cy.userPanningEnabled(false);
-      cy.boxSelectionEnabled(false);
-      cy.on('mousedown', this.startDrawing);
-      cy.on('mouseup', this.stopDrawing);
-      cy.on('tap', addText);
-    }
-  }, {
-    key: "disableDrawingMode",
-    value: function disableDrawingMode() {
-      this.drawingMode = false;
-      cy.userPanningEnabled(true);
-      cy.boxSelectionEnabled(true);
-      cy.off('mousedown', this.startDrawing);
-      cy.off('mouseup', this.stopDrawing);
-      cy.off('tap', addText);
-    }
-  }, {
-    key: "startDrawing",
-    value: function startDrawing(evt) {
-      var s = new createjs.Shape();
-      var g = s.graphics;
-      addPointListeners(s);
-      g.setStrokeStyle(50, 'round', 'round');
-      g.beginStroke(createjs.Graphics.getRGB(0, 0, 0));
-      stage.addChild(s);
-      currentShape = s;
-      cy.on('mousemove', addPoint, false);
-    }
-  }, {
-    key: "stopDrawing",
-    value: function stopDrawing() {
-      cy.off('mousemove', addPoint, false);
-    }
-  }]);
-
-  return CommentsCanvas;
-}();
+  };
+}
 
 var addText = function addText(evt) {
-  var text = new createjs.Text('Hello World', '20px Arial', 'black');
-  text.x = 2 * evt.position.x;
-  text.y = 2 * evt.position.y;
-  addTextListeners(text);
-  stage.addChild(text);
-  stage.update();
+  var inpText = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+
+  if (inpText === null) {
+    inpText = utils.getText();
+  }
+
+  if (inpText !== null) {
+    haveAddedText = true;
+    var text = new createjs.Text(inpText, '20px Arial', 'black');
+    text.x = 2 * evt.position.x;
+    text.y = 2 * evt.position.y;
+    addTextListeners(text);
+    stage.addChild(text);
+    stage.update();
+  }
 };
 
 var addPoint = function addPoint(evt) {
-  var x = 2 * evt.position.x;
-  var y = 2 * evt.position.y;
-  currentShape.graphics.lineTo(x, y);
-  stage.update();
+  if (!haveAddedText) {
+    var x = 2 * evt.position.x;
+    var y = 2 * evt.position.y;
+    currentShape.graphics.lineTo(x, y);
+    stage.update();
+  }
 };
 
 var addPointListeners = function addPointListeners(obj) {
   var move = function move(evt) {
-    obj.x = 2 * evt.position.x - oldX;
-    obj.y = 2 * evt.position.y - oldY;
+    obj.x = 2 * evt.position.x;
+    obj.y = 2 * evt.position.y;
     stage.update();
   };
 
@@ -46802,15 +46791,12 @@ var addPointListeners = function addPointListeners(obj) {
 
   obj.on('mousedown', function (evt) {
     currentShape = obj;
-    oldX = evt.stageX;
-    oldY = evt.stageY;
     cy.userPanningEnabled(false);
     cy.boxSelectionEnabled(false);
     cy.on('mousemove', move);
     document.addEventListener('keydown', commentDelete);
   });
   obj.on('pressup', function (evt) {
-    console.log(obj);
     cy.userPanningEnabled(true);
     cy.boxSelectionEnabled(true);
     cy.off('mousemove', move);
@@ -46848,63 +46834,24 @@ var addTextListeners = function addTextListeners(obj) {
   });
 };
 
-var toBase64 = function toBase64(myLine) {
-  var b64 = function b64(string) {
-    var BASE_64_LIST = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'];
-    return BASE_64_LIST[parseInt(string, 2)];
-  };
+var serialize = function serialize(comObj) {
+  console.log(comObj.constructor.name);
 
-  console.log(); // 001 = 'lineTo', 1 = '16bit locations', 00 = spare bits.
+  if (comObj.constructor.name === "Text") {
+    return {
+      type: "Text",
+      text: comObj.text,
+      x: comObj.x,
+      y: comObj.y
+    };
+  } else {
+    return {
+      type: "Line",
+      points: comObj.graphics._instructions.slice(1, -1) // (slice cuts off the 'beginpath' and format instructions,
+      // redundant atm)
 
-  var header = b64('001' + '1' + '00');
-  var xy = b74(myLine.x); // Header = 001100
-
-  /*var prevX = 0
-  var prevY = 0
-   for (var i = 2; i < myShape.graphics._instructions.length - 1; i++) {
-    var header
-    var x = 0x00000
-    var y = 0x00000
-    if (myShape.graphics._instructions[i].f === ctx.lineTo || myShape.graphics._instructions[i].f === ctx.moveTo) {
-      if (myShape.graphics._instructions[i].f === ctx.lineTo) {
-        header = 'M'
-        var xStart = myShape.graphics._instructions[i].params[0] * 10 - prevX
-        var yStart = myShape.graphics._instructions[i].params[1] * 10 - prevY
-        x = Math.abs(xStart)
-        y = Math.abs(yStart)
-        prevX += xStart
-        prevY += yStart
-        var x1 = (x & 0xff000)
-        if (xStart < 0) x1 |= 0x20
-        var x2 = (x & 0x00fc0) >> 6
-        var x3 = (x & 0x0003f)
-        var y1 = (y & 0xff000) >> 12
-        if (yStart < 0) y1 |= 0x20
-        var y2 = (y & 0x00fc0) >> 6
-        var y3 = (y & 0x0003f)
-        x = BASE_64_LIST[x1] + BASE_64_LIST[x2] + BASE_64_LIST[x3]
-        y = BASE_64_LIST[y1] + BASE_64_LIST[y2] + BASE_64_LIST[y3]
-      } else if (myShape.graphics._instructions[i].f === ctx.moveTo) {
-        header = 'E'
-        x |= myShape.graphics._instructions[i].params[0] * 10
-        y |= myShape.graphics._instructions[i].params[1] * 10
-        prevX = x
-        prevY = y
-        x1 = (x & 0xff000) >> 12
-        if (x < 0) x1 |= 0x20
-        x2 = (x & 0x00fc0) >> 6
-        x3 = (x & 0x0003f)
-        y1 = (y & 0xff000) >> 12
-        if (y < 0) y1 |= 0x20
-        y2 = (y & 0x00fc0) >> 6
-        y3 = (y & 0x0003f)
-        x = BASE_64_LIST[x1] + BASE_64_LIST[x2] + BASE_64_LIST[x3]
-        y = BASE_64_LIST[y1] + BASE_64_LIST[y2] + BASE_64_LIST[y3]
-      }
-    }
-    result += header + x + y
+    };
   }
-  return result*/
 };
 
 module.exports = {
@@ -87377,6 +87324,20 @@ window.createjs = window.createjs || {};
 
 })();
 
+
+/***/ }),
+/* 48 */
+/***/ (function(module, exports) {
+
+function getText() {
+  var newName = window.prompt('name:', '');
+  keysPressed = new Set();
+  return newName;
+}
+
+module.exports = {
+  getText: getText
+};
 
 /***/ })
 /******/ ]);
