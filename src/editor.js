@@ -5,8 +5,8 @@ import cytoscape from 'cytoscape'
 import Mousetrap from 'mousetrap'
 import colormap from 'colormap'
 import cyCanvas from 'cytoscape-canvas'
-import * as fab from 'fabric'
 import * as comments from './commentsCanvas'
+import * as utils from './utils'
 
 function buildEditor () {
   var cy = createCanvas()
@@ -27,7 +27,6 @@ function buildEditor () {
 
   var commentPoints = new comments.CommentsCanvas(cy)
   var commentMode = false
-
 
   // =====================
   // || GRAPH FUNCTIONS ||
@@ -78,10 +77,11 @@ function buildEditor () {
     }
 
     if (name !== '') {
+      var sameNamedEles
       if (node === null) {
-        var sameNamedEles = cy.$("[name='" + name + "']")
+        sameNamedEles = cy.$([name = ' + name + '])
       } else {
-        var sameNamedEles = cy.$("[name='" + name + "']").difference(node)
+        sameNamedEles = cy.$([name = ' + name + ']).difference(node)
       }
 
       // Look for something named the same, and make this node the same color.
@@ -112,24 +112,24 @@ function buildEditor () {
 
   function rename (ele, newName = null) {
     if (newName === null) {
-      newName = getText()
+      newName = utils.getText()
     }
     if (!(newName === null)) {
       ele.data('name', newName)
       ele.setColor()
     }
   }
-  cytoscape('collection', 'rename', function(newName=null) {rename(this, newName=newName)})
+  cytoscape('collection', 'rename', function (name = null) { rename(this, name) })
 
-  function setParent(newParent) {
+  function setParent (newParent) {
     // Set self's parent to newParent.
     if (newParent != null && newParent.id()) {
-      ur.do("changeParent", {"parentData": newParent.id(),
-                             "nodes": this,
-                             "posDiffX": 0,
-                             "posDiffY": 0})
-    }
-    else {
+      ur.do('changeParent', {
+        'parentData': newParent.id(),
+        'nodes': this,
+        'posDiffX': 0,
+        'posDiffY': 0})
+    } else {
       // If newParent is null, remove the parent from the node.
       var oldParent = this.parent()
       ur.do('changeParent', {
@@ -165,67 +165,46 @@ function buildEditor () {
   // || USER INPUT HANDLERS ||
   // =========================
 
-  function getText () {
-    var newName = window.prompt('name:', '')
-    var keysPressed = new Set()
-    return newName
-  }
+
   var dclickPrevTap
   var dclickTappedTimeout
   var eSelected
-  // Track mouse position
-  var mousePosition = {x: 0, y: 0}
-  document.addEventListener('mousemove', function (mouseMoveEvent) {
-    mousePosition.x = mouseMoveEvent.pageX
-    mousePosition.y = mouseMoveEvent.pageY
-
-    if(commentMode){
-			commentPoints.addClick(mousePosition.x, mousePosition.y, true);
-      cy.emit("render cyCanvas.resize")
-		}
-  }, false)
 
   // __Handlers for clicking on the background__
   // Double-tap or single-tap with 'e'/'w' to add a new node.
   cy.on('tap', function (event) {
-    if (!commentMode) {
-      var tapTarget = event.target
-      if (tapTarget === cy) {
+    var tapTarget = event.target
+    if (tapTarget === cy) {
+      if (keysPressed.has('e')) {
+        // Click on the background with 'e'
 
-        if (keysPressed.has('e')) {
-          // Click on the background with 'e'
+        var n = newNode(event.position)
 
-          var n = newNode(event.position)
-
-          dclickTappedTimeout = false
-          if (eSelected.length > 0 && eSelected.parent().length <= 1) {
-            newEdge(eSelected, n)
-            n = n.setParent(eSelected.parent())
-          }
-          selectOnly(n)
+        dclickTappedTimeout = false
+        if (eSelected.length > 0 && eSelected.parent().length <= 1) {
+          newEdge(eSelected, n)
+          n = n.setParent(eSelected.parent())
         }
-        else if (tapTarget === cy && keysPressed.has('w')) {
-          // Click on the background with 'e'
-          var n = newNode(event.position)
-          dclickTappedTimeout = false
-          if (eSelected.length === 1) {
-            newEdge(n, eSelected)
-            n = n.setParent(eSelected.parent())
-          }
-          selectOnly(eSelected)
+        selectOnly(n)
+      } else if (tapTarget === cy && keysPressed.has('w')) {
+        // Click on the background with 'e'
+        n = newNode(event.position)
+        dclickTappedTimeout = false
+        if (eSelected.length === 1) {
+          newEdge(n, eSelected)
+          n = n.setParent(eSelected.parent())
         }
-        else if (dclickTappedTimeout && dclickPrevTap) {
-          clearTimeout(dclickTappedTimeout)
-        }
-        // If double clicked:
-        if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
-          var n = newNode(event.position)
-          selectOnly(n)
-          dclickPrevTap = null
-        }
-
+        selectOnly(eSelected)
+      } else if (dclickTappedTimeout && dclickPrevTap) {
+        clearTimeout(dclickTappedTimeout)
       }
-    else {
+      // If double clicked:
+      if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
+        n = newNode(event.position)
+        selectOnly(n)
+        dclickPrevTap = null
+      }
+    } else {
       if (tapTarget.isNode() && dclickTappedTimeout && dclickPrevTap) {
         clearTimeout(dclickTappedTimeout)
       }
@@ -234,15 +213,9 @@ function buildEditor () {
         rename(tapTarget)
       }
     }
-  }
-  else {
-    // COMMENT MODE
-
-  }
-
-  // Update doubleclick handlers
-  dclickTappedTimeout = setTimeout(function(){ dclickPrevTap = null }, 300)
-  dclickPrevTap = tapTarget
+    // Update doubleclick handlers
+    dclickTappedTimeout = setTimeout(function () { dclickPrevTap = null }, 300)
+    dclickPrevTap = tapTarget
   })
 
   // Hold 'e/w' and tap a node to make a new edge
@@ -254,15 +227,12 @@ function buildEditor () {
         newEdge(sources, target)
         selectOnly(target)
         sources.connectedClosure().setParent(target.parent())
-      }
-      else if (keysPressed.has('w')) {
+      } else if (keysPressed.has('w')) {
         sources.map(source => newEdge(target, source))
 
         sources = sources.connectedClosure().setParent(target.parent())
         selectOnly(sources)
       }
-
-
     }
   })
 
@@ -277,121 +247,91 @@ function buildEditor () {
   // and its closed neighbourhood, corresponding to a lambda function.
   Mousetrap.bind('l', function () {
     // If all of them belong to the same parent, take them out of the parent.
-      var selected = cy.$('node:selected')
-      if (selected.parents().length == 1) {
-        selected.setParent(null)
-      }
-      else {
-        var parent = newNode()
-        parent.setType('Lambda')
-        var closure = selected.connectedClosure()
-        closure.setParent(parent)
-        selectOnly(parent)
-      }
-    },
-    'keypress')
+    var selected = cy.$('node:selected')
+    if (selected.parents().length === 1) {
+      selected.setParent(null)
+    } else {
+      var parent = newNode()
+      parent.setType('Lambda')
+      var closure = selected.connectedClosure()
+      closure.setParent(parent)
+      selectOnly(parent)
+    }
+  },
+  'keypress')
 
     // p to 'parens': wrap selection in a hypernode representing 'evaluate all this together',
     // corresponding to wrapping () around a group.
-    Mousetrap.bind('p', function () {
-      // If all of them belong to the same parent, take them out of the parent.
-        var selected = cy.$('node:selected')
-        if (selected.parents().length == 1) {
-          selected.setParent(null)
-        }
-        else {
-          var parent = newNode()
-          parent.setType('Parens')
-          var closure = selected.connectedClosure()
-          closure.setParent(parent)
-          selectOnly(parent)
-        }
-      },
-      'keypress')
+  Mousetrap.bind('p', function () {
+    // If all of them belong to the same parent, take them out of the parent.
+    var selected = cy.$('node:selected')
+    if (selected.parents().length === 1) {
+      selected.setParent(null)
+    } else {
+      var parent = newNode()
+      parent.setType('Parens')
+      var closure = selected.connectedClosure()
+      closure.setParent(parent)
+      selectOnly(parent)
+    }
+  },
+    'keypress')
 
   // d to 'define': wrap selection in a hypernode, containing the selection
   // and its closed neighbourhood, corresponding to a define statement.
-  Mousetrap.bind('d', function() {
+  Mousetrap.bind('d', function () {
     // If all of them belong to the same parent, take them out of the parent.
-      var selected = cy.$('node:selected')
-      if (selected.parents().length == 1) {
-        selected.setParent(null)
-      }
-      else {
-        var parent = newNode()
-        parent.setType('Define')
-        var closure = selected.connectedClosure()
-        parent.rename()
-        closure.setParent(parent)
-        selectOnly(parent)
-
-      }
-    },
+    var selected = cy.$('node:selected')
+    if (selected.parents().length === 1) {
+      selected.setParent(null)
+    } else {
+      var parent = newNode()
+      parent.setType('Define')
+      var closure = selected.connectedClosure()
+      parent.rename()
+      closure.setParent(parent)
+      selectOnly(parent)
+    }
+  },
     'keypress')
 
   // Backspace to delete selection
-  Mousetrap.bind('backspace', function() { ur.do('deleteEles', cy.$(':selected'))}) //.delete ()})
+  Mousetrap.bind('backspace', function () { ur.do('deleteEles', cy.$(':selected')) })
 
-  Mousetrap.bind('V', function() { cy.$(':selected').toggleVariable()})
-  Mousetrap.bind('P', function() { toLisp(cy.$(':selected'))})
-  Mousetrap.bind('Z', function() { ur.undo()})
-
+  Mousetrap.bind('V', function () { cy.$(':selected').toggleVariable() })
+  Mousetrap.bind('P', function () { toLisp(cy.$(':selected')) })
+  Mousetrap.bind('Z', function () { ur.undo() })
 
   // Recognise keys pressed down
   var keysPressed = new Set()
-  Mousetrap.bind('e', function() {
-      keysPressed.add('e')
-      eSelected = cy.$('node:selected')
-    },
+  Mousetrap.bind('e', function () {
+    keysPressed.add('e')
+    eSelected = cy.$('node:selected')
+  },
     'keypress'
   )
-  Mousetrap.bind('e', function() { keysPressed.delete('e')}, 'keyup')
+  Mousetrap.bind('e', function () { keysPressed.delete('e') }, 'keyup')
 
-  Mousetrap.bind('w', function() {
-      keysPressed.add('w')
-      eSelected = cy.$('node:selected')
-    },
+  Mousetrap.bind('w', function () {
+    keysPressed.add('w')
+    eSelected = cy.$('node:selected')
+  },
     'keypress'
   )
-  Mousetrap.bind('w', function() { keysPressed.delete('w')}, 'keyup')
+  Mousetrap.bind('w', function () { keysPressed.delete('w')}, 'keyup')
 
-  function addCommentDrag (evt) {
-    commentPoints.addClick(evt.position.x, evt.position.y, true)
-  }
-
-  function commentClick (evt) {
-    commentPoints.addClick(evt.position.x, evt.position.y, false)
-    cy.on('mousemove', addCommentDrag)
-  }
-  function commentUpclick (evt) {
-    cy.off('mousemove', addCommentDrag)
-  }
-  function textComment (evt) {
-    var text = getText()
-    if (!(text === null)) {
-      commentPoints.addText(evt.position.x, evt.position.y, text)
-    }
-    Mousetrap.trigger('c', 'keyup');
-  }
-
-  Mousetrap.bind('c', function() {
+  Mousetrap.bind('c', function () {
+    if (!keysPressed.has('c')) {
       keysPressed.add('c')
-      cy.userPanningEnabled(false)
-      cy.boxSelectionEnabled(false)
-      cy.on('mousedown', commentClick)
-      cy.on('mouseup', commentUpclick)
-      cy.on('tap', textComment)
-    },
-    'keypress'
+      commentPoints.enableDrawingMode()
+    }
+  },
+    'keydown'
   )
-  Mousetrap.bind('c', function() {
-      keysPressed.delete('c')
-      cy.userPanningEnabled(true)
-      cy.boxSelectionEnabled(true)
-      cy.off('mousedown', commentClick)
-      cy.off('mouseup', commentUpclick)
-      cy.off('tap', textComment)
-    },
+  Mousetrap.bind('c', function () {
+    keysPressed.delete('c')
+    commentPoints.disableDrawingMode()
+  },
     'keyup'
   )
 
@@ -412,7 +352,6 @@ function buildEditor () {
     var reader = new FileReader()
     reader.onload = function (e) {
       var graphString = e.target.result
-      var graphJson = JSON.parse(graphString)
 
       // We HAVE to double-load elements here: once to get them into the
       // graph, and once to set their parents correctly. If we don't, when
@@ -431,34 +370,27 @@ function buildEditor () {
         cy.$id(nodeId).setParent(cy.$id(nodeParent))
       })
       commentPoints.load(JSON.parse(graphString).comments)
-
     }
     reader.readAsText(x, 'UTF-8')
   }
 
-  function saveState() {
-    var fileName = window.prompt("File name:", "")
+  function saveState () {
+    var fileName = window.prompt('File name:', '')
+    var comments = commentPoints.serialize()
     if (!(fileName === null)) {
-      var jsonData = JSON.stringify(
-        {'elements': cy.json()['elements'],
-         'comments': {
-           clickX: commentPoints.clickX,
-           clickY: commentPoints.clickY,
-           clickDrag: commentPoints.clickDrag,
-           textX: commentPoints.textX,
-           textY: commentPoints.textY,
-           textText:commentPoints.textText
-      }})
-      var a = document.createElement("a");
-      var file = new Blob([jsonData], {type: 'text/plain'});
-      a.href = URL.createObjectURL(file);
-      a.download = fileName + '.txt';
-      a.click();
+      var jsonData = JSON.stringify({
+        'elements': cy.json()['elements'],
+        'comments': comments})
+      var a = document.createElement('a')
+      var file = new Blob([jsonData], {type: 'text/plain'})
+      a.href = URL.createObjectURL(file)
+      a.download = fileName + '.txt'
+      a.click()
     }
   }
 
   function resetGraph () {
-    if (confirm("REALLY CLEAR ALL? (There's no autosave and no undo!)")) {
+    if (confirm('REALLY CLEAR ALL? (There\'s no autosave and no undo!)')) {
       console.log('RESET')
       cy.remove(cy.$(''))
       commentPoints.reset()
@@ -466,12 +398,12 @@ function buildEditor () {
     }
   }
 
-  function selectOnly(ele) {
+  function selectOnly (ele) {
     cy.$().deselect()
     ele.select()
   }
 
-  function connectedClosure() {
+  function connectedClosure () {
     // Returns the closure (union with all-depth family) of the eles.
     var nextLevel = this.closedNeighborhood('node')
     if (nextLevel.length === this.length) {

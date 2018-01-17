@@ -1,91 +1,193 @@
-class CommentsCanvas {
-  constructor(cy) {
-    /*******************\
-    || CANVAS BULLSHIT ||
-    ********************/
-    this.cy = cy
-    var c = this
+import 'yuki-createjs'
+import * as utils from './utils'
 
-    var layer = cy.cyCanvas({
-      zIndex: 100,
-      pixelRatio: "auto",
-    })
-    this.canvas = layer.getCanvas()
-    this.canvas.setAttribute("id", "commentsCanvas")
-    var ctx = this.canvas.getContext("2d")
+var cy
+var stage
+var currentShape
+var thisThing
+var oldX, oldY
+var haveAddedText = false
 
-    this.clickDrag = []
-    this.clickX = []
-    this.clickY = []
-    this.textText = []
-    this.textX = []
-    this.textY = [] // <-- TO IMPLEMENT
+function CommentsCanvas (cyObj) {
+  /* ******************\
+  || CANVAS BULLSHIT ||
+  ********************/
+  thisThing = this
+  cy = cyObj
+  var layer = cy.cyCanvas({
+    zIndex: 100,
+    pixelRatio: 'auto'
+  })
+  var canvas = layer.getCanvas()
+  canvas.setAttribute('id', 'commentsCanvas')
 
-    cy.on("render cyCanvas.resize", function(evt) {
-      var pan = cy.pan();
-      var zoom = cy.zoom();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.translate(pan.x, pan.y);
+  stage = new createjs.Stage(canvas)
 
-      layer.resetTransform(ctx);
-      layer.clear(ctx);
-      ctx.globalAlpha=1.0
-      layer.setTransform(ctx)
+  cy.on('render cyCanvas.resize', function (evt) {
+    var pan = cy.pan()
+    var zoom = cy.zoom()
 
-      // DRAW LINES
-      ctx.strokeStyle = 'gray'
-      ctx.lineJoin = "round"
-      ctx.lineWidth = 5
-    	for(var i = 0; i < c.clickX.length; i++)
-    	{
-        ctx.beginPath();
-    		if(c.clickDrag[i] && i){
-    			ctx.moveTo(c.clickX[i-1], c.clickY[i-1])
-    		}else{
-    			ctx.moveTo(c.clickX[i], c.clickY[i])
-    		}
-    		ctx.lineTo(c.clickX[i], c.clickY[i])
-        ctx.stroke()
+    stage.x = 2 * pan.x
+    stage.y = 2 * pan.y
+    stage.scaleX = zoom
+    stage.scaleY = zoom
+    stage.update()
+  })
+
+  this.serialize = function () {
+    /*console.log(JSON.stringify(stage.children.map(function (shape) {
+      return toBase64(shape)
+    })))*/
+    console.log(stage.children)
+    console.log(stage.children.map(serialize))
+    return stage.children.map(serialize)
+  }
+
+  this.reset = function () {
+  }
+
+  this.enableDrawingMode = function () {
+    this.drawingMode = true
+    cy.userPanningEnabled(false)
+    cy.boxSelectionEnabled(false)
+    cy.on('mousedown', this.startDrawing)
+    cy.on('mouseup', this.stopDrawing)
+    cy.on('tap', addText)
+    haveAddedText = false
+  }
+
+  this.disableDrawingMode = function () {
+    this.drawingMode = false
+    cy.userPanningEnabled(true)
+    cy.boxSelectionEnabled(true)
+    cy.off('mousedown', this.startDrawing)
+    cy.off('mouseup', this.stopDrawing)
+    cy.off('tap', addText)
+    haveAddedText = false
+  }
+
+  this.startDrawing = function (evt) {
+    currentShape = new createjs.Shape()
+    var g = currentShape.graphics
+    addPointListeners(currentShape)
+    g.setStrokeStyle(50, 'round', 'round')
+    g.beginStroke(createjs.Graphics.getRGB(0,0,0))
+    stage.addChild(currentShape)
+    cy.on('mousemove', addPoint, false)
+  }
+
+  this.stopDrawing = function () {
+    cy.off('mousemove', addPoint, false)
+  }
+
+  this.load = function (json) {
+    var pos = function (ele) { return {position: {x: ele.x / 2, y: ele.y / 2}} }
+    json.forEach(function(element) {
+      if (element.type === "Text") {
+        addText(pos(element), element.text)
+      } else {
+        thisThing.startDrawing()
+        element.points.forEach(function (ele) {
+          addPoint(pos(ele))})
+        thisThing.stopDrawing()
       }
-      // DRAW TEXT
-      ctx.font = "30px Arial"
-      for(var i = 0; i < c.textText.length; i++)
-    	{
-        ctx.fillText(c.textText[i],c.textX[i],c.textY[i]);
-      }
     })
   }
+}
 
-  addClick(x, y, drag) {
-    this.clickX.push(x)
-    this.clickY.push(y)
-    this.clickDrag.push(drag)
-    this.cy.emit("render")
+var addText = function (evt, inpText = null) {
+  if (inpText === null) {
+    inpText = utils.getText()
   }
-
-  addText(x, y, text) {
-    this.textX.push(x)
-    this.textY.push(y)
-    this.textText.push(text)
-    this.cy.emit("render")
+  if (inpText !== null) {
+    haveAddedText = true
+    var text = new createjs.Text(inpText, '20px Arial', 'black')
+    text.x = 2 * evt.position.x
+    text.y = 2 * evt.position.y
+    addTextListeners(text)
+    stage.addChild(text)
+    stage.update()
   }
+}
 
-  reset () {
-    this.clickX = []
-    this.clickY = []
-    this.clickDrag = []
+var addPoint = function (evt) {
+  if (!haveAddedText) {
+    var x = 2 * evt.position.x
+    var y = 2 * evt.position.y
+    currentShape.graphics.lineTo(x, y)
+    stage.update()
   }
+}
 
-  load (json) {
-    this.clickX = json.clickX
-    this.clickY = json.clickY
-    this.clickDrag = json.clickDrag
-    this.textX = json.textX
-    this.textY = json.textY
-    this.textText = json.textText
+var addPointListeners = function (obj) {
+  var move = function (evt) {
+    obj.x = 2 * evt.position.x
+    obj.y = 2 * evt.position.y
+    stage.update()
   }
+  var commentDelete = function (evt) {
+    if (evt.keyCode === 8 /* backspace */) {
+      stage.removeChild(obj)
+    }
+  }
+  obj.on('mousedown', function (evt) {
+    currentShape = obj
+    cy.userPanningEnabled(false)
+    cy.boxSelectionEnabled(false)
+    cy.on('mousemove', move)
+    document.addEventListener('keydown', commentDelete)
+  })
+  obj.on('pressup', function (evt) {
+    cy.userPanningEnabled(true)
+    cy.boxSelectionEnabled(true)
+    cy.off('mousemove', move)
+    document.removeEventListener('keydown', commentDelete)
+  })
+}
 
+var addTextListeners = function (obj) {
+  var move = function (evt) {
+    obj.x = 2 * evt.position.x
+    obj.y = 2 * evt.position.y
+    stage.update()
+  }
+  var commentDelete = function (evt) {
+    if (evt.keyCode === 8 /* backspace */) {
+      stage.removeChild(obj)
+    }
+  }
+  obj.on('mousedown', function (evt) {
+    currentShape = obj
+    cy.userPanningEnabled(false)
+    cy.boxSelectionEnabled(false)
+    cy.on('mousemove', move)
+    document.addEventListener('keydown', commentDelete)
+  })
+  obj.on('pressup', function (evt) {
+    cy.userPanningEnabled(true)
+    cy.boxSelectionEnabled(true)
+    cy.off('mousemove', move)
+    document.removeEventListener('keydown', commentDelete)
+  })
+}
 
+var serialize = function (comObj) {
+  console.log(comObj.constructor.name)
+  if (comObj.constructor.name === "Text") {
+    return {
+      type: "Text",
+      text: comObj.text,
+      x: comObj.x,
+      y: comObj.y
+    }
+  } else {
+    return {
+      type: "Line",
+      points: comObj.graphics._instructions.slice(1, -1)
+      // (slice cuts off the 'beginpath' and format instructions,
+      // redundant atm)
+    }
+  }
 }
 
 module.exports = {CommentsCanvas}
