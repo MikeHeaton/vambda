@@ -1,36 +1,183 @@
-import BiwaScheme from 'BiwaScheme'
+import BiwaScheme from 'biwascheme'
 
-function compileCanvas (graph) {
-  var compiledLisp = evaluateContext(graph, [])
-  displayResult(compiledLisp)
+/*
+ * This file controls how a vambda program is compiled into Lisp and executed.
+ * The entry point is the compileCanvas function. It accepts the entry
+ * nodes to the program, compiles the program, and executes the compiled program.
+ *
+ * In overview: this is done recursively. The function evaluateNode compiles
+ * a node with its parents. When the node is not a singleton (ie is a define
+ * or a lambda), evaluateContext compiles the content of the node recursively.
+ */
+
+class Node {
+  /*
+   * A node is either a basic node, a lambda bubble or a define bubble.
+   * This class contains some basic utility functions.
+   */
+  constructor (cytoscapeObj) {
+    this._cytoscapeObj = cytoscapeObj
+  }
+
+  static type (ele) {
+    return ele.data('type')
+  }
+
+  get name () {
+    // Gets name of the element if there is one,
+    // else refer to the node by its id.
+    if (this._cytoscapeObj.data('name') !== '') {
+      return this._cytoscapeObj.data('name')
+    } else {
+      return this._cytoscapeObj.id()
+    }
+  }
 }
 
-function displayResult (compiledLisp) {
-/*var compiledLisp = `
-(
-  ((lambda ()
-    (define x ((lambda () + )))
-    x
-)) 1 2)
-
-
-  `
-/*
-So we add...
-x -> (force (delay x)) for any evaluation
-define y foo -> define y (delay foo) for any define*/
-
-function writeToDisplay (lispOutput) {
-    var newHtml = '>> ' + lispOutput + '<br />' + compiledLisp
-    document.getElementById('lispOutput').innerHTML = newHtml
+class DefineNode extends Node {
+  evaluate (boundVariables = new Set()) {
+    var contents = this._cytoscapeObj.children()
+    var context = new Context(contents, this.boundVariables)
+    return context.evaluate()
   }
-  var biwa = new BiwaScheme.Interpreter(writeToDisplay)
-  biwa.evaluate(compiledLisp, writeToDisplay)
-  //biwa.evaluate(compiledLisp, writeToDisplay)
+
+  nestedNodeNames () {
+    /*
+     * Returns the names of every node inside this context;
+     * used to determine order of definitions.
+     */
+    return new Set(this._cytoscapeObj.children().map(
+        function (ele, i, eles) {
+          return [...createNodeObject(ele).nestedNodeNames()]
+        }.flatten()
+      )
+    )
+  }
+}
+
+class LambdaNode extends Node {
+  nestedNodeNames () {
+    /*
+     * Returns the names of every node inside this context;
+     * used to determine order of definitions.
+     */
+    return new Set(this._cytoscapeObj.children().map(
+        function (ele, i, eles) {
+          return [...createNodeObject(ele).nestedNodeNames()]
+        }.flatten()
+      )
+    )
+  }
+}
+
+class BasicNode extends Node {
+  nestedNodeNames () {
+    /*
+     * Returns the name of this node in a set;
+     * used to determine order of definitions.
+     */
+    return new Set(this.name)
+  }
+}
+
+function createNodeObject (ele) {
+  if (Node.type(ele) === 'Define') {
+    return new DefineNode(ele)
+  } else if (Node.type(ele) === 'Lambda') {
+    return new LambdaNode(ele)
+  } else {
+    return new BasicNode(ele)
+  }
+}
+
+class Execution {
+  /*
+   * An execution object is a part of a context. It is a tree of one or more nodes,
+   * which can be basic nodes or lambda bubbles (but not define bubbles).
+   *
+   * This class handles turning the execution into lisp code.
+   */
+
+
+}
+
+class Context {
+  /*
+   * A context consists of a collection of nodes to be evaluated in some order.
+   * A well-defined context has exactly one execution tree and any number of
+   * definitions.
+   *
+   * Currently, we assume the context is well-defined. TODO: add better
+   * handling for when this is not the case.
+   * (An error monad would be great here. But... JavaScript...)
+   */
+  constructor (cytoscapeNodes) {
+    this._cytoscapeNodes = cytoscapeNodes
+    this.definitionNodes = this.getDefinitions()
+    this.executionNodes = this.getExecutions()
+
+    if (this.executionNodes.length !== 1) {
+      // Throw a shit-fit
+      alert(`Error, context with ${this.executionNodes.length} execution nodes found.` +
+      '\nContexts must have exactly one execution node.')
+    }
+  }
+
+  getDefinitions () {
+    return this._cytoscapeNodes.filter(
+      n => (typ(n) === 'Define')
+    )
+    .map(function (ele, i, eles) {
+      return new DefineNode(ele)
+    })
+  }
+
+  getExecutions () {
+    return this._cytoscapeNodes.filter(
+      n => (typ(n) !== 'Define' &&
+      this._cytoscapeNodes.leaves().contains(n)))
+  }
+
+  evaluate (boundVariables = new Set()) {
+    if (this.definitionNodes.length > 0) {
+      // Use 'let' to compile the bound variable statements.
+      // Append each one onto the bound variables of the context.
+      this.boundVariables.add()
+    }
+      // WIP WIP WIP
+
+    var compiledExecutions = this.executionNodes.map(function (ele, i, eles) {
+      return evaluateNode(ele, this.boundVariables)
+    })
+
+  }
+
+
+
+
+}
+
+function compileCanvas (graph) {
+  /* Accepts a cytoscape collection which is the entry nodes to the program.
+   * That is, the first executed node and the top level 'define' nodes around it.
+   * Compiles the program and executes it, returning both the result and
+   * the compiled lisp code.
+   */
+
+  // We begin with a call to evaluate the global context.
+  var compiledLisp = evaluateContext(graph, new Set())
+  var result = execute(compiledLisp)
+  return [result, compiledLisp]
+}
+
+function execute (compiledLisp) {
+  var biwa = new BiwaScheme.Interpreter()
+  return biwa.evaluate(compiledLisp)
 }
 
 function getRef (ele) {
-  // Gets name if there is one, else refer to the node by its id.
+  // Gets name of the element if there is one,
+  // else refer to the node by its id.
   if (ele.data('name') !== '') {
     return ele.data('name')
   } else if (ele.isEdge()) {
@@ -40,7 +187,52 @@ function getRef (ele) {
   }
 }
 
-function nodeEval (node) {
+function evaluateContext (context, boundVariables = []) {
+  /*
+   * A context consists of a collection of nodes to be evaluated in some order.
+   * A well-defined context has exactly one execution node and any number of
+   * definition nodes.
+   *
+   * Currently, we assume the context is well-defined. TODO: add better
+   * handling for when this is not the case!
+   * (An error monad would be great here. But... JavaScript...)
+   */
+
+  var definitionNodes = context.filter(
+    n => (typ(n) === 'Define'))
+  var executionNodes = context.filter(
+    n => (typ(n) !== 'Define' &&
+    context.leaves().contains(n)))
+
+  if (executionNodes.length !== 1) {
+    // Throw a shit-fit
+    alert(`Error, context with ${executionNodes.length} execution nodes found.` +
+    '\nContexts must have exactly one execution node.')
+  }
+
+  // Evaluate definitions first, then the execution.
+  var definitions = definitionNodes.map(function (ele, i, eles) {
+    return evaluateNode(ele, boundVariables)
+  })
+  var executions = executionNodes.map(function (ele, i, eles) {
+    return evaluateNode(ele, boundVariables)
+  })
+
+  var allPhrases = definitions.concat(executions)
+  console.log(allPhrases)
+  if (allPhrases.length > 1) {
+    return allPhrases.join('\n')
+  } else {
+    return allPhrases.join('\n')
+  }
+}
+
+function nodeEval (node, boundVariables) {
+  /*
+   * Takes in a single node. Recursively compiles the node and its children
+   * to a lisp statement.
+   */
+
   var selfType = typ(node)
   var subNodes = node.children()
 
@@ -68,18 +260,8 @@ function nodeEval (node) {
 
     return '(lambda' + stringedBoundVariables + ' ' + evaluateContext(subNodes, boundVariables) + ')'
   } else if (selfType === 'Define') {
-    //return '(define ' + getRef(node) + ' (delay ((lambda ()' + evaluateContext(subNodes, boundVariables) + '))))'
     return '(define ' + getRef(node) + ' ((lambda () ' + evaluateContext(subNodes, boundVariables) + ' )))'
   } else {
-    // Else we have a variable to evaluate, with force-delay to make the evaluation lazy.
-    // 'if' can't be force-delayed, so we need a special rule for this evaluation.
-    // (TODO: this is an ugly fix!)
-    /*var nodeName = getRef(node)
-    if (nodeName === 'if') {
-      return nodeName
-    } else {
-      return '(force (delay ' + getRef(node) + '))'
-    }*/
     return getRef(node)
   }
 }
@@ -100,34 +282,6 @@ function evaluateNode (node, contextualBoundVariables = []) {
   } else {
     return compiledNode
   }
-}
-
-function evaluateContext (context, boundVariables = []) {
-  // A context is a list of nodes to be evaluated in an order.
-  var definitionNodes = context.filter(
-    n => (typ(n) === 'Define'))
-  // Hopefully there's exactly one execution node (?)
-  var executionNodes = context.filter(
-    n => (typ(n) !== 'Define' &&
-    context.leaves().contains(n)))
-
-  // Evaluate definitions first, then the execution.
-  var definitions = definitionNodes.map(function (ele, i, eles) {
-    return evaluateNode(ele, boundVariables)
-  })
-  var executions = executionNodes.map(function (ele, i, eles) {
-    return evaluateNode(ele, boundVariables)
-  })
-
-  var allPhrases = definitions.concat(executions)
-  console.log(allPhrases)
-  if (allPhrases.length > 1) {
-    return allPhrases.join('\n')
-  }
-  else {
-    return allPhrases.join('\n')
-  }
-
 }
 
 function typ (node) {
