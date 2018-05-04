@@ -41,11 +41,14 @@ class DefineNode extends Node {
     return context.evaluate()
   }
 
-  nestedNodeNames () {
+  get nestedNodeNames () {
     /*
      * Returns the names of every node inside this context;
      * used to determine order of definitions.
      */
+
+    // TODO NOTE I think this won't work, because sort assumes a total order
+    // whereas we only have a preorder >.<
     return new Set(this._cytoscapeObj.children().map(
         function (ele, i, eles) {
           return [...createNodeObject(ele).nestedNodeNames()]
@@ -53,17 +56,32 @@ class DefineNode extends Node {
       )
     )
   }
+
+  compare (other) {
+    /*
+     * Compare the contents of this define to the content of another define.
+     * If one defines a bound variable which is contained in the other,
+     * they should be ordered so that the defining one comes first.
+     */
+    if (this.nestedNodeNames.contains(other.name)) {
+      return -1
+    } else if (other.nestedNodeNames.contains(this.name)) {
+      return 1
+    } else {
+      return 0
+    }
+  }
 }
 
 class LambdaNode extends Node {
-  nestedNodeNames () {
+  get nestedNodeNames () {
     /*
      * Returns the names of every node inside this context;
      * used to determine order of definitions.
      */
     return new Set(this._cytoscapeObj.children().map(
         function (ele, i, eles) {
-          return [...createNodeObject(ele).nestedNodeNames()]
+          return [...createNodeObject(ele).nestedNodeNames]
         }.flatten()
       )
     )
@@ -71,7 +89,7 @@ class LambdaNode extends Node {
 }
 
 class BasicNode extends Node {
-  nestedNodeNames () {
+  get nestedNodeNames () {
     /*
      * Returns the name of this node in a set;
      * used to determine order of definitions.
@@ -124,12 +142,14 @@ class Context {
   }
 
   getDefinitions () {
+    // Get all of the definition nodes, ordered by definition order.
     return this._cytoscapeNodes.filter(
       n => (typ(n) === 'Define')
     )
     .map(function (ele, i, eles) {
       return new DefineNode(ele)
     })
+    .sort(function (a, b) { return a.compare(b) })
   }
 
   getExecutions () {
@@ -138,13 +158,18 @@ class Context {
       this._cytoscapeNodes.leaves().contains(n)))
   }
 
-  evaluate (boundVariables = new Set()) {
-    if (this.definitionNodes.length > 0) {
-      // Use 'let' to compile the bound variable statements.
-      // Append each one onto the bound variables of the context.
-      this.boundVariables.add()
+  evaluate (baseBoundVariables = new Set()) {
+    var boundVariables = new Set(baseBoundVariables) // Shallow copy to avoid side effects.
+
+    var defnItems = ''
+    for (defn in this.definitionNodes) {
+      defnItems.append(defn.evaluate(boundVariables) + '\n')
+      boundVariables.add(defn.name)
     }
-      // WIP WIP WIP
+    var executionItems = this.executionNodes.map(
+      function (n) { return n.evaluate() }.join('\n')
+    )
+
 
     var compiledExecutions = this.executionNodes.map(function (ele, i, eles) {
       return evaluateNode(ele, this.boundVariables)

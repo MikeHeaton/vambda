@@ -79120,12 +79120,30 @@ function (_Node) {
       return context.evaluate();
     }
   }, {
+    key: "compare",
+    value: function compare(other) {
+      /*
+       * Compare the contents of this define to the content of another define.
+       * If one defines a bound variable which is contained in the other,
+       * they should be ordered so that the defining one comes first.
+       */
+      if (this.nestedNodeNames.contains(other.name)) {
+        return -1;
+      } else if (other.nestedNodeNames.contains(this.name)) {
+        return 1;
+      } else {
+        return 0;
+      }
+    }
+  }, {
     key: "nestedNodeNames",
-    value: function nestedNodeNames() {
+    get: function get() {
       /*
        * Returns the names of every node inside this context;
        * used to determine order of definitions.
        */
+      // TODO NOTE I think this won't work, because sort assumes a total order
+      // whereas we only have a preorder >.<
       return new Set(this._cytoscapeObj.children().map(function (ele, i, eles) {
         return _toConsumableArray(createNodeObject(ele).nestedNodeNames());
       }.flatten()));
@@ -79148,13 +79166,13 @@ function (_Node2) {
 
   _createClass(LambdaNode, [{
     key: "nestedNodeNames",
-    value: function nestedNodeNames() {
+    get: function get() {
       /*
        * Returns the names of every node inside this context;
        * used to determine order of definitions.
        */
       return new Set(this._cytoscapeObj.children().map(function (ele, i, eles) {
-        return _toConsumableArray(createNodeObject(ele).nestedNodeNames());
+        return _toConsumableArray(createNodeObject(ele).nestedNodeNames);
       }.flatten()));
     }
   }]);
@@ -79175,7 +79193,7 @@ function (_Node3) {
 
   _createClass(BasicNode, [{
     key: "nestedNodeNames",
-    value: function nestedNodeNames() {
+    get: function get() {
       /*
        * Returns the name of this node in a set;
        * used to determine order of definitions.
@@ -79229,10 +79247,13 @@ function () {
   _createClass(Context, [{
     key: "getDefinitions",
     value: function getDefinitions() {
+      // Get all of the definition nodes, ordered by definition order.
       return this._cytoscapeNodes.filter(function (n) {
         return typ(n) === 'Define';
       }).map(function (ele, i, eles) {
         return new DefineNode(ele);
+      }).sort(function (a, b) {
+        return a.compare(b);
       });
     }
   }, {
@@ -79247,15 +79268,19 @@ function () {
   }, {
     key: "evaluate",
     value: function evaluate() {
-      var boundVariables = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : new Set();
+      var baseBoundVariables = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : new Set();
+      var boundVariables = new Set(baseBoundVariables); // Shallow copy to avoid side effects.
 
-      if (this.definitionNodes.length > 0) {
-        // Use 'let' to compile the bound variable statements.
-        // Append each one onto the bound variables of the context.
-        this.boundVariables.add();
-      } // WIP WIP WIP
+      var defnItems = '';
 
+      for (defn in this.definitionNodes) {
+        defnItems.append(defn.evaluate(boundVariables) + '\n');
+        boundVariables.add(defn.name);
+      }
 
+      var executionItems = this.executionNodes.map(function (n) {
+        return n.evaluate();
+      }.join('\n'));
       var compiledExecutions = this.executionNodes.map(function (ele, i, eles) {
         return evaluateNode(ele, this.boundVariables);
       });
