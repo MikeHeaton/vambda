@@ -79,9 +79,9 @@ function buildEditor () {
     if (name !== '') {
       var sameNamedEles
       if (node === null) {
-        sameNamedEles = cy.$([name = ' + name + '])
+        sameNamedEles = cy.$("[name = '" + name + "']")
       } else {
-        sameNamedEles = cy.$([name = ' + name + ']).difference(node)
+        sameNamedEles = cy.$("[name = '" + name + "']").difference(node)
       }
 
       // Look for something named the same, and make this node the same color.
@@ -369,6 +369,7 @@ function buildEditor () {
         var nodeParent = jsn.data.parent
         cy.$id(nodeId).setParent(cy.$id(nodeParent))
       })
+      commentPoints.reset()
       commentPoints.load(JSON.parse(graphString).comments)
     }
     reader.readAsText(x, 'UTF-8')

@@ -44,6 +44,8 @@ function CommentsCanvas (cyObj) {
   }
 
   this.reset = function () {
+    stage.removeAllChildren();
+    stage.update();
   }
 
   this.enableDrawingMode = function () {
@@ -81,17 +83,19 @@ function CommentsCanvas (cyObj) {
   }
 
   this.load = function (json) {
-    var pos = function (ele) { return {position: {x: ele.x / 2, y: ele.y / 2}} }
-    json.forEach(function(element) {
-      if (element.type === "Text") {
-        addText(pos(element), element.text)
-      } else {
-        thisThing.startDrawing()
-        element.points.forEach(function (ele) {
-          addPoint(pos(ele))})
-        thisThing.stopDrawing()
-      }
-    })
+    if (json) {
+      var pos = function (ele) { return {position: {x: ele.x / 2, y: ele.y / 2}} }
+      json.forEach(function(element) {
+        if (element.type === "Text") {
+          addText(pos(element), element.text)
+        } else {
+          thisThing.startDrawing()
+          element.points.forEach(function (ele) {
+            addPoint(pos(ele))})
+          thisThing.stopDrawing()
+        }
+      })
+    }
   }
 }
 

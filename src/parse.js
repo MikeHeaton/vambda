@@ -6,27 +6,13 @@ function compileCanvas (graph) {
 }
 
 function displayResult (compiledLisp) {
-/*var compiledLisp = `
-(
-  ((lambda ()
-    (define x ((lambda () + )))
-    x
-)) 1 2)
-
-
-  `
-/*
-So we add...
-x -> (force (delay x)) for any evaluation
-define y foo -> define y (delay foo) for any define*/
-
-function writeToDisplay (lispOutput) {
+  function writeToDisplay (lispOutput) {
     var newHtml = '>> ' + lispOutput + '<br />' + compiledLisp
     document.getElementById('lispOutput').innerHTML = newHtml
   }
+
   var biwa = new BiwaScheme.Interpreter(writeToDisplay)
   biwa.evaluate(compiledLisp, writeToDisplay)
-  //biwa.evaluate(compiledLisp, writeToDisplay)
 }
 
 function getRef (ele) {
@@ -104,8 +90,11 @@ function evaluateNode (node, contextualBoundVariables = []) {
 
 function evaluateContext (context, boundVariables = []) {
   // A context is a list of nodes to be evaluated in an order.
-  var definitionNodes = context.filter(
-    n => (typ(n) === 'Define'))
+  var unsorted_defs = context.filter(n => (typ(n) === 'Define')).toArray()
+  console.log("UNSORTED:", unsorted_defs.map(function(f) {return f.data('name')}))
+  var definitionNodes = sort_porder(unsorted_defs, definition_order)
+
+  console.log("SORTED:", definitionNodes.map(function(f) {return f.data('name')}))
   // Hopefully there's exactly one execution node (?)
   var executionNodes = context.filter(
     n => (typ(n) !== 'Define' &&
@@ -120,7 +109,7 @@ function evaluateContext (context, boundVariables = []) {
   })
 
   var allPhrases = definitions.concat(executions)
-  console.log(allPhrases)
+
   if (allPhrases.length > 1) {
     return allPhrases.join('\n')
   }
@@ -132,6 +121,41 @@ function evaluateContext (context, boundVariables = []) {
 
 function typ (node) {
   return node.data('type')
+}
+
+function definition_order (nodeA, nodeB) {
+  /*
+   * If A and B are two definition nodes in a context
+   * and A is contained in B then B needs to precede A in execution.
+   */
+   //console.log((nodeA.descendants().union(nodeA)))
+   var nodeA_descendants = (nodeA.descendants().union(nodeA)).map(
+     function(x, i, eles) {return x.data('name')}
+   )
+   //console.log(nodeA, nodeA_descendants)
+   var nodeB_descendants = (nodeB.descendants().union(nodeB)).map(
+     function(x, i, eles) {return x.data('name')}
+   )
+
+   if (nodeB.data('name') in nodeA_descendants) {
+     return 1
+   } else {
+     return 0
+   }
+}
+
+function sort_porder(array, order_fn) {
+  //var array = raw_array.copy()
+  for (var i=0; i<array.length - 1; i++) {
+    for (var j=i+1; j<array.length; j++) {
+      if (order_fn(array[i], array[j]) > 0) {
+        var temp = array[i]
+        array[i] = array[j]
+        array[j] = temp
+      }
+    }
+  }
+  return array
 }
 
 module.exports = compileCanvas
