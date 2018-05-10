@@ -116,6 +116,19 @@ class Execution {
    * This class handles turning the execution into lisp code.
    */
 
+   NAW MOVE THIS INTO THE NODES CODE
+  constructor (cytoscapeObj) {
+    this._cytoscapeObj = cytoscapeObj
+    this.head = createNodeObject(cytoscapeObj.leaves())
+    this.tail = this._cytoscapeObj.difference(this._cytoscapeObj.leaves())
+  }
+
+  evaluate () {
+    if ((this.head instanceof BasicNode) && (this.tail.length > 0)) {
+      // We have an execution node.
+
+    }
+  }
 
 }
 
@@ -156,6 +169,9 @@ class Context {
     return this._cytoscapeNodes.filter(
       n => (typ(n) !== 'Define' &&
       this._cytoscapeNodes.leaves().contains(n)))
+      .map(function (ele, i, eles) {
+        return createNodeObject(ele)
+      })
   }
 
   evaluate (baseBoundVariables = new Set()) {
