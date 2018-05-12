@@ -27,44 +27,37 @@ class Node {
     // Gets name of the element if there is one,
     // else refer to the node by its id.
     if (this._cytoscapeObj.data('name') !== '') {
-      return this._cytoscapeObj.data('name')
+      var id = this._cytoscapeObj.data('name')
     } else {
-      return this._cytoscapeObj.id()
+      var id = this._cytoscapeObj.id()
     }
+    return id
+  }
+
+  evaluate (boundVariables = new Set()) {
+    console.log("NOT IMPLEMENTED")
+  }
+
+  nodeNames () {
+    console.log("NOT DEFINED")
   }
 }
 
-<<<<<<< HEAD
-function displayResult (compiledLisp) {
-  function writeToDisplay (lispOutput) {
-    var newHtml = '>> ' + lispOutput + '<br />' + compiledLisp
-    document.getElementById('lispOutput').innerHTML = newHtml
-  }
-
-  var biwa = new BiwaScheme.Interpreter(writeToDisplay)
-  biwa.evaluate(compiledLisp, writeToDisplay)
-=======
 class DefineNode extends Node {
-  evaluate (boundVariables = new Set()) {
+  constructor(cytoscapeObj) {
+    super(cytoscapeObj)
     var contents = this._cytoscapeObj.children()
-    var context = new Context(contents, this.boundVariables)
-    return context.evaluate()
+    this.innerContext = new Context(contents)
   }
 
-  get nestedNodeNames () {
-    /*
-     * Returns the names of every node inside this context;
-     * used to determine order of definitions.
-     */
+  evaluate (boundVariables = new Set()) {
+    // Evaluates the context contained inside the define, to determine
+    // what the name gets set to inside a Context.
+    return this.innerContext.evaluate(boundVariables)
+  }
 
-    // TODO NOTE I think this won't work, because sort assumes a total order
-    // whereas we only have a preorder >.<
-    return new Set(this._cytoscapeObj.children().map(
-        function (ele, i, eles) {
-          return [...createNodeObject(ele).nestedNodeNames()]
-        }.flatten()
-      )
-    )
+  nodeNames () {
+    return this.innerContext.nodeNames()
   }
 
   compare (other) {
@@ -73,38 +66,224 @@ class DefineNode extends Node {
      * If one defines a bound variable which is contained in the other,
      * they should be ordered so that the defining one comes first.
      */
-    if (this.nestedNodeNames.contains(other.name)) {
-      return -1
-    } else if (other.nestedNodeNames.contains(this.name)) {
+     console.log("this", this.nodeNames(), this.name)
+     console.log("other", other.nodeNames(), other.name)
+    if (this.nodeNames().has(other.name)) {
+      console.log("this has other")
       return 1
+    } else if (other.nodeNames().has(this.name)) {
+      console.log("other has this")
+      return -1
     } else {
+      console.log("neither have each other")
       return 0
     }
   }
 }
 
-class LambdaNode extends Node {
-  get nestedNodeNames () {
+class ExecutionNode extends Node {
+  constructor (cytoscapeObj) {
+    super(cytoscapeObj)
+    this.incomingEdges = this._cytoscapeObj.incomers('edge')
+      .sort(function (a, b) {
+        return getRef(a).localeCompare(getRef(b))
+      })
+
+    this.parents = this.incomingEdges
+      .map(edge => createNodeObject(edge.source()))
+  }
+
+  evaluate (contextualBoundVariables = new Set()) {
+    if (this.parents.length > 0) {
+      // It's some kind of execution.
+      // Evaluate the incomers recursively.
+      var stringedEdges = this.incomingEdges.map( edge => edge.name).join(' ')
+
+      return '(' + this.evaluateContent(contextualBoundVariables) + ' ' + this.parents.map(node =>
+          node.evaluate()
+        )
+        .join(' ') + ')'
+    } else {
+      return this.evaluateContent(contextualBoundVariables)
+    }
+  }
+
+  evaluateContent (contextualBoundVariables = new Set()) {
+    console.log("evaluateContent TO BE DEFINED")
+  }
+
+  nodeNames () {
+    var linkedNames = flatten(
+      this.parents.map(n => Array.from(n.nodeNames()))
+      )
+    var nestedNames = Array.from(this.nestedNodeNames())
+    var names = new Set(linkedNames.concat(nestedNames))
+    //console.log("nodenames:", linkedNames, nestedNames, names)
+    return names
+  }
+
+  nestedNodeNames () {
+    console.log("NESTEDNODENAMES NOT DEFINED")
+  }
+}
+
+class LambdaNode extends ExecutionNode {
+  constructor(cytoscapeObj) {
+    super(cytoscapeObj)
+
+    var contents = this._cytoscapeObj.children()
+    this.innerContext = new Context(contents)
+  }
+
+  evaluateContent (contextualBoundVariables = new Set()) {
+    var boundVariables =
+      this.nearBoundVariables
+      .concat(this.extraBoundVariables)
+      .sort()
+    var stringedBoundVariables = '(' +
+      boundVariables
+      .filter(
+        function (el, i, arr) {
+          return arr.indexOf(el) === i
+        })
+      .join(' ')
+      + ')'
+
+    var innerResult = this.innerContext.evaluate(new Set([...contextualBoundVariables, ...stringedBoundVariables]))
+
+    return '(lambda ' + stringedBoundVariables + ' ' + innerResult + ')'
+  }
+
+  get nearBoundVariables () {
+    // TODO: this should be done using the object structure and searching
+    // recursively.
+    var boundVars = this._cytoscapeObj.children()
+      .filter("node[type = 'NearBoundVariable']")
+      .map(n => getRef(n))
+    return boundVars
+  }
+
+  get extraBoundVariables () {
+    return this._cytoscapeObj.data('name').split(' ')
+  }
+
+  nestedNodeNames () {
     /*
      * Returns the names of every node inside this context;
      * used to determine order of definitions.
      */
-    return new Set(this._cytoscapeObj.children().map(
-        function (ele, i, eles) {
-          return [...createNodeObject(ele).nestedNodeNames]
-        }.flatten()
-      )
-    )
+    return this.innerContext.nodeNames()
   }
 }
 
-class BasicNode extends Node {
-  get nestedNodeNames () {
+class BasicNode extends ExecutionNode {
+  constructor (cytoscapeObj) {
+    super(cytoscapeObj)
+    this.incomingEdges = this._cytoscapeObj.incomers('edge')
+      .sort(function (a, b) {
+        return getRef(a).localeCompare(getRef(b))
+      })
+    this.parents = this.incomingEdges
+      .map(edge => createNodeObject(edge.source()))
+  }
+
+  evaluateContent (contextualBoundVariables = new Set()) {
+    return this.name
+  }
+
+  nestedNodeNames () {
     /*
      * Returns the name of this node in a set;
      * used to determine order of definitions.
      */
-    return new Set(this.name)
+    return new Set([this.name])
+  }
+}
+
+class Context {
+  /*
+   * A context consists of a collection of nodes to be evaluated in some order.
+   * A well-defined context has exactly one execution tree and any number of
+   * definitions.
+   *
+   * Currently, we assume the context is well-defined. TODO: add better
+   * handling for when this is not the case.
+   * (An error monad would be great here. But... JavaScript...)
+   */
+   // TODO: the methods here should rely more on the constructed objects.
+  constructor (cytoscapeNodes) {
+    this._cytoscapeNodes = cytoscapeNodes
+    this.definitionNodes = this.makeDefinitionNodes()
+    this.executionNodes = this.makeExecutionNodes()
+
+    if (this.executionNodes.length !== 1) {
+      // Throw a shit-fit
+      console.log(`Error, context with ${this.executionNodes.length} execution nodes found.` +
+      '\nContexts must have exactly one execution node.')
+    }
+
+    //console.log("Context: defns, executions", this.definitionNodes, this.executionNodes)
+  }
+
+  static typ (node) {
+    return node.data('type')
+  }
+
+  makeDefinitionNodes () {
+    // Get all of the definition nodes, ordered by definition order.
+    var unsortedNodes = this._cytoscapeNodes.filter(
+      n => (Context.typ(n) === 'Define')
+    )
+    .map(function (ele, i, eles) {
+      return new DefineNode(ele)
+    })
+
+    var sortedNodes = sort_porder(unsortedNodes)
+    return sortedNodes
+  }
+
+  makeExecutionNodes () {
+    return this._cytoscapeNodes.filter(
+      n => (Context.typ(n) !== 'Define' &&
+      this._cytoscapeNodes.leaves().contains(n)))
+      .map(function (ele, i, eles) {
+        return createNodeObject(ele)
+      })
+  }
+
+  evaluate (baseBoundVariables = new Set()) {
+    var boundVariables = new Set(baseBoundVariables) // Shallow copy to avoid side effects.
+
+    var defnItems = ''
+    for (var i=0; i < this.definitionNodes.length; i++) {
+      var defn = this.definitionNodes[i]
+      var itemString = "(" + defn.name + " " + defn.evaluate(boundVariables) + ")\n"
+      defnItems = defnItems.concat(itemString)
+      boundVariables.add(defn.name)
+    }
+
+    var executionItems = this.executionNodes.map(
+      function (n) {
+        return n.evaluate() }
+    ).join('\n')
+
+    var compiledExecution = this.executionNodes.map(function (node) {
+      return node.evaluate(boundVariables)
+    }).toString()
+
+    if (defnItems.length > 0) {
+      return "(letrec (\n" + defnItems + "\n)\n" + compiledExecution + "\n)"
+    } else {
+      return compiledExecution
+    }
+  }
+
+  nodeNames () {
+    // TODO: This is clearly ridiculous. A proper language would just union sets ffs.
+    var allNodes = this.definitionNodes
+      .concat(this.executionNodes)
+    var allNames = allNodes.map(node => Array.from(node.nodeNames()))
+    return new Set(flatten(allNames))
   }
 }
 
@@ -118,94 +297,17 @@ function createNodeObject (ele) {
   }
 }
 
-class Execution {
-  /*
-   * An execution object is a part of a context. It is a tree of one or more nodes,
-   * which can be basic nodes or lambda bubbles (but not define bubbles).
-   *
-   * This class handles turning the execution into lisp code.
-   */
-
-   NAW MOVE THIS INTO THE NODES CODE
-  constructor (cytoscapeObj) {
-    this._cytoscapeObj = cytoscapeObj
-    this.head = createNodeObject(cytoscapeObj.leaves())
-    this.tail = this._cytoscapeObj.difference(this._cytoscapeObj.leaves())
+function getRef (ele) {
+  // Gets name of the element if there is one,
+  // else refer to the edge by its source, or node by its id.
+  // TODO: eliminate this. May require instantiating edges as classes, or not.
+  if (ele.data('name') !== '') {
+    return ele.data('name')
+  } else if (ele.isEdge())  {
+    return getRef(ele.source())
+  } else {
+    return ele.id()
   }
-
-  evaluate () {
-    if ((this.head instanceof BasicNode) && (this.tail.length > 0)) {
-      // We have an execution node.
-
-    }
-  }
-
-}
-
-class Context {
-  /*
-   * A context consists of a collection of nodes to be evaluated in some order.
-   * A well-defined context has exactly one execution tree and any number of
-   * definitions.
-   *
-   * Currently, we assume the context is well-defined. TODO: add better
-   * handling for when this is not the case.
-   * (An error monad would be great here. But... JavaScript...)
-   */
-  constructor (cytoscapeNodes) {
-    this._cytoscapeNodes = cytoscapeNodes
-    this.definitionNodes = this.getDefinitions()
-    this.executionNodes = this.getExecutions()
-
-    if (this.executionNodes.length !== 1) {
-      // Throw a shit-fit
-      alert(`Error, context with ${this.executionNodes.length} execution nodes found.` +
-      '\nContexts must have exactly one execution node.')
-    }
-  }
-
-  getDefinitions () {
-    // Get all of the definition nodes, ordered by definition order.
-    return this._cytoscapeNodes.filter(
-      n => (typ(n) === 'Define')
-    )
-    .map(function (ele, i, eles) {
-      return new DefineNode(ele)
-    })
-    .sort(function (a, b) { return a.compare(b) })
-  }
-
-  getExecutions () {
-    return this._cytoscapeNodes.filter(
-      n => (typ(n) !== 'Define' &&
-      this._cytoscapeNodes.leaves().contains(n)))
-      .map(function (ele, i, eles) {
-        return createNodeObject(ele)
-      })
-  }
-
-  evaluate (baseBoundVariables = new Set()) {
-    var boundVariables = new Set(baseBoundVariables) // Shallow copy to avoid side effects.
-
-    var defnItems = ''
-    for (defn in this.definitionNodes) {
-      defnItems.append(defn.evaluate(boundVariables) + '\n')
-      boundVariables.add(defn.name)
-    }
-    var executionItems = this.executionNodes.map(
-      function (n) { return n.evaluate() }.join('\n')
-    )
-
-
-    var compiledExecutions = this.executionNodes.map(function (ele, i, eles) {
-      return evaluateNode(ele, this.boundVariables)
-    })
-
-  }
-
-
-
-
 }
 
 function compileCanvas (graph) {
@@ -216,7 +318,9 @@ function compileCanvas (graph) {
    */
 
   // We begin with a call to evaluate the global context.
-  var compiledLisp = evaluateContext(graph, new Set())
+  var compiledLisp = new Context(graph).evaluate()
+  //var compiledLisp = "(let* ( (SQRT (lambda (x) (let* ( (square (lambda ( a1a68690-6b60-42ac-aec7-9227e83f54b8) (* a1a68690-6b60-42ac-aec7-9227e83f54b8 a1a68690-6b60-42ac-aec7-9227e83f54b8))) (MIN 1) (good-enough? (lambda ( guess) (< (abs (- (square guess) x)) MIN))) (average (lambda ( 35b68c47-24de-4ed5-ab77-36efcf85e582 985c01aa-9a75-4e18-a885-5379fb7128e3) (/ (+ 35b68c47-24de-4ed5-ab77-36efcf85e582 985c01aa-9a75-4e18-a885-5379fb7128e3) 2.0))) (improve-guess (lambda ( guess) (average (/ x guess) guess))) (sqrt-iter (lambda ( guess) (if (good-enough? guess) guess (sqrt-iter (improve-guess guess))))) ) (sqrt-iter 8) ))) ) (SQRT 95) )"
+  console.log(compiledLisp)
   var result = execute(compiledLisp)
   return [result, compiledLisp]
 }
@@ -224,182 +328,13 @@ function compileCanvas (graph) {
 function execute (compiledLisp) {
   var biwa = new BiwaScheme.Interpreter()
   return biwa.evaluate(compiledLisp)
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 }
 
-function getRef (ele) {
-  // Gets name of the element if there is one,
-  // else refer to the node by its id.
-  if (ele.data('name') !== '') {
-    return ele.data('name')
-  } else if (ele.isEdge()) {
-    return getRef(ele.source())
-  } else {
-    return ele.id()
-  }
-}
-
-function evaluateContext (context, boundVariables = []) {
-  /*
-   * A context consists of a collection of nodes to be evaluated in some order.
-   * A well-defined context has exactly one execution node and any number of
-   * definition nodes.
-   *
-   * Currently, we assume the context is well-defined. TODO: add better
-   * handling for when this is not the case!
-   * (An error monad would be great here. But... JavaScript...)
-   */
-
-  var definitionNodes = context.filter(
-    n => (typ(n) === 'Define'))
-  var executionNodes = context.filter(
-    n => (typ(n) !== 'Define' &&
-    context.leaves().contains(n)))
-
-  if (executionNodes.length !== 1) {
-    // Throw a shit-fit
-    alert(`Error, context with ${executionNodes.length} execution nodes found.` +
-    '\nContexts must have exactly one execution node.')
-  }
-
-  // Evaluate definitions first, then the execution.
-  var definitions = definitionNodes.map(function (ele, i, eles) {
-    return evaluateNode(ele, boundVariables)
-  })
-  var executions = executionNodes.map(function (ele, i, eles) {
-    return evaluateNode(ele, boundVariables)
-  })
-
-  var allPhrases = definitions.concat(executions)
-  console.log(allPhrases)
-  if (allPhrases.length > 1) {
-    return allPhrases.join('\n')
-  } else {
-    return allPhrases.join('\n')
-  }
-}
-
-function nodeEval (node, boundVariables) {
-  /*
-   * Takes in a single node. Recursively compiles the node and its children
-   * to a lisp statement.
-   */
-
-  var selfType = typ(node)
-  var subNodes = node.children()
-
-  if (selfType === 'Parens') {
-    return '((lambda ()' + evaluateContext(subNodes, boundVariables) + '))'
-  }
-  if (selfType === 'Lambda') {
-    // Find variables of the lambda function.
-    var nearBoundVariables = subNodes
-      .filter("node[type = 'NearBoundVariable']")
-      .map(n => getRef(n))
-    var extraBoundVariables = node.data('name').split(' ')
-    var boundVariables =
-      nearBoundVariables
-      .concat(extraBoundVariables)
-      .sort()
-    var stringedBoundVariables = '(' +
-      boundVariables
-      .filter(
-        function (el, i, arr) {
-          return arr.indexOf(el) === i
-        })
-      .join(' ')
-      + ')'
-
-    return '(lambda' + stringedBoundVariables + ' ' + evaluateContext(subNodes, boundVariables) + ')'
-  } else if (selfType === 'Define') {
-    return '(define ' + getRef(node) + ' ((lambda () ' + evaluateContext(subNodes, boundVariables) + ' )))'
-  } else {
-    return getRef(node)
-  }
-}
-
-function evaluateNode (node, contextualBoundVariables = []) {
-  var compiledNode = nodeEval(node)
-
-  if (node.incomers('edge').length > 0) {
-    // It's some kind of execution.
-    // Evaluate the incomers recursively.
-    var edgeRefs = node.incomers('edge').sort(function (a, b) {
-      return getRef(a).localeCompare(getRef(b))
-    })
-    .map(edge => evaluateNode(edge.source()))
-    var stringedEdges = edgeRefs.join(' ')
-
-    return '(' + compiledNode + ' ' + stringedEdges + ')'
-  } else {
-    return compiledNode
-  }
-}
-
-<<<<<<< HEAD
-function evaluateContext (context, boundVariables = []) {
-  // A context is a list of nodes to be evaluated in an order.
-  var unsorted_defs = context.filter(n => (typ(n) === 'Define')).toArray()
-  console.log("UNSORTED:", unsorted_defs.map(function(f) {return f.data('name')}))
-  var definitionNodes = sort_porder(unsorted_defs, definition_order)
-
-  console.log("SORTED:", definitionNodes.map(function(f) {return f.data('name')}))
-  // Hopefully there's exactly one execution node (?)
-  var executionNodes = context.filter(
-    n => (typ(n) !== 'Define' &&
-    context.leaves().contains(n)))
-
-  // Evaluate definitions first, then the execution.
-  var definitions = definitionNodes.map(function (ele, i, eles) {
-    return evaluateNode(ele, boundVariables)
-  })
-  var executions = executionNodes.map(function (ele, i, eles) {
-    return evaluateNode(ele, boundVariables)
-  })
-
-  var allPhrases = definitions.concat(executions)
-
-  if (allPhrases.length > 1) {
-    return allPhrases.join('\n')
-  }
-  else {
-    return allPhrases.join('\n')
-  }
-
-}
-
-=======
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
-function typ (node) {
-  return node.data('type')
-}
-
-function definition_order (nodeA, nodeB) {
-  /*
-   * If A and B are two definition nodes in a context
-   * and A is contained in B then B needs to precede A in execution.
-   */
-   //console.log((nodeA.descendants().union(nodeA)))
-   var nodeA_descendants = (nodeA.descendants().union(nodeA)).map(
-     function(x, i, eles) {return x.data('name')}
-   )
-   //console.log(nodeA, nodeA_descendants)
-   var nodeB_descendants = (nodeB.descendants().union(nodeB)).map(
-     function(x, i, eles) {return x.data('name')}
-   )
-
-   if (nodeB.data('name') in nodeA_descendants) {
-     return 1
-   } else {
-     return 0
-   }
-}
-
-function sort_porder(array, order_fn) {
+function sort_porder(array) {
   //var array = raw_array.copy()
   for (var i=0; i<array.length - 1; i++) {
     for (var j=i+1; j<array.length; j++) {
-      if (order_fn(array[i], array[j]) > 0) {
+      if (array[i].compare(array[j]) > 0) {
         var temp = array[i]
         array[i] = array[j]
         array[j] = temp
@@ -407,6 +342,10 @@ function sort_porder(array, order_fn) {
     }
   }
   return array
+}
+
+function flatten (arrayOfArrays) {
+  return [].concat.apply([], arrayOfArrays)
 }
 
 module.exports = compileCanvas

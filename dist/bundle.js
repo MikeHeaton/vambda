@@ -60,7 +60,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 7);
+/******/ 	return __webpack_require__(__webpack_require__.s = 6);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -92,33 +92,6 @@ module.exports = g;
 
 /***/ }),
 /* 1 */
-/***/ (function(module, exports) {
-
-var g;
-
-// This works in non-strict mode
-g = (function() {
-	return this;
-})();
-
-try {
-	// This works if eval is allowed (see CSP)
-	g = g || Function("return this")() || (1,eval)("this");
-} catch(e) {
-	// This works if the window reference is available
-	if(typeof window === "object")
-		g = window;
-}
-
-// g can still be undefined, but nothing to do about it...
-// We return undefined, instead of nothing here, so it's
-// easier to handle this case. if(!global) { ...}
-
-module.exports = g;
-
-
-/***/ }),
-/* 2 */
 /***/ (function(module, exports) {
 
 // shim for using process in browser
@@ -308,21 +281,18 @@ process.umask = function() { return 0; };
 
 
 /***/ }),
-<<<<<<< HEAD
-=======
 /* 2 */
 /***/ (function(module, exports) {
 
 
 
 /***/ }),
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 /* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(setImmediate, clearImmediate) {(function webpackUniversalModuleDefinition(root, factory) {
 	if(true)
-		module.exports = factory(__webpack_require__(11), __webpack_require__(13));
+		module.exports = factory(__webpack_require__(10), __webpack_require__(12));
 	else if(typeof define === 'function' && define.amd)
 		define(["heap", "lodash.debounce"], factory);
 	else if(typeof exports === 'object')
@@ -29907,13 +29877,1658 @@ exports._unrefActive = exports.active = function(item) {
 };
 
 // setimmediate attaches itself to the global object
-__webpack_require__(10);
+__webpack_require__(9);
 exports.setImmediate = setImmediate;
 exports.clearImmediate = clearImmediate;
 
 
 /***/ }),
 /* 5 */
+/***/ (function(module, exports) {
+
+function getText() {
+  var newName = window.prompt('name:', '');
+  keysPressed = new Set();
+  return newName;
+}
+
+module.exports = {
+  getText: getText
+};
+
+/***/ }),
+/* 6 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _editor = _interopRequireDefault(__webpack_require__(7));
+
+var _parse = _interopRequireDefault(__webpack_require__(42));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function displayResult(result, compiledLisp) {
+  var newHtml = '>> ' + result + '<br />' + compiledLisp;
+  document.getElementById('lispOutput').innerHTML = newHtml;
+}
+
+var c = (0, _editor.default)();
+window.loadState = c['loadState'];
+window.saveState = c['saveState'];
+window.resetGraph = c['resetGraph'];
+
+window.parseButton = function () {
+  var cy = c['cy'];
+  var results = (0, _parse.default)(cy.$('node:orphan'));
+  displayResult.apply(this, results);
+};
+
+/***/ }),
+/* 7 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _cytoscape_init = _interopRequireDefault(__webpack_require__(8));
+
+var _newRemove = _interopRequireDefault(__webpack_require__(27));
+
+var _cytoscapeUndoRedo = _interopRequireDefault(__webpack_require__(28));
+
+var _cytoscape = _interopRequireDefault(__webpack_require__(3));
+
+var _mousetrap = _interopRequireDefault(__webpack_require__(29));
+
+var _colormap = _interopRequireDefault(__webpack_require__(30));
+
+var _cytoscapeCanvas = _interopRequireDefault(__webpack_require__(33));
+
+var comments = _interopRequireWildcard(__webpack_require__(34));
+
+var utils = _interopRequireWildcard(__webpack_require__(5));
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = Object.defineProperty && Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : {}; if (desc.get || desc.set) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } } newObj.default = obj; return newObj; } }
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function buildEditor() {
+  var cy = (0, _cytoscape_init.default)();
+  (0, _cytoscapeUndoRedo.default)(_cytoscape.default);
+  (0, _cytoscapeCanvas.default)(_cytoscape.default); // Register undo/redo, and other imported functions
+
+  var ur = cy.undoRedo();
+  (0, _cytoscape.default)('collection', 'delete', _newRemove.default);
+  ur.action('deleteEles', function (eles) {
+    eles.delete();
+    return eles;
+  }, function (eles) {
+    eles.restore();
+  });
+  var commentPoints = new comments.CommentsCanvas(cy);
+  var commentMode = false; // =====================
+  // || GRAPH FUNCTIONS ||
+  // =====================
+
+  function setType(ele, newtype) {
+    ele.data('type', newtype);
+  }
+
+  (0, _cytoscape.default)('collection', 'setType', function (newType) {
+    setType(this, newType);
+  });
+
+  function newNode(pos) {
+    var color = getColor();
+    var createdNode = cy.add({
+      group: 'nodes',
+      position: pos,
+      data: {
+        'variable': false,
+        'name': '',
+        'type': 'Free',
+        'defaultColor': color
+      }
+    });
+    return createdNode;
+  }
+
+  function newEdge(origins, dest) {
+    var newEdges = origins.map(function (source) {
+      cy.add({
+        group: 'edges',
+        style: {
+          'target-arrow-shape': 'triangle'
+        },
+        data: {
+          source: source.id(),
+          target: dest.id(),
+          name: ''
+        },
+        selectable: true
+      });
+    });
+    return newEdges;
+  }
+
+  function getColor() {
+    var name = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
+    var node = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+
+    // Method to generate a color for the node that the method is called on.
+    function isString(name) {
+      function matchBrackets(bra, n) {
+        return n[0] === bra && n[n.length - 1] === bra;
+      }
+
+      return matchBrackets('\'', name) || matchBrackets('"', name) || matchBrackets('`', name);
+    }
+
+    if (name !== '') {
+      var sameNamedEles;
+
+      if (node === null) {
+        sameNamedEles = cy.$("[name = '" + name + "']");
+      } else {
+        sameNamedEles = cy.$("[name = '" + name + "']").difference(node);
+      } // Look for something named the same, and make this node the same color.
+
+
+      if (sameNamedEles.length > 0 && name !== '') {
+        return sameNamedEles.data('defaultColor');
+      } else if (isString(name)) {
+        // If the name represents a string, make the node green.
+        return 'lime';
+      } else if (!isNaN(name)) {
+        // We want numbers (including floats, ints, etc) to be one color.
+        return 'blue';
+      }
+    } // Else generate a random color from a colormap (and convert it to hash).
+
+
+    var ncolors = 72;
+    var index = Math.floor(Math.random() * ncolors);
+    var col = (0, _colormap.default)('nature', ncolors, 'hex')[index];
+    return col;
+  }
+
+  (0, _cytoscape.default)('collection', 'getColor', function () {
+    return getColor(this.data('name'), this);
+  });
+
+  function setColor() {
+    var color = this.getColor();
+    this.data('defaultColor', color);
+  }
+
+  (0, _cytoscape.default)('collection', 'setColor', setColor);
+
+  function rename(ele) {
+    var newName = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+
+    if (newName === null) {
+      newName = utils.getText();
+    }
+
+    if (!(newName === null)) {
+      ele.data('name', newName);
+      ele.setColor();
+    }
+  }
+
+  (0, _cytoscape.default)('collection', 'rename', function () {
+    var name = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
+    rename(this, name);
+  });
+
+  function setParent(newParent) {
+    // Set self's parent to newParent.
+    if (newParent != null && newParent.id()) {
+      ur.do('changeParent', {
+        'parentData': newParent.id(),
+        'nodes': this,
+        'posDiffX': 0,
+        'posDiffY': 0
+      });
+    } else {
+      // If newParent is null, remove the parent from the node.
+      var oldParent = this.parent();
+      ur.do('changeParent', {
+        'parentData': null,
+        'nodes': this,
+        'posDiffX': 0,
+        'posDiffY': 0
+      }); // Remove childless parents
+
+      if (oldParent.length > 0 && oldParent.children().length === 0) {
+        oldParent.remove();
+      }
+    }
+
+    return cy.$id(this.id());
+  }
+
+  (0, _cytoscape.default)('collection', 'setParent', setParent);
+
+  function toggleVariable() {
+    switch (this.data('type')) {
+      case 'Free':
+        this.setType('NearBoundVariable');
+        break;
+
+      case 'NearBoundVariable':
+        this.setType('FarBoundVariable');
+        break;
+
+      case 'FarBoundVariable':
+        this.setType('Free');
+        break;
+    }
+  }
+
+  (0, _cytoscape.default)('collection', 'toggleVariable', toggleVariable); // =========================
+  // || USER INPUT HANDLERS ||
+  // =========================
+
+  var dclickPrevTap;
+  var dclickTappedTimeout;
+  var eSelected; // __Handlers for clicking on the background__
+  // Double-tap or single-tap with 'e'/'w' to add a new node.
+
+  cy.on('tap', function (event) {
+    var tapTarget = event.target;
+
+    if (tapTarget === cy) {
+      if (keysPressed.has('e')) {
+        // Click on the background with 'e'
+        var n = newNode(event.position);
+        dclickTappedTimeout = false;
+
+        if (eSelected.length > 0 && eSelected.parent().length <= 1) {
+          newEdge(eSelected, n);
+          n = n.setParent(eSelected.parent());
+        }
+
+        selectOnly(n);
+      } else if (tapTarget === cy && keysPressed.has('w')) {
+        // Click on the background with 'e'
+        n = newNode(event.position);
+        dclickTappedTimeout = false;
+
+        if (eSelected.length === 1) {
+          newEdge(n, eSelected);
+          n = n.setParent(eSelected.parent());
+        }
+
+        selectOnly(eSelected);
+      } else if (dclickTappedTimeout && dclickPrevTap) {
+        clearTimeout(dclickTappedTimeout);
+      } // If double clicked:
+
+
+      if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
+        n = newNode(event.position);
+        selectOnly(n);
+        dclickPrevTap = null;
+      }
+    } else {
+      if (tapTarget.isNode() && dclickTappedTimeout && dclickPrevTap) {
+        clearTimeout(dclickTappedTimeout);
+      } // If double clicked:
+
+
+      if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
+        rename(tapTarget);
+      }
+    } // Update doubleclick handlers
+
+
+    dclickTappedTimeout = setTimeout(function () {
+      dclickPrevTap = null;
+    }, 300);
+    dclickPrevTap = tapTarget;
+  }); // Hold 'e/w' and tap a node to make a new edge
+
+  cy.on('tap', 'node', function (event) {
+    var target = event.target;
+    var sources = cy.$('node:selected').difference(event.target);
+
+    if (sources.length > 0) {
+      if (keysPressed.has('e')) {
+        newEdge(sources, target);
+        selectOnly(target);
+        sources.connectedClosure().setParent(target.parent());
+      } else if (keysPressed.has('w')) {
+        sources.map(function (source) {
+          return newEdge(target, source);
+        });
+        sources = sources.connectedClosure().setParent(target.parent());
+        selectOnly(sources);
+      }
+    }
+  }); // Hold 'r' and tap a node to rename it.
+
+  cy.on('tap', 'node, edge', function (event) {
+    if (keysPressed.has('r')) {
+      event.target.rename();
+    }
+  }); // l to 'lambda': wrap selection in a hypernode, containing the selection
+  // and its closed neighbourhood, corresponding to a lambda function.
+
+  _mousetrap.default.bind('l', function () {
+    // If all of them belong to the same parent, take them out of the parent.
+    var selected = cy.$('node:selected');
+
+    if (selected.parents().length === 1) {
+      selected.setParent(null);
+    } else {
+      var parent = newNode();
+      parent.setType('Lambda');
+      var closure = selected.connectedClosure();
+      closure.setParent(parent);
+      selectOnly(parent);
+    }
+  }, 'keypress'); // p to 'parens': wrap selection in a hypernode representing 'evaluate all this together',
+  // corresponding to wrapping () around a group.
+
+
+  _mousetrap.default.bind('p', function () {
+    // If all of them belong to the same parent, take them out of the parent.
+    var selected = cy.$('node:selected');
+
+    if (selected.parents().length === 1) {
+      selected.setParent(null);
+    } else {
+      var parent = newNode();
+      parent.setType('Parens');
+      var closure = selected.connectedClosure();
+      closure.setParent(parent);
+      selectOnly(parent);
+    }
+  }, 'keypress'); // d to 'define': wrap selection in a hypernode, containing the selection
+  // and its closed neighbourhood, corresponding to a define statement.
+
+
+  _mousetrap.default.bind('d', function () {
+    // If all of them belong to the same parent, take them out of the parent.
+    var selected = cy.$('node:selected');
+
+    if (selected.parents().length === 1) {
+      selected.setParent(null);
+    } else {
+      var parent = newNode();
+      parent.setType('Define');
+      var closure = selected.connectedClosure();
+      parent.rename();
+      closure.setParent(parent);
+      selectOnly(parent);
+    }
+  }, 'keypress'); // Backspace to delete selection
+
+
+  _mousetrap.default.bind('backspace', function () {
+    ur.do('deleteEles', cy.$(':selected'));
+  });
+
+  _mousetrap.default.bind('V', function () {
+    cy.$(':selected').toggleVariable();
+  });
+
+  _mousetrap.default.bind('P', function () {
+    toLisp(cy.$(':selected'));
+  });
+
+  _mousetrap.default.bind('Z', function () {
+    ur.undo();
+  }); // Recognise keys pressed down
+
+
+  var keysPressed = new Set();
+
+  _mousetrap.default.bind('e', function () {
+    keysPressed.add('e');
+    eSelected = cy.$('node:selected');
+  }, 'keypress');
+
+  _mousetrap.default.bind('e', function () {
+    keysPressed.delete('e');
+  }, 'keyup');
+
+  _mousetrap.default.bind('w', function () {
+    keysPressed.add('w');
+    eSelected = cy.$('node:selected');
+  }, 'keypress');
+
+  _mousetrap.default.bind('w', function () {
+    keysPressed.delete('w');
+  }, 'keyup');
+
+  _mousetrap.default.bind('c', function () {
+    if (!keysPressed.has('c')) {
+      keysPressed.add('c');
+      commentPoints.enableDrawingMode();
+    }
+  }, 'keydown');
+
+  _mousetrap.default.bind('c', function () {
+    keysPressed.delete('c');
+    commentPoints.disableDrawingMode();
+  }, 'keyup');
+
+  _mousetrap.default.bind('r', function () {
+    keysPressed.add('r');
+    var selected = cy.$(':selected');
+
+    if (selected.length === 1) {
+      selected.rename();
+      keysPressed.delete('r');
+    }
+  }, 'keypress');
+
+  _mousetrap.default.bind('r', function () {
+    keysPressed.delete('r');
+  }, 'keyup');
+
+  function loadState(objectId) {
+    var x = document.getElementById(objectId).files[0];
+    var reader = new FileReader();
+
+    reader.onload = function (e) {
+      var graphString = e.target.result; // We HAVE to double-load elements here: once to get them into the
+      // graph, and once to set their parents correctly. If we don't, when
+      // elements are loaded and don't have a parent in place already,
+      // not only do they set the parent to 'undefined', they also
+      // _edit the fucking json_ so that the parent is thereafter undefined.
+      //
+      // That means that if you try to use the same JSON object twice for the
+      // two loads, it WON'T WORK because it's been modified by the first.
+      // WHAT THE HELL, CYTOSCAPE??? (Yes I lost several hours to this bug.)
+
+      cy.json();
+      cy.json(JSON.parse(graphString));
+      JSON.parse(graphString).elements.nodes.map(function (jsn) {
+        var nodeId = jsn.data.id;
+        var nodeParent = jsn.data.parent;
+        cy.$id(nodeId).setParent(cy.$id(nodeParent));
+      });
+      commentPoints.reset();
+      commentPoints.load(JSON.parse(graphString).comments);
+    };
+
+    reader.readAsText(x, 'UTF-8');
+  }
+
+  function saveState() {
+    var fileName = window.prompt('File name:', '');
+    var comments = commentPoints.serialize();
+
+    if (!(fileName === null)) {
+      var jsonData = JSON.stringify({
+        'elements': cy.json()['elements'],
+        'comments': comments
+      });
+      var a = document.createElement('a');
+      var file = new Blob([jsonData], {
+        type: 'text/plain'
+      });
+      a.href = URL.createObjectURL(file);
+      a.download = fileName + '.txt';
+      a.click();
+    }
+  }
+
+  function resetGraph() {
+    if (confirm('REALLY CLEAR ALL? (There\'s no autosave and no undo!)')) {
+      console.log('RESET');
+      cy.remove(cy.$(''));
+      commentPoints.reset();
+      cy.forceRender();
+    }
+  }
+
+  function selectOnly(ele) {
+    cy.$().deselect();
+    ele.select();
+  }
+
+  function connectedClosure() {
+    // Returns the closure (union with all-depth family) of the eles.
+    var nextLevel = this.closedNeighborhood('node');
+
+    if (nextLevel.length === this.length) {
+      return this;
+    } else {
+      return nextLevel.connectedClosure();
+    }
+  }
+
+  (0, _cytoscape.default)('collection', 'connectedClosure', connectedClosure);
+  return {
+    'cy': cy,
+    'loadState': loadState,
+    'saveState': saveState,
+    'resetGraph': resetGraph
+  };
+}
+
+module.exports = buildEditor;
+
+/***/ }),
+/* 8 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _cytoscape = _interopRequireDefault(__webpack_require__(3));
+
+__webpack_require__(13);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function createCanvas() {
+  // cytoscape.use( require('undo-redo') );
+  return (0, _cytoscape.default)({
+    container: document.getElementById('cy'),
+    boxSelectionEnabled: true,
+    style: [{
+      selector: 'node',
+      style: {
+        'background-color': 'data(defaultColor)',
+        'border-width': 0,
+        'content': 'UNKNOWN TYPE',
+        // text
+        'text-outline-width': 2,
+        'text-outline-color': 'black',
+        'color': 'white',
+        // font color
+        'text-valign': 'center'
+      }
+    }, {
+      selector: 'node[type = "NearBoundVariable"]',
+      style: {
+        'shape': 'diamond',
+        'border-width': 1,
+        'border-color': 'black',
+        'background-color': 'cyan',
+        'content': 'data(name)' // text
+
+      }
+    }, {
+      selector: 'node[type = "FarBoundVariable"]',
+      style: {
+        'shape': 'square',
+        'border-width': 1,
+        'border-color': 'black',
+        'background-color': 'cyan',
+        'content': 'data(name)' // text
+
+      }
+    }, {
+      selector: 'node[type = "Free"], node[type = "If"]',
+      style: {
+        'content': 'data(name)' // text
+
+      }
+    }, {
+      selector: 'node[type = "Lambda"]',
+      style: {
+        // Compound node, by definition.
+        'background-color': 'white',
+        'text-valign': 'bottom',
+        'text-halign': 'center',
+        'border-width': 5,
+        'shape': 'roundrectangle',
+        'border-color': 'gray',
+        'padding': '10px',
+        'font-size': '15px',
+        'text-margin-y': '-10px',
+        'text-background-color': 'gray',
+        'text-background-opacity': 1,
+        'text-background-shape': 'roundrectangle',
+        'text-background-padding': '3px',
+        'content': 'data(name)'
+      }
+    }, {
+      selector: 'node[type = "Define"]',
+      style: {
+        // Compound node, by definition.
+        'background-color': 'white',
+        'text-valign': 'top',
+        'text-halign': 'center',
+        'border-width': 5,
+        'border-style': 'double',
+        'shape': 'roundrectangle',
+        'border-color': 'data(defaultColor)',
+        'padding': '3px',
+        'text-margin-y': '3px',
+        'font-size': '20px',
+        'text-background-color': 'data(defaultColor)',
+        'text-background-opacity': 1,
+        'text-background-shape': 'roundrectangle',
+        'text-background-padding': '1px',
+        'content': 'data(name)'
+      }
+    }, {
+      selector: 'node[type = "Parens"]',
+      style: {
+        // Compound node, by definition.
+        'background-color': 'white',
+        'border-width': 5,
+        'border-style': 'dotted',
+        'shape': 'roundrectangle',
+        'border-color': '#DEDDC5',
+        'padding': '10px',
+        'text-margin-y': '3px',
+        'font-size': '20px',
+        'content': ''
+      }
+    }, {
+      selector: 'edge',
+      style: {
+        'curve-style': 'bezier',
+        'width': 4,
+        'target-arrow-shape': 'triangle',
+        'line-color': 'black',
+        'target-arrow-color': 'black',
+        'target-label': 'data(name)',
+        'target-text-offset': 20,
+        'color': 'white',
+        'text-outline-width': 2,
+        'text-outline-color': 'black'
+      }
+    }, {
+      selector: 'edge:selected',
+      style: {
+        'line-color': 'red',
+        'target-arrow-color': 'red',
+        'text-outline-color': 'red'
+      }
+    }, {
+      selector: 'node:selected',
+      style: {
+        'border-color': 'red',
+        'border-width': 5,
+        'text-background-color': 'red'
+      }
+    }]
+  });
+}
+
+module.exports = createCanvas;
+
+/***/ }),
+/* 9 */
+/***/ (function(module, exports, __webpack_require__) {
+
+/* WEBPACK VAR INJECTION */(function(global, process) {(function (global, undefined) {
+    "use strict";
+
+    if (global.setImmediate) {
+        return;
+    }
+
+    var nextHandle = 1; // Spec says greater than zero
+    var tasksByHandle = {};
+    var currentlyRunningATask = false;
+    var doc = global.document;
+    var registerImmediate;
+
+    function setImmediate(callback) {
+      // Callback can either be a function or a string
+      if (typeof callback !== "function") {
+        callback = new Function("" + callback);
+      }
+      // Copy function arguments
+      var args = new Array(arguments.length - 1);
+      for (var i = 0; i < args.length; i++) {
+          args[i] = arguments[i + 1];
+      }
+      // Store and register the task
+      var task = { callback: callback, args: args };
+      tasksByHandle[nextHandle] = task;
+      registerImmediate(nextHandle);
+      return nextHandle++;
+    }
+
+    function clearImmediate(handle) {
+        delete tasksByHandle[handle];
+    }
+
+    function run(task) {
+        var callback = task.callback;
+        var args = task.args;
+        switch (args.length) {
+        case 0:
+            callback();
+            break;
+        case 1:
+            callback(args[0]);
+            break;
+        case 2:
+            callback(args[0], args[1]);
+            break;
+        case 3:
+            callback(args[0], args[1], args[2]);
+            break;
+        default:
+            callback.apply(undefined, args);
+            break;
+        }
+    }
+
+    function runIfPresent(handle) {
+        // From the spec: "Wait until any invocations of this algorithm started before this one have completed."
+        // So if we're currently running a task, we'll need to delay this invocation.
+        if (currentlyRunningATask) {
+            // Delay by doing a setTimeout. setImmediate was tried instead, but in Firefox 7 it generated a
+            // "too much recursion" error.
+            setTimeout(runIfPresent, 0, handle);
+        } else {
+            var task = tasksByHandle[handle];
+            if (task) {
+                currentlyRunningATask = true;
+                try {
+                    run(task);
+                } finally {
+                    clearImmediate(handle);
+                    currentlyRunningATask = false;
+                }
+            }
+        }
+    }
+
+    function installNextTickImplementation() {
+        registerImmediate = function(handle) {
+            process.nextTick(function () { runIfPresent(handle); });
+        };
+    }
+
+    function canUsePostMessage() {
+        // The test against `importScripts` prevents this implementation from being installed inside a web worker,
+        // where `global.postMessage` means something completely different and can't be used for this purpose.
+        if (global.postMessage && !global.importScripts) {
+            var postMessageIsAsynchronous = true;
+            var oldOnMessage = global.onmessage;
+            global.onmessage = function() {
+                postMessageIsAsynchronous = false;
+            };
+            global.postMessage("", "*");
+            global.onmessage = oldOnMessage;
+            return postMessageIsAsynchronous;
+        }
+    }
+
+    function installPostMessageImplementation() {
+        // Installs an event handler on `global` for the `message` event: see
+        // * https://developer.mozilla.org/en/DOM/window.postMessage
+        // * http://www.whatwg.org/specs/web-apps/current-work/multipage/comms.html#crossDocumentMessages
+
+        var messagePrefix = "setImmediate$" + Math.random() + "$";
+        var onGlobalMessage = function(event) {
+            if (event.source === global &&
+                typeof event.data === "string" &&
+                event.data.indexOf(messagePrefix) === 0) {
+                runIfPresent(+event.data.slice(messagePrefix.length));
+            }
+        };
+
+        if (global.addEventListener) {
+            global.addEventListener("message", onGlobalMessage, false);
+        } else {
+            global.attachEvent("onmessage", onGlobalMessage);
+        }
+
+        registerImmediate = function(handle) {
+            global.postMessage(messagePrefix + handle, "*");
+        };
+    }
+
+    function installMessageChannelImplementation() {
+        var channel = new MessageChannel();
+        channel.port1.onmessage = function(event) {
+            var handle = event.data;
+            runIfPresent(handle);
+        };
+
+        registerImmediate = function(handle) {
+            channel.port2.postMessage(handle);
+        };
+    }
+
+    function installReadyStateChangeImplementation() {
+        var html = doc.documentElement;
+        registerImmediate = function(handle) {
+            // Create a <script> element; its readystatechange event will be fired asynchronously once it is inserted
+            // into the document. Do so, thus queuing up the task. Remember to clean up once it's been called.
+            var script = doc.createElement("script");
+            script.onreadystatechange = function () {
+                runIfPresent(handle);
+                script.onreadystatechange = null;
+                html.removeChild(script);
+                script = null;
+            };
+            html.appendChild(script);
+        };
+    }
+
+    function installSetTimeoutImplementation() {
+        registerImmediate = function(handle) {
+            setTimeout(runIfPresent, 0, handle);
+        };
+    }
+
+    // If supported, we should attach to the prototype of global, since that is where setTimeout et al. live.
+    var attachTo = Object.getPrototypeOf && Object.getPrototypeOf(global);
+    attachTo = attachTo && attachTo.setTimeout ? attachTo : global;
+
+    // Don't get fooled by e.g. browserify environments.
+    if ({}.toString.call(global.process) === "[object process]") {
+        // For Node.js before 0.9
+        installNextTickImplementation();
+
+    } else if (canUsePostMessage()) {
+        // For non-IE10 modern browsers
+        installPostMessageImplementation();
+
+    } else if (global.MessageChannel) {
+        // For web workers, where supported
+        installMessageChannelImplementation();
+
+    } else if (doc && "onreadystatechange" in doc.createElement("script")) {
+        // For IE 6–8
+        installReadyStateChangeImplementation();
+
+    } else {
+        // For older browsers
+        installSetTimeoutImplementation();
+    }
+
+    attachTo.setImmediate = setImmediate;
+    attachTo.clearImmediate = clearImmediate;
+}(typeof self === "undefined" ? typeof global === "undefined" ? this : global : self));
+
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0), __webpack_require__(1)))
+
+/***/ }),
+/* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__(11);
+
+
+/***/ }),
+/* 11 */
+/***/ (function(module, exports, __webpack_require__) {
+
+var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// Generated by CoffeeScript 1.8.0
+(function() {
+  var Heap, defaultCmp, floor, heapify, heappop, heappush, heappushpop, heapreplace, insort, min, nlargest, nsmallest, updateItem, _siftdown, _siftup;
+
+  floor = Math.floor, min = Math.min;
+
+
+  /*
+  Default comparison function to be used
+   */
+
+  defaultCmp = function(x, y) {
+    if (x < y) {
+      return -1;
+    }
+    if (x > y) {
+      return 1;
+    }
+    return 0;
+  };
+
+
+  /*
+  Insert item x in list a, and keep it sorted assuming a is sorted.
+  
+  If x is already in a, insert it to the right of the rightmost x.
+  
+  Optional args lo (default 0) and hi (default a.length) bound the slice
+  of a to be searched.
+   */
+
+  insort = function(a, x, lo, hi, cmp) {
+    var mid;
+    if (lo == null) {
+      lo = 0;
+    }
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    if (lo < 0) {
+      throw new Error('lo must be non-negative');
+    }
+    if (hi == null) {
+      hi = a.length;
+    }
+    while (lo < hi) {
+      mid = floor((lo + hi) / 2);
+      if (cmp(x, a[mid]) < 0) {
+        hi = mid;
+      } else {
+        lo = mid + 1;
+      }
+    }
+    return ([].splice.apply(a, [lo, lo - lo].concat(x)), x);
+  };
+
+
+  /*
+  Push item onto heap, maintaining the heap invariant.
+   */
+
+  heappush = function(array, item, cmp) {
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    array.push(item);
+    return _siftdown(array, 0, array.length - 1, cmp);
+  };
+
+
+  /*
+  Pop the smallest item off the heap, maintaining the heap invariant.
+   */
+
+  heappop = function(array, cmp) {
+    var lastelt, returnitem;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    lastelt = array.pop();
+    if (array.length) {
+      returnitem = array[0];
+      array[0] = lastelt;
+      _siftup(array, 0, cmp);
+    } else {
+      returnitem = lastelt;
+    }
+    return returnitem;
+  };
+
+
+  /*
+  Pop and return the current smallest value, and add the new item.
+  
+  This is more efficient than heappop() followed by heappush(), and can be
+  more appropriate when using a fixed size heap. Note that the value
+  returned may be larger than item! That constrains reasonable use of
+  this routine unless written as part of a conditional replacement:
+      if item > array[0]
+        item = heapreplace(array, item)
+   */
+
+  heapreplace = function(array, item, cmp) {
+    var returnitem;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    returnitem = array[0];
+    array[0] = item;
+    _siftup(array, 0, cmp);
+    return returnitem;
+  };
+
+
+  /*
+  Fast version of a heappush followed by a heappop.
+   */
+
+  heappushpop = function(array, item, cmp) {
+    var _ref;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    if (array.length && cmp(array[0], item) < 0) {
+      _ref = [array[0], item], item = _ref[0], array[0] = _ref[1];
+      _siftup(array, 0, cmp);
+    }
+    return item;
+  };
+
+
+  /*
+  Transform list into a heap, in-place, in O(array.length) time.
+   */
+
+  heapify = function(array, cmp) {
+    var i, _i, _j, _len, _ref, _ref1, _results, _results1;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    _ref1 = (function() {
+      _results1 = [];
+      for (var _j = 0, _ref = floor(array.length / 2); 0 <= _ref ? _j < _ref : _j > _ref; 0 <= _ref ? _j++ : _j--){ _results1.push(_j); }
+      return _results1;
+    }).apply(this).reverse();
+    _results = [];
+    for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+      i = _ref1[_i];
+      _results.push(_siftup(array, i, cmp));
+    }
+    return _results;
+  };
+
+
+  /*
+  Update the position of the given item in the heap.
+  This function should be called every time the item is being modified.
+   */
+
+  updateItem = function(array, item, cmp) {
+    var pos;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    pos = array.indexOf(item);
+    if (pos === -1) {
+      return;
+    }
+    _siftdown(array, 0, pos, cmp);
+    return _siftup(array, pos, cmp);
+  };
+
+
+  /*
+  Find the n largest elements in a dataset.
+   */
+
+  nlargest = function(array, n, cmp) {
+    var elem, result, _i, _len, _ref;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    result = array.slice(0, n);
+    if (!result.length) {
+      return result;
+    }
+    heapify(result, cmp);
+    _ref = array.slice(n);
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      elem = _ref[_i];
+      heappushpop(result, elem, cmp);
+    }
+    return result.sort(cmp).reverse();
+  };
+
+
+  /*
+  Find the n smallest elements in a dataset.
+   */
+
+  nsmallest = function(array, n, cmp) {
+    var elem, i, los, result, _i, _j, _len, _ref, _ref1, _results;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    if (n * 10 <= array.length) {
+      result = array.slice(0, n).sort(cmp);
+      if (!result.length) {
+        return result;
+      }
+      los = result[result.length - 1];
+      _ref = array.slice(n);
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        elem = _ref[_i];
+        if (cmp(elem, los) < 0) {
+          insort(result, elem, 0, null, cmp);
+          result.pop();
+          los = result[result.length - 1];
+        }
+      }
+      return result;
+    }
+    heapify(array, cmp);
+    _results = [];
+    for (i = _j = 0, _ref1 = min(n, array.length); 0 <= _ref1 ? _j < _ref1 : _j > _ref1; i = 0 <= _ref1 ? ++_j : --_j) {
+      _results.push(heappop(array, cmp));
+    }
+    return _results;
+  };
+
+  _siftdown = function(array, startpos, pos, cmp) {
+    var newitem, parent, parentpos;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    newitem = array[pos];
+    while (pos > startpos) {
+      parentpos = (pos - 1) >> 1;
+      parent = array[parentpos];
+      if (cmp(newitem, parent) < 0) {
+        array[pos] = parent;
+        pos = parentpos;
+        continue;
+      }
+      break;
+    }
+    return array[pos] = newitem;
+  };
+
+  _siftup = function(array, pos, cmp) {
+    var childpos, endpos, newitem, rightpos, startpos;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    endpos = array.length;
+    startpos = pos;
+    newitem = array[pos];
+    childpos = 2 * pos + 1;
+    while (childpos < endpos) {
+      rightpos = childpos + 1;
+      if (rightpos < endpos && !(cmp(array[childpos], array[rightpos]) < 0)) {
+        childpos = rightpos;
+      }
+      array[pos] = array[childpos];
+      pos = childpos;
+      childpos = 2 * pos + 1;
+    }
+    array[pos] = newitem;
+    return _siftdown(array, startpos, pos, cmp);
+  };
+
+  Heap = (function() {
+    Heap.push = heappush;
+
+    Heap.pop = heappop;
+
+    Heap.replace = heapreplace;
+
+    Heap.pushpop = heappushpop;
+
+    Heap.heapify = heapify;
+
+    Heap.updateItem = updateItem;
+
+    Heap.nlargest = nlargest;
+
+    Heap.nsmallest = nsmallest;
+
+    function Heap(cmp) {
+      this.cmp = cmp != null ? cmp : defaultCmp;
+      this.nodes = [];
+    }
+
+    Heap.prototype.push = function(x) {
+      return heappush(this.nodes, x, this.cmp);
+    };
+
+    Heap.prototype.pop = function() {
+      return heappop(this.nodes, this.cmp);
+    };
+
+    Heap.prototype.peek = function() {
+      return this.nodes[0];
+    };
+
+    Heap.prototype.contains = function(x) {
+      return this.nodes.indexOf(x) !== -1;
+    };
+
+    Heap.prototype.replace = function(x) {
+      return heapreplace(this.nodes, x, this.cmp);
+    };
+
+    Heap.prototype.pushpop = function(x) {
+      return heappushpop(this.nodes, x, this.cmp);
+    };
+
+    Heap.prototype.heapify = function() {
+      return heapify(this.nodes, this.cmp);
+    };
+
+    Heap.prototype.updateItem = function(x) {
+      return updateItem(this.nodes, x, this.cmp);
+    };
+
+    Heap.prototype.clear = function() {
+      return this.nodes = [];
+    };
+
+    Heap.prototype.empty = function() {
+      return this.nodes.length === 0;
+    };
+
+    Heap.prototype.size = function() {
+      return this.nodes.length;
+    };
+
+    Heap.prototype.clone = function() {
+      var heap;
+      heap = new Heap();
+      heap.nodes = this.nodes.slice(0);
+      return heap;
+    };
+
+    Heap.prototype.toArray = function() {
+      return this.nodes.slice(0);
+    };
+
+    Heap.prototype.insert = Heap.prototype.push;
+
+    Heap.prototype.top = Heap.prototype.peek;
+
+    Heap.prototype.front = Heap.prototype.peek;
+
+    Heap.prototype.has = Heap.prototype.contains;
+
+    Heap.prototype.copy = Heap.prototype.clone;
+
+    return Heap;
+
+  })();
+
+  (function(root, factory) {
+    if (true) {
+      return !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+				__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
+				(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
+				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+    } else if (typeof exports === 'object') {
+      return module.exports = factory();
+    } else {
+      return root.Heap = factory();
+    }
+  })(this, function() {
+    return Heap;
+  });
+
+}).call(this);
+
+
+/***/ }),
+/* 12 */
+/***/ (function(module, exports, __webpack_require__) {
+
+/* WEBPACK VAR INJECTION */(function(global) {/**
+ * lodash (Custom Build) <https://lodash.com/>
+ * Build: `lodash modularize exports="npm" -o ./`
+ * Copyright jQuery Foundation and other contributors <https://jquery.org/>
+ * Released under MIT license <https://lodash.com/license>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ */
+
+/** Used as the `TypeError` message for "Functions" methods. */
+var FUNC_ERROR_TEXT = 'Expected a function';
+
+/** Used as references for various `Number` constants. */
+var NAN = 0 / 0;
+
+/** `Object#toString` result references. */
+var symbolTag = '[object Symbol]';
+
+/** Used to match leading and trailing whitespace. */
+var reTrim = /^\s+|\s+$/g;
+
+/** Used to detect bad signed hexadecimal string values. */
+var reIsBadHex = /^[-+]0x[0-9a-f]+$/i;
+
+/** Used to detect binary string values. */
+var reIsBinary = /^0b[01]+$/i;
+
+/** Used to detect octal string values. */
+var reIsOctal = /^0o[0-7]+$/i;
+
+/** Built-in method references without a dependency on `root`. */
+var freeParseInt = parseInt;
+
+/** Detect free variable `global` from Node.js. */
+var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
+
+/** Detect free variable `self`. */
+var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
+
+/** Used as a reference to the global object. */
+var root = freeGlobal || freeSelf || Function('return this')();
+
+/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var objectToString = objectProto.toString;
+
+/* Built-in method references for those with the same name as other `lodash` methods. */
+var nativeMax = Math.max,
+    nativeMin = Math.min;
+
+/**
+ * Gets the timestamp of the number of milliseconds that have elapsed since
+ * the Unix epoch (1 January 1970 00:00:00 UTC).
+ *
+ * @static
+ * @memberOf _
+ * @since 2.4.0
+ * @category Date
+ * @returns {number} Returns the timestamp.
+ * @example
+ *
+ * _.defer(function(stamp) {
+ *   console.log(_.now() - stamp);
+ * }, _.now());
+ * // => Logs the number of milliseconds it took for the deferred invocation.
+ */
+var now = function() {
+  return root.Date.now();
+};
+
+/**
+ * Creates a debounced function that delays invoking `func` until after `wait`
+ * milliseconds have elapsed since the last time the debounced function was
+ * invoked. The debounced function comes with a `cancel` method to cancel
+ * delayed `func` invocations and a `flush` method to immediately invoke them.
+ * Provide `options` to indicate whether `func` should be invoked on the
+ * leading and/or trailing edge of the `wait` timeout. The `func` is invoked
+ * with the last arguments provided to the debounced function. Subsequent
+ * calls to the debounced function return the result of the last `func`
+ * invocation.
+ *
+ * **Note:** If `leading` and `trailing` options are `true`, `func` is
+ * invoked on the trailing edge of the timeout only if the debounced function
+ * is invoked more than once during the `wait` timeout.
+ *
+ * If `wait` is `0` and `leading` is `false`, `func` invocation is deferred
+ * until to the next tick, similar to `setTimeout` with a timeout of `0`.
+ *
+ * See [David Corbacho's article](https://css-tricks.com/debouncing-throttling-explained-examples/)
+ * for details over the differences between `_.debounce` and `_.throttle`.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Function
+ * @param {Function} func The function to debounce.
+ * @param {number} [wait=0] The number of milliseconds to delay.
+ * @param {Object} [options={}] The options object.
+ * @param {boolean} [options.leading=false]
+ *  Specify invoking on the leading edge of the timeout.
+ * @param {number} [options.maxWait]
+ *  The maximum time `func` is allowed to be delayed before it's invoked.
+ * @param {boolean} [options.trailing=true]
+ *  Specify invoking on the trailing edge of the timeout.
+ * @returns {Function} Returns the new debounced function.
+ * @example
+ *
+ * // Avoid costly calculations while the window size is in flux.
+ * jQuery(window).on('resize', _.debounce(calculateLayout, 150));
+ *
+ * // Invoke `sendMail` when clicked, debouncing subsequent calls.
+ * jQuery(element).on('click', _.debounce(sendMail, 300, {
+ *   'leading': true,
+ *   'trailing': false
+ * }));
+ *
+ * // Ensure `batchLog` is invoked once after 1 second of debounced calls.
+ * var debounced = _.debounce(batchLog, 250, { 'maxWait': 1000 });
+ * var source = new EventSource('/stream');
+ * jQuery(source).on('message', debounced);
+ *
+ * // Cancel the trailing debounced invocation.
+ * jQuery(window).on('popstate', debounced.cancel);
+ */
+function debounce(func, wait, options) {
+  var lastArgs,
+      lastThis,
+      maxWait,
+      result,
+      timerId,
+      lastCallTime,
+      lastInvokeTime = 0,
+      leading = false,
+      maxing = false,
+      trailing = true;
+
+  if (typeof func != 'function') {
+    throw new TypeError(FUNC_ERROR_TEXT);
+  }
+  wait = toNumber(wait) || 0;
+  if (isObject(options)) {
+    leading = !!options.leading;
+    maxing = 'maxWait' in options;
+    maxWait = maxing ? nativeMax(toNumber(options.maxWait) || 0, wait) : maxWait;
+    trailing = 'trailing' in options ? !!options.trailing : trailing;
+  }
+
+  function invokeFunc(time) {
+    var args = lastArgs,
+        thisArg = lastThis;
+
+    lastArgs = lastThis = undefined;
+    lastInvokeTime = time;
+    result = func.apply(thisArg, args);
+    return result;
+  }
+
+  function leadingEdge(time) {
+    // Reset any `maxWait` timer.
+    lastInvokeTime = time;
+    // Start the timer for the trailing edge.
+    timerId = setTimeout(timerExpired, wait);
+    // Invoke the leading edge.
+    return leading ? invokeFunc(time) : result;
+  }
+
+  function remainingWait(time) {
+    var timeSinceLastCall = time - lastCallTime,
+        timeSinceLastInvoke = time - lastInvokeTime,
+        result = wait - timeSinceLastCall;
+
+    return maxing ? nativeMin(result, maxWait - timeSinceLastInvoke) : result;
+  }
+
+  function shouldInvoke(time) {
+    var timeSinceLastCall = time - lastCallTime,
+        timeSinceLastInvoke = time - lastInvokeTime;
+
+    // Either this is the first call, activity has stopped and we're at the
+    // trailing edge, the system time has gone backwards and we're treating
+    // it as the trailing edge, or we've hit the `maxWait` limit.
+    return (lastCallTime === undefined || (timeSinceLastCall >= wait) ||
+      (timeSinceLastCall < 0) || (maxing && timeSinceLastInvoke >= maxWait));
+  }
+
+  function timerExpired() {
+    var time = now();
+    if (shouldInvoke(time)) {
+      return trailingEdge(time);
+    }
+    // Restart the timer.
+    timerId = setTimeout(timerExpired, remainingWait(time));
+  }
+
+  function trailingEdge(time) {
+    timerId = undefined;
+
+    // Only invoke if we have `lastArgs` which means `func` has been
+    // debounced at least once.
+    if (trailing && lastArgs) {
+      return invokeFunc(time);
+    }
+    lastArgs = lastThis = undefined;
+    return result;
+  }
+
+  function cancel() {
+    if (timerId !== undefined) {
+      clearTimeout(timerId);
+    }
+    lastInvokeTime = 0;
+    lastArgs = lastCallTime = lastThis = timerId = undefined;
+  }
+
+  function flush() {
+    return timerId === undefined ? result : trailingEdge(now());
+  }
+
+  function debounced() {
+    var time = now(),
+        isInvoking = shouldInvoke(time);
+
+    lastArgs = arguments;
+    lastThis = this;
+    lastCallTime = time;
+
+    if (isInvoking) {
+      if (timerId === undefined) {
+        return leadingEdge(lastCallTime);
+      }
+      if (maxing) {
+        // Handle invocations in a tight loop.
+        timerId = setTimeout(timerExpired, wait);
+        return invokeFunc(lastCallTime);
+      }
+    }
+    if (timerId === undefined) {
+      timerId = setTimeout(timerExpired, wait);
+    }
+    return result;
+  }
+  debounced.cancel = cancel;
+  debounced.flush = flush;
+  return debounced;
+}
+
+/**
+ * Checks if `value` is the
+ * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
+ * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(_.noop);
+ * // => true
+ *
+ * _.isObject(null);
+ * // => false
+ */
+function isObject(value) {
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+/**
+ * Checks if `value` is object-like. A value is object-like if it's not `null`
+ * and has a `typeof` result of "object".
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ * @example
+ *
+ * _.isObjectLike({});
+ * // => true
+ *
+ * _.isObjectLike([1, 2, 3]);
+ * // => true
+ *
+ * _.isObjectLike(_.noop);
+ * // => false
+ *
+ * _.isObjectLike(null);
+ * // => false
+ */
+function isObjectLike(value) {
+  return !!value && typeof value == 'object';
+}
+
+/**
+ * Checks if `value` is classified as a `Symbol` primitive or object.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
+ * @example
+ *
+ * _.isSymbol(Symbol.iterator);
+ * // => true
+ *
+ * _.isSymbol('abc');
+ * // => false
+ */
+function isSymbol(value) {
+  return typeof value == 'symbol' ||
+    (isObjectLike(value) && objectToString.call(value) == symbolTag);
+}
+
+/**
+ * Converts `value` to a number.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to process.
+ * @returns {number} Returns the number.
+ * @example
+ *
+ * _.toNumber(3.2);
+ * // => 3.2
+ *
+ * _.toNumber(Number.MIN_VALUE);
+ * // => 5e-324
+ *
+ * _.toNumber(Infinity);
+ * // => Infinity
+ *
+ * _.toNumber('3.2');
+ * // => 3.2
+ */
+function toNumber(value) {
+  if (typeof value == 'number') {
+    return value;
+  }
+  if (isSymbol(value)) {
+    return NAN;
+  }
+  if (isObject(value)) {
+    var other = typeof value.valueOf == 'function' ? value.valueOf() : value;
+    value = isObject(other) ? (other + '') : other;
+  }
+  if (typeof value != 'string') {
+    return value === 0 ? value : +value;
+  }
+  value = value.replace(reTrim, '');
+  var isBinary = reIsBinary.test(value);
+  return (isBinary || reIsOctal.test(value))
+    ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
+    : (reIsBadHex.test(value) ? NAN : +value);
+}
+
+module.exports = debounce;
+
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
+
+/***/ }),
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(process) {var _ = __webpack_require__(14);
@@ -31825,6782 +33440,6 @@ BiwaScheme.Compiler = BiwaScheme.Class.create({
       //Console.puts("compile_refer:"+x.inspect()+" in "+e.inspect()+" results refer-free "+n);
       return return_free(n);
     }
-<<<<<<< HEAD
-;
-
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2)))
-=======
-    else{
-      var sym = x.name;
-      return return_global(sym);
-    }
-    //throw new BiwaScheme.Error("undefined symbol `" + sym + "'");
-  },
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
-
-  //generate boxing code (intersection of sets & vars)
-  //if no need of boxing, just returns next
-  //  sets(Set): assigned variables 
-  //  vars(List): used variables
-  //  next(opc):
-  //  ret(opc):
-  make_boxes: function(sets, vars, next){
-    var vars = vars;
-    var n = 0;
-    var a = [];
-    while(vars instanceof BiwaScheme.Pair){
-      if(sets.member(vars.car))
-        a.push(n);
-      n++;
-      vars = vars.cdr;
-    }
-    var opc = next;
-    for(var i=a.length-1; i>=0; i--)
-      opc = ["box", a[i], opc];
-    return opc;
-  },
-
-<<<<<<< HEAD
-/* WEBPACK VAR INJECTION */(function(Buffer) {var fs = __webpack_require__(0),
-    EventEmitter = __webpack_require__(23).EventEmitter,
-    util = __webpack_require__(24);
-=======
-  // Enumerate variables which (could be assigned && included in v)
-  // x: exp
-  // v: set(vars)
-  // ret: set
-  find_sets: function(x, v){
-    //Console.puts("find_sets: " + to_write(x) + " " + to_write(v))
-    var ret=null;
-    if(x instanceof BiwaScheme.Symbol){
-      ret = new BiwaScheme.Set();
-    }
-    else if(x instanceof BiwaScheme.Pair){
-      switch(x.first()){
-      case BiwaScheme.Sym("define"):
-        var exp=x.third();
-        ret = this.find_sets(exp, v);
-      case BiwaScheme.Sym("begin"):
-        ret = this.find_sets(x.cdr, v); //(ignores improper list)
-        break;
-      case BiwaScheme.Sym("quote"):
-        ret = new BiwaScheme.Set();
-        break;
-      case BiwaScheme.Sym("lambda"):
-        var vars=x.second(), body=x.cdr.cdr;
-        if (vars instanceof BiwaScheme.Pair){ // (lambda (...) ...)
-          ret = this.find_sets(body, v.set_minus(vars.to_set()));
-        }
-        else { // (lambda args ...)
-          ret = this.find_sets(body, v.set_minus(new BiwaScheme.Set(vars)));
-        }
-        break;
-      case BiwaScheme.Sym("if"):
-        var testc=x.second(), thenc=x.third(), elsec=x.fourth();
-        ret = this.find_sets(testc, v).set_union(
-                        this.find_sets(thenc, v),
-                        this.find_sets(elsec, v));
-        break;
-      case BiwaScheme.Sym("set!"):
-        var vari=x.second(), xx=x.third();
-        if(v.member(vari))
-          ret = this.find_sets(xx, v).set_cons(vari);
-        else
-          ret = this.find_sets(xx, v);
-        break;
-      case BiwaScheme.Sym("call/cc"):
-        var exp=x.second();
-        ret = this.find_sets(exp, v);
-        break;
-      default:
-        var set = new BiwaScheme.Set();
-        for(var p=x; p instanceof BiwaScheme.Pair; p=p.cdr){
-          set = set.set_union(this.find_sets(p.car, v));
-        }
-        ret = set;
-        break;
-      }
-    }
-    else{
-      ret = new BiwaScheme.Set();
-    }
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
-
-    if(ret == null)
-      throw new BiwaScheme.Bug("find_sets() exited in unusual way");
-    else
-      return ret;
-  },
-
-  // find_free(): find free variables in x
-  //              these variables are collected by collect_free().
-  // x: expression 
-  // b: set of local vars (= variables which are not free)
-  // f: set of free var candidates 
-  //    (local vars of outer lambdas)
-  // ret: set of free vars
-  find_free: function(x, b, f){
-    var ret=null;
-    if(x instanceof BiwaScheme.Symbol){
-      if(f.member(x))
-        ret = new BiwaScheme.Set(x);
-      else
-        ret = new BiwaScheme.Set();
-    }
-    else if(x instanceof BiwaScheme.Pair){
-      switch(x.first()){
-      case BiwaScheme.Sym("define"):
-        var exp=x.third();
-        ret = this.find_free(exp, b, f);
-        break;
-      case BiwaScheme.Sym("begin"):
-        ret = this.find_free(x.cdr, b, f); //(ignores improper list)
-        break;
-      case BiwaScheme.Sym("quote"):
-        ret = new BiwaScheme.Set();
-        break;
-      case BiwaScheme.Sym("lambda"):
-        var vars=x.second(), body=x.cdr.cdr;
-        if (vars instanceof BiwaScheme.Pair){ // (lambda (...) ...)
-          ret = this.find_free(body, b.set_union(vars.to_set()), f);
-        }
-        else { // (lambda args ...)
-          ret = this.find_free(body, b.set_cons(vars), f);
-        }
-        break;
-      case BiwaScheme.Sym("if"):
-        var testc=x.second(), thenc=x.third(), elsec=x.fourth();
-        ret = this.find_free(testc, b, f).set_union(
-                        this.find_free(thenc, b, f),
-                        this.find_free(elsec, b, f));
-        break;
-      case BiwaScheme.Sym("set!"):
-        var vari=x.second(), exp=x.third();
-        if(f.member(vari))
-          ret = this.find_free(exp, b, f).set_cons(vari);
-        else
-          ret = this.find_free(exp, b, f)
-        break;
-      case BiwaScheme.Sym("call/cc"):
-        var exp=x.second();
-        ret = this.find_free(exp, b, f);
-        break;
-      default:
-        var set = new BiwaScheme.Set();
-        for(var p=x; p instanceof BiwaScheme.Pair; p=p.cdr){
-          set = set.set_union(this.find_free(p.car, b, f));
-        }
-        ret = set;
-        break;
-      }
-    }
-    else{
-      ret = new BiwaScheme.Set();
-    }
-    //Console.p("find_free "+x.inspect()+" / "+b.inspect()+" => "+ret.inspect());
-
-<<<<<<< HEAD
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(19).Buffer))
-
-/***/ }),
-/* 9 */
-/***/ (function(module, exports) {
-
-function getText() {
-  var newName = window.prompt('name:', '');
-  keysPressed = new Set();
-  return newName;
-}
-
-module.exports = {
-  getText: getText
-};
-
-/***/ }),
-/* 10 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _editor = _interopRequireDefault(__webpack_require__(11));
-
-var _parse = _interopRequireDefault(__webpack_require__(42));
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var c = (0, _editor.default)();
-window.loadState = c['loadState'];
-window.saveState = c['saveState'];
-window.resetGraph = c['resetGraph'];
-
-window.parseButton = function () {
-  var cy = c['cy'];
-  return (0, _parse.default)(cy.$('node:orphan'));
-};
-
-/***/ }),
-/* 11 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _cytoscape_init = _interopRequireDefault(__webpack_require__(12));
-
-var _newRemove = _interopRequireDefault(__webpack_require__(27));
-
-var _cytoscapeUndoRedo = _interopRequireDefault(__webpack_require__(28));
-
-var _cytoscape = _interopRequireDefault(__webpack_require__(3));
-
-var _mousetrap = _interopRequireDefault(__webpack_require__(29));
-
-var _colormap = _interopRequireDefault(__webpack_require__(30));
-
-var _cytoscapeCanvas = _interopRequireDefault(__webpack_require__(33));
-
-var comments = _interopRequireWildcard(__webpack_require__(34));
-
-var utils = _interopRequireWildcard(__webpack_require__(9));
-
-function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = Object.defineProperty && Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : {}; if (desc.get || desc.set) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } } newObj.default = obj; return newObj; } }
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function buildEditor() {
-  var cy = (0, _cytoscape_init.default)();
-  (0, _cytoscapeUndoRedo.default)(_cytoscape.default);
-  (0, _cytoscapeCanvas.default)(_cytoscape.default); // Register undo/redo, and other imported functions
-
-  var ur = cy.undoRedo();
-  (0, _cytoscape.default)('collection', 'delete', _newRemove.default);
-  ur.action('deleteEles', function (eles) {
-    eles.delete();
-    return eles;
-  }, function (eles) {
-    eles.restore();
-  });
-  var commentPoints = new comments.CommentsCanvas(cy);
-  var commentMode = false; // =====================
-  // || GRAPH FUNCTIONS ||
-  // =====================
-
-  function setType(ele, newtype) {
-    ele.data('type', newtype);
-  }
-
-  (0, _cytoscape.default)('collection', 'setType', function (newType) {
-    setType(this, newType);
-  });
-
-  function newNode(pos) {
-    var color = getColor();
-    var createdNode = cy.add({
-      group: 'nodes',
-      position: pos,
-      data: {
-        'variable': false,
-        'name': '',
-        'type': 'Free',
-        'defaultColor': color
-      }
-    });
-    return createdNode;
-  }
-
-  function newEdge(origins, dest) {
-    var newEdges = origins.map(function (source) {
-      cy.add({
-        group: 'edges',
-        style: {
-          'target-arrow-shape': 'triangle'
-        },
-        data: {
-          source: source.id(),
-          target: dest.id(),
-          name: ''
-        },
-        selectable: true
-      });
-    });
-    return newEdges;
-  }
-
-  function getColor() {
-    var name = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
-    var node = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
-
-    // Method to generate a color for the node that the method is called on.
-    function isString(name) {
-      function matchBrackets(bra, n) {
-        return n[0] === bra && n[n.length - 1] === bra;
-      }
-
-      return matchBrackets('\'', name) || matchBrackets('"', name) || matchBrackets('`', name);
-    }
-
-    if (name !== '') {
-      var sameNamedEles;
-
-      if (node === null) {
-        sameNamedEles = cy.$("[name = '" + name + "']");
-      } else {
-        sameNamedEles = cy.$("[name = '" + name + "']").difference(node);
-      } // Look for something named the same, and make this node the same color.
-
-
-      if (sameNamedEles.length > 0 && name !== '') {
-        return sameNamedEles.data('defaultColor');
-      } else if (isString(name)) {
-        // If the name represents a string, make the node green.
-        return 'lime';
-      } else if (!isNaN(name)) {
-        // We want numbers (including floats, ints, etc) to be one color.
-        return 'blue';
-      }
-    } // Else generate a random color from a colormap (and convert it to hash).
-
-
-    var ncolors = 72;
-    var index = Math.floor(Math.random() * ncolors);
-    var col = (0, _colormap.default)('nature', ncolors, 'hex')[index];
-    return col;
-=======
-    if(ret == null)
-      throw new BiwaScheme.Bug("find_free() exited in unusual way");
-    else
-      return ret;
-  },
-
-  // Returns the position of the dot pair.
-  // Returns -1 if x is a proper list.
-  //
-  // eg. (a b . c) -> 2
-  find_dot_pos: function(x){
-    var idx = 0;
-    for (; x instanceof BiwaScheme.Pair; x = x.cdr, ++idx)
-      ;
-    if (x != BiwaScheme.nil) {
-      return idx;
-    } else {
-      return -1;
-    }
-  },
-
-  last_pair: function(x){
-    if (x instanceof BiwaScheme.Pair){
-      for (; x.cdr instanceof BiwaScheme.Pair; x = x.cdr)
-        ;
-    }
-    return x;
-  },
-
-  // Takes an dotted list and returns proper list.
-  //
-  // eg. (x y . z) -> (x y z)
-  dotted2proper: function(ls){
-    var nreverse = function(ls){
-      var res = BiwaScheme.nil;
-      for (; ls instanceof BiwaScheme.Pair; ){
-        var d = ls.cdr;
-        ls.cdr = res;
-        res = ls;
-        ls = d;
-      }
-      return res;
-    }
-    var copy_list = function(ls){
-      var res = BiwaScheme.nil;
-      for (; ls instanceof BiwaScheme.Pair; ls = ls.cdr){
-        res = new BiwaScheme.Pair(ls.car, res);
-      }
-      return nreverse(res);
-    }
-
-    if (ls instanceof BiwaScheme.Pair) {
-      var last = this.last_pair(ls);
-      if (last instanceof BiwaScheme.Pair && last.cdr === BiwaScheme.nil){
-        return ls;
-      } else {
-        var copied = copy_list(ls);
-        this.last_pair(copied).cdr = new BiwaScheme.Pair(last.cdr, BiwaScheme.nil);
-        return copied;
-      }
-    } else {
-      return new BiwaScheme.Pair(ls, BiwaScheme.nil);
-    }
-  },
-
-  // x: exp(list of symbol or integer or..)
-  // e: env (= [locals, frees])
-  // s: vars might be set!
-  // next: opc
-  // ret: opc
-  compile: function(x, e, s, f, next){
-    //Console.p(x);
-    var ret = null;
-
-    while(1){
-      if(x instanceof BiwaScheme.Symbol){
-        // Variable reference
-        // compiled into refer-(local|free|global)
-        return this.compile_refer(x, e, (s.member(x) ? ["indirect", next] : next));
-      }
-      else if(x instanceof BiwaScheme.Pair){
-        switch(x.first()){
-        case BiwaScheme.Sym("define"):
-          ret = this._compile_define(x, next);
-
-          x = ret[0];
-          next = ret[1];
-          break;
-
-        case BiwaScheme.Sym("begin"):
-          var a = [];
-          for(var p=x.cdr; p instanceof BiwaScheme.Pair; p=p.cdr)
-            a.push(p.car);
-
-          //compile each expression (in reverse order)
-          var c = next;
-          for(var i=a.length-1; i>=0; i--){
-            c = this.compile(a[i], e, s, f, c);
-          }
-          return c;
-
-        case BiwaScheme.Sym("quote"):
-          if(x.length() < 2)
-              throw new BiwaScheme.Error("Invalid quote: "+x.to_write());
-
-          var obj=x.second();
-          return ["constant", obj, next];
-
-        case BiwaScheme.Sym("lambda"):
-          return this._compile_lambda(x, e, s, f, next);
-
-        case BiwaScheme.Sym("if"):
-          if(x.length() < 3 || x.length() > 4)
-              throw new BiwaScheme.Error("Invalid if: "+x.to_write());
-
-          var testc=x.second(), thenc=x.third(), elsec=x.fourth();
-          var thenc = this.compile(thenc, e, s, f, next);
-          var elsec = this.compile(elsec, e, s, f, next);
-          x    = testc;
-          next = ["test", thenc, elsec];
-          break;
-
-        case BiwaScheme.Sym("set!"):
-          // error-checking: should have only 3 things
-          if(x.length() != 3)
-              throw new BiwaScheme.Error("Invalid set!: "+x.to_write());
-
-          var v=x.second(), x=x.third();
-          var do_assign = this.compile_lookup(v, e,
-            function(n){ return ["assign-local", n, next]; },
-            function(n){ return ["assign-free",  n, next]; },
-            function(sym){ return ["assign-global",sym, next]; }
-          );
-          next = do_assign;
-          break;
-
-        case BiwaScheme.Sym("call/cc"): 
-          var x=x.second();
-          var c = ["conti", 
-                    (this.is_tail(next) ? (e[0].size() + 1) : 0), //number of args for outer lambda
-                    ["argument",
-                    ["constant", 1,
-                    ["argument",
-                      this.compile(x, e, s,f,  
-                        (this.is_tail(next) ? ["shift", 1, ["tco_hinted_apply"]]
-                                            : ["apply"]))]]]];
-                  //note: proc for call/cc takes 1 argument (= ["apply", 1])
-
-          // Do not push stack frame when call/cc is in a tail context
-          return this.is_tail(next) ? c : ["frame", c, next];
-
-        default: 
-          //apply 
-          //x = (func 1 2) 
-          //x.car = func = '(lambda (x) ..) or Symbol
-          //x.cdr = args = '(1 2)
-          var func = x.car;
-          var args = x.cdr;
-          var c = this.compile(func, e, s,f,  
-                    this.is_tail(next) ? ["shift", args.length(), ["tco_hinted_apply"]]
-                                       : ["apply"]);
-
-          // VM will push the number of arguments to the stack.
-          c = this.compile(args.length(), e, s, f, ["argument", c]);
-          for(var p=args; p instanceof BiwaScheme.Pair; p=p.cdr){
-            c = this.compile(p.car, e, s, f, ["argument", c]);
-          }
-
-          // Do not push stack frame for tail calls
-          return this.is_tail(next) ? c : ["frame", c, next];
-        }
-      }
-      else{
-        return ["constant", x, next];
-      }
-    }
-    //Console.p("result of " + x.inspect() + ":");
-    //Console.p(ret);
-    //dump({"ret":ret, "x":x, "e":e, "s":s, "next":next, "stack":[]});
-//      if(ret == null)
-//        throw new BiwaScheme.Bug("compile() exited in unusual way");
-//      else
-//        return ret;
-  },
-
-  // Compile define.
-  //
-  // 0. (define) ; => error
-  // 1. (define a)
-  // 2. (define a 1)
-  // 3. (define a 1 2) ; => error
-  // 4. (define (f x) x), (define (f . a) a)
-  // 5. (define 1 2) 
-  //
-  // Note: define may appear in lambda, let, let*, let-values,
-  // let*-values, letrec, letrec*. These definitions are local to the
-  // <body> of these forms.
-  _compile_define: function(x, next){
-    if(x.length() == 1) { // 0. (define)
-      throw new BiwaScheme.Error("Invalid `define': "+x.to_write());
-    }
-
-    var first = x.cdr.car;
-    var rest = x.cdr.cdr;
-    
-    if(first instanceof BiwaScheme.Symbol){    
-      if (rest === BiwaScheme.nil) { // 1. (define a)
-        x = BiwaScheme.undef;
-      }
-      else {
-        if (rest.cdr === BiwaScheme.nil) // 2. (define a 1)
-          x = rest.car;
-        else // 3. (define a 1 2)
-          throw new BiwaScheme.Error("Invalid `define': "+x.to_write());
-      }
-
-      if (!BiwaScheme.TopEnv.hasOwnProperty(first.name)) {
-        BiwaScheme.TopEnv[first.name] = BiwaScheme.undef;
-      }
-      next = ["assign-global", first.name, next];
-    }
-    else if(first instanceof BiwaScheme.Pair){ // 4. (define (f x) ...)
-      // Note: define of this form may contain internal define.
-      // They are handled in compilation of "lambda".
-
-      var fname=first.car, args=first.cdr;
-      var lambda = new BiwaScheme.Pair(BiwaScheme.Sym("lambda"), new BiwaScheme.Pair(args, rest));
-      x = lambda;
-      if (!BiwaScheme.TopEnv.hasOwnProperty(first.name)) {
-        BiwaScheme.TopEnv[fname.name] = BiwaScheme.undef;
-      }
-      next = ["assign-global", fname.name, next];
-    }
-    else{ // 5. (define 1 2)
-      throw new BiwaScheme.Error("define: symbol or pair expected but got "+first);
-    }
-
-    return [x, next];
-  },
-
-  // Compiles various forms of "lambda".
-  //
-  // * (lambda (x y) ...)
-  // * (lambda (x y . rest) ...)
-  // * (lambda args ...)
-  _compile_lambda: function(x, e, s, f, next){
-    if(x.length() < 3)
-      throw new BiwaScheme.Error("Invalid lambda: "+x.to_write());
-
-    var vars = x.cdr.car;
-    var body = x.cdr.cdr;
-
-    // Handle internal defines
-    var tbody = BiwaScheme.Compiler.transform_internal_define(body);
-    if(BiwaScheme.isPair(tbody) &&
-       BiwaScheme.isSymbol(tbody.car) &&
-       tbody.car.name == "letrec*"){
-      // The body has internal defines.
-      // Expand letrec* macro
-      var cbody = BiwaScheme.Interpreter.expand(tbody);
-    }
-    else{
-      // The body has no internal defines.
-      // Just wrap the list with begin 
-      var cbody = new BiwaScheme.Pair(BiwaScheme.Sym("begin"), x.cdr.cdr);
-    }
-
-    var dotpos = this.find_dot_pos(vars);
-    var proper = this.dotted2proper(vars);
-    var free = this.find_free(cbody, proper.to_set(), f); //free variables
-    var sets = this.find_sets(cbody, proper.to_set());    //local variables
-
-    var do_body = this.compile(cbody,
-                    [proper.to_set(), free],
-                    sets.set_union(s.set_intersect(free)),
-                    f.set_union(proper.to_set()),
-                    ["return"]);
-    var do_close = ["close", 
-                     free.size(),
-                     this.make_boxes(sets, proper, do_body),
-                     next,
-                     dotpos];
-    return this.collect_free(free, e, do_close);
-  },
-
-  run: function(expr){
-    return this.compile(expr, [new BiwaScheme.Set(), new BiwaScheme.Set()], new BiwaScheme.Set(), new BiwaScheme.Set(), ["halt"]);
-  }
-});
-
-// Compile an expression with new compiler
-BiwaScheme.Compiler.compile = function(expr, next){
-  expr = BiwaScheme.Interpreter.expand(expr);
-  return (new BiwaScheme.Compiler).run(expr, next);
-};
-
-// Transform internal defines to letrec*.
-//
-// Example
-//   (let ((a 1))
-//     (define (b) a)
-//     (b))
-//
-//   (let ((a 1))
-//     (letrec* ((b (lambda () a)))
-//       (b)))
-//
-// x - expression starts with (define ...)
-// 
-// Returns a letrec* expression, or
-// just returns x, when x does not contain definitions.
-(function(){
-// Returns true if x is a definition
-var is_definition = function(x){
-  return BiwaScheme.isPair(x) &&
-         BiwaScheme.Sym("define") === x.car;
-  // TODO: support "begin", nested "begin", "let(rec)-syntax"
-};
-
-// Convert function definition to lambda binding
-//   (define a ..)         -> (a ..)
-//   (define (f) ..)       -> (f (lambda () ..))
-//   (define (f x . y) ..) -> (f (lambda (x . y) ..))
-//   (define (f . a) ..)   -> (f (lambda a ..))
-var define_to_lambda_bind = function(def){
-  var sig  = def.cdr.car;
-  var body = def.cdr.cdr;
-
-  if (BiwaScheme.isSymbol(sig)) {
-    var variable = sig;
-
-    return new BiwaScheme.Pair(variable, body);
-  }
-  else {
-    var variable = sig.car;
-    var value = new BiwaScheme.Pair(BiwaScheme.Sym("lambda"),
-                  new BiwaScheme.Pair(sig.cdr, body));
-
-    return BiwaScheme.List(variable, value);
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
-  }
-};
-
-<<<<<<< HEAD
-  (0, _cytoscape.default)('collection', 'getColor', function () {
-    return getColor(this.data('name'), this);
-  });
-
-  function setColor() {
-    var color = this.getColor();
-    this.data('defaultColor', color);
-  }
-
-  (0, _cytoscape.default)('collection', 'setColor', setColor);
-
-  function rename(ele) {
-    var newName = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
-
-    if (newName === null) {
-      newName = utils.getText();
-    }
-
-    if (!(newName === null)) {
-      ele.data('name', newName);
-      ele.setColor();
-    }
-=======
-BiwaScheme.Compiler.transform_internal_define = function(x){
-  // 1. Split x into definitions and expressions
-  var defs = [], item = x;
-  while (is_definition(item.car)){
-    defs.push(item.car);
-    item = item.cdr;
-  }
-  var exprs = item;
-
-  // 2. Return x if there is no definitions
-  if (defs.length == 0)
-    return x;
-  
-  // 3. Return (letrec* <bindings> <expressions>)
-  var bindings = BiwaScheme.List.apply(null, _.map(defs, define_to_lambda_bind));
-  return new BiwaScheme.Pair(BiwaScheme.Sym("letrec*"),
-           new BiwaScheme.Pair(bindings, exprs));
-};
-})();
-//
-// pause object (facility to stop/resume interpreting)
-//
-BiwaScheme.Pause = BiwaScheme.Class.create({
-  //new (on_pause: javascript function calling setTimeout, Ajax.Request, ..)
-  initialize: function(on_pause){
-    this.on_pause = on_pause;
-  },
-
-  //save state of interpreter
-  set_state: function(intp, x, f, c, s){
-    this.interpreter = intp;
-    this.x = x;
-    this.f = f;
-    this.c = c;
-    this.s = s;
-  },
-
-  //call this when ready (to fire setTimeout, Ajax.Request..)
-  ready: function(){
-    this.on_pause(this);
-  },
-
-  //restart calculation
-  resume: function(value){
-    return this.interpreter.resume(true, value, this.x, this.f, this.c, this.s)
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
-  }
-});
-
-<<<<<<< HEAD
-  (0, _cytoscape.default)('collection', 'rename', function () {
-    var name = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
-    rename(this, name);
-  });
-
-  function setParent(newParent) {
-    // Set self's parent to newParent.
-    if (newParent != null && newParent.id()) {
-      ur.do('changeParent', {
-        'parentData': newParent.id(),
-        'nodes': this,
-        'posDiffX': 0,
-        'posDiffY': 0
-      });
-    } else {
-      // If newParent is null, remove the parent from the node.
-      var oldParent = this.parent();
-      ur.do('changeParent', {
-        'parentData': null,
-        'nodes': this,
-        'posDiffX': 0,
-        'posDiffY': 0
-      }); // Remove childless parents
-
-      if (oldParent.length > 0 && oldParent.children().length === 0) {
-        oldParent.remove();
-      }
-    }
-
-    return cy.$id(this.id());
-=======
-///
-/// Call
-///
-
-// The class Call is used to invoke scheme closure from 
-// library functions.
-//
-// Call#initialize takes three arguments: proc, args and after.
-//   * proc is the scheme closure to invoke.
-//   * args is an Array (not list!) of arguments for the invocation.
-//   * after is a javascript function which is invoked when 
-//     returned from the proc.
-//
-//     after takes two arguments: ar and intp.
-//       * ar is an Array which contains the result of the invocation.
-//       * intp is an Interpreter which is running.
-//
-//     If after returns another Call object, another invocation
-//     happens. If after returns a normal value, it is the value
-//     of the library function.
-//
-// example:
-//   return new Call(proc, [x, y], function(ar){ ar[0] });
-//
-BiwaScheme.Call = BiwaScheme.Class.create({
-  initialize: function(proc, args, after){
-    this.proc = proc;
-    this.args = args;
-    this.after = after || function(ar){
-      // just return result which closure returned
-      return ar[0];
-    };
-  },
-
-  inspect: function(){
-    return "#<Call args=" + this.args.inspect() + ">";
-  },
-
-  toString: function(){
-    return "#<Call>";
-  },
-
-  to_write: function(){
-    return "#<Call>";
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
-  }
-})
-
-<<<<<<< HEAD
-  (0, _cytoscape.default)('collection', 'setParent', setParent);
-
-  function toggleVariable() {
-    switch (this.data('type')) {
-      case 'Free':
-        this.setType('NearBoundVariable');
-        break;
-
-      case 'NearBoundVariable':
-        this.setType('FarBoundVariable');
-        break;
-
-      case 'FarBoundVariable':
-        this.setType('Free');
-        break;
-    }
-  }
-
-  (0, _cytoscape.default)('collection', 'toggleVariable', toggleVariable); // =========================
-  // || USER INPUT HANDLERS ||
-  // =========================
-
-  var dclickPrevTap;
-  var dclickTappedTimeout;
-  var eSelected; // __Handlers for clicking on the background__
-  // Double-tap or single-tap with 'e'/'w' to add a new node.
-
-  cy.on('tap', function (event) {
-    var tapTarget = event.target;
-
-    if (tapTarget === cy) {
-      if (keysPressed.has('e')) {
-        // Click on the background with 'e'
-        var n = newNode(event.position);
-        dclickTappedTimeout = false;
-
-        if (eSelected.length > 0 && eSelected.parent().length <= 1) {
-          newEdge(eSelected, n);
-          n = n.setParent(eSelected.parent());
-        }
-
-        selectOnly(n);
-      } else if (tapTarget === cy && keysPressed.has('w')) {
-        // Click on the background with 'e'
-        n = newNode(event.position);
-        dclickTappedTimeout = false;
-
-        if (eSelected.length === 1) {
-          newEdge(n, eSelected);
-          n = n.setParent(eSelected.parent());
-        }
-
-        selectOnly(eSelected);
-      } else if (dclickTappedTimeout && dclickPrevTap) {
-        clearTimeout(dclickTappedTimeout);
-      } // If double clicked:
-
-
-      if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
-        n = newNode(event.position);
-        selectOnly(n);
-        dclickPrevTap = null;
-      }
-    } else {
-      if (tapTarget.isNode() && dclickTappedTimeout && dclickPrevTap) {
-        clearTimeout(dclickTappedTimeout);
-      } // If double clicked:
-
-
-      if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
-        rename(tapTarget);
-      }
-    } // Update doubleclick handlers
-
-
-    dclickTappedTimeout = setTimeout(function () {
-      dclickPrevTap = null;
-    }, 300);
-    dclickPrevTap = tapTarget;
-  }); // Hold 'e/w' and tap a node to make a new edge
-
-  cy.on('tap', 'node', function (event) {
-    var target = event.target;
-    var sources = cy.$('node:selected').difference(event.target);
-
-    if (sources.length > 0) {
-      if (keysPressed.has('e')) {
-        newEdge(sources, target);
-        selectOnly(target);
-        sources.connectedClosure().setParent(target.parent());
-      } else if (keysPressed.has('w')) {
-        sources.map(function (source) {
-          return newEdge(target, source);
-        });
-        sources = sources.connectedClosure().setParent(target.parent());
-        selectOnly(sources);
-      }
-    }
-  }); // Hold 'r' and tap a node to rename it.
-
-  cy.on('tap', 'node, edge', function (event) {
-    if (keysPressed.has('r')) {
-      event.target.rename();
-    }
-  }); // l to 'lambda': wrap selection in a hypernode, containing the selection
-  // and its closed neighbourhood, corresponding to a lambda function.
-
-  _mousetrap.default.bind('l', function () {
-    // If all of them belong to the same parent, take them out of the parent.
-    var selected = cy.$('node:selected');
-
-    if (selected.parents().length === 1) {
-      selected.setParent(null);
-    } else {
-      var parent = newNode();
-      parent.setType('Lambda');
-      var closure = selected.connectedClosure();
-      closure.setParent(parent);
-      selectOnly(parent);
-    }
-  }, 'keypress'); // p to 'parens': wrap selection in a hypernode representing 'evaluate all this together',
-  // corresponding to wrapping () around a group.
-
-
-  _mousetrap.default.bind('p', function () {
-    // If all of them belong to the same parent, take them out of the parent.
-    var selected = cy.$('node:selected');
-
-    if (selected.parents().length === 1) {
-      selected.setParent(null);
-    } else {
-      var parent = newNode();
-      parent.setType('Parens');
-      var closure = selected.connectedClosure();
-      closure.setParent(parent);
-      selectOnly(parent);
-    }
-  }, 'keypress'); // d to 'define': wrap selection in a hypernode, containing the selection
-  // and its closed neighbourhood, corresponding to a define statement.
-
-
-  _mousetrap.default.bind('d', function () {
-    // If all of them belong to the same parent, take them out of the parent.
-    var selected = cy.$('node:selected');
-
-    if (selected.parents().length === 1) {
-      selected.setParent(null);
-    } else {
-      var parent = newNode();
-      parent.setType('Define');
-      var closure = selected.connectedClosure();
-      parent.rename();
-      closure.setParent(parent);
-      selectOnly(parent);
-    }
-  }, 'keypress'); // Backspace to delete selection
-
-
-  _mousetrap.default.bind('backspace', function () {
-    ur.do('deleteEles', cy.$(':selected'));
-  });
-
-  _mousetrap.default.bind('V', function () {
-    cy.$(':selected').toggleVariable();
-  });
-
-  _mousetrap.default.bind('P', function () {
-    toLisp(cy.$(':selected'));
-  });
-
-  _mousetrap.default.bind('Z', function () {
-    ur.undo();
-  }); // Recognise keys pressed down
-
-
-  var keysPressed = new Set();
-
-  _mousetrap.default.bind('e', function () {
-    keysPressed.add('e');
-    eSelected = cy.$('node:selected');
-  }, 'keypress');
-
-  _mousetrap.default.bind('e', function () {
-    keysPressed.delete('e');
-  }, 'keyup');
-
-  _mousetrap.default.bind('w', function () {
-    keysPressed.add('w');
-    eSelected = cy.$('node:selected');
-  }, 'keypress');
-
-  _mousetrap.default.bind('w', function () {
-    keysPressed.delete('w');
-  }, 'keyup');
-
-  _mousetrap.default.bind('c', function () {
-    if (!keysPressed.has('c')) {
-      keysPressed.add('c');
-      commentPoints.enableDrawingMode();
-    }
-  }, 'keydown');
-
-  _mousetrap.default.bind('c', function () {
-    keysPressed.delete('c');
-    commentPoints.disableDrawingMode();
-  }, 'keyup');
-
-  _mousetrap.default.bind('r', function () {
-    keysPressed.add('r');
-    var selected = cy.$(':selected');
-
-    if (selected.length === 1) {
-      selected.rename();
-      keysPressed.delete('r');
-    }
-  }, 'keypress');
-
-  _mousetrap.default.bind('r', function () {
-    keysPressed.delete('r');
-  }, 'keyup');
-
-  function loadState(objectId) {
-    var x = document.getElementById(objectId).files[0];
-    var reader = new FileReader();
-
-    reader.onload = function (e) {
-      var graphString = e.target.result; // We HAVE to double-load elements here: once to get them into the
-      // graph, and once to set their parents correctly. If we don't, when
-      // elements are loaded and don't have a parent in place already,
-      // not only do they set the parent to 'undefined', they also
-      // _edit the fucking json_ so that the parent is thereafter undefined.
-      //
-      // That means that if you try to use the same JSON object twice for the
-      // two loads, it WON'T WORK because it's been modified by the first.
-      // WHAT THE HELL, CYTOSCAPE??? (Yes I lost several hours to this bug.)
-
-      cy.json();
-      cy.json(JSON.parse(graphString));
-      JSON.parse(graphString).elements.nodes.map(function (jsn) {
-        var nodeId = jsn.data.id;
-        var nodeParent = jsn.data.parent;
-        cy.$id(nodeId).setParent(cy.$id(nodeParent));
-      });
-      commentPoints.reset();
-      commentPoints.load(JSON.parse(graphString).comments);
-    };
-
-    reader.readAsText(x, 'UTF-8');
-  }
-
-  function saveState() {
-    var fileName = window.prompt('File name:', '');
-    var comments = commentPoints.serialize();
-
-    if (!(fileName === null)) {
-      var jsonData = JSON.stringify({
-        'elements': cy.json()['elements'],
-        'comments': comments
-      });
-      var a = document.createElement('a');
-      var file = new Blob([jsonData], {
-        type: 'text/plain'
-      });
-      a.href = URL.createObjectURL(file);
-      a.download = fileName + '.txt';
-      a.click();
-    }
-  }
-
-  function resetGraph() {
-    if (confirm('REALLY CLEAR ALL? (There\'s no autosave and no undo!)')) {
-      console.log('RESET');
-      cy.remove(cy.$(''));
-      commentPoints.reset();
-      cy.forceRender();
-    }
-  }
-
-  function selectOnly(ele) {
-    cy.$().deselect();
-    ele.select();
-  }
-
-  function connectedClosure() {
-    // Returns the closure (union with all-depth family) of the eles.
-    var nextLevel = this.closedNeighborhood('node');
-
-    if (nextLevel.length === this.length) {
-      return this;
-    } else {
-      return nextLevel.connectedClosure();
-    }
-  }
-
-  (0, _cytoscape.default)('collection', 'connectedClosure', connectedClosure);
-  return {
-    'cy': cy,
-    'loadState': loadState,
-    'saveState': saveState,
-    'resetGraph': resetGraph
-  };
-}
-
-module.exports = buildEditor;
-
-/***/ }),
-/* 12 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _cytoscape = _interopRequireDefault(__webpack_require__(3));
-
-__webpack_require__(17);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function createCanvas() {
-  // cytoscape.use( require('undo-redo') );
-  return (0, _cytoscape.default)({
-    container: document.getElementById('cy'),
-    boxSelectionEnabled: true,
-    style: [{
-      selector: 'node',
-      style: {
-        'background-color': 'data(defaultColor)',
-        'border-width': 0,
-        'content': 'UNKNOWN TYPE',
-        // text
-        'text-outline-width': 2,
-        'text-outline-color': 'black',
-        'color': 'white',
-        // font color
-        'text-valign': 'center'
-      }
-    }, {
-      selector: 'node[type = "NearBoundVariable"]',
-      style: {
-        'shape': 'diamond',
-        'border-width': 1,
-        'border-color': 'black',
-        'background-color': 'cyan',
-        'content': 'data(name)' // text
-
-      }
-    }, {
-      selector: 'node[type = "FarBoundVariable"]',
-      style: {
-        'shape': 'square',
-        'border-width': 1,
-        'border-color': 'black',
-        'background-color': 'cyan',
-        'content': 'data(name)' // text
-
-      }
-    }, {
-      selector: 'node[type = "Free"], node[type = "If"]',
-      style: {
-        'content': 'data(name)' // text
-
-      }
-    }, {
-      selector: 'node[type = "Lambda"]',
-      style: {
-        // Compound node, by definition.
-        'background-color': 'white',
-        'text-valign': 'bottom',
-        'text-halign': 'center',
-        'border-width': 5,
-        'shape': 'roundrectangle',
-        'border-color': 'gray',
-        'padding': '10px',
-        'font-size': '15px',
-        'text-margin-y': '-10px',
-        'text-background-color': 'gray',
-        'text-background-opacity': 1,
-        'text-background-shape': 'roundrectangle',
-        'text-background-padding': '3px',
-        'content': 'data(name)'
-      }
-    }, {
-      selector: 'node[type = "Define"]',
-      style: {
-        // Compound node, by definition.
-        'background-color': 'white',
-        'text-valign': 'top',
-        'text-halign': 'center',
-        'border-width': 5,
-        'border-style': 'double',
-        'shape': 'roundrectangle',
-        'border-color': 'data(defaultColor)',
-        'padding': '3px',
-        'text-margin-y': '3px',
-        'font-size': '20px',
-        'text-background-color': 'data(defaultColor)',
-        'text-background-opacity': 1,
-        'text-background-shape': 'roundrectangle',
-        'text-background-padding': '1px',
-        'content': 'data(name)'
-      }
-    }, {
-      selector: 'node[type = "Parens"]',
-      style: {
-        // Compound node, by definition.
-        'background-color': 'white',
-        'border-width': 5,
-        'border-style': 'dotted',
-        'shape': 'roundrectangle',
-        'border-color': '#DEDDC5',
-        'padding': '10px',
-        'text-margin-y': '3px',
-        'font-size': '20px',
-        'content': ''
-      }
-    }, {
-      selector: 'edge',
-      style: {
-        'curve-style': 'bezier',
-        'width': 4,
-        'target-arrow-shape': 'triangle',
-        'line-color': 'black',
-        'target-arrow-color': 'black',
-        'target-label': 'data(name)',
-        'target-text-offset': 20,
-        'color': 'white',
-        'text-outline-width': 2,
-        'text-outline-color': 'black'
-      }
-    }, {
-      selector: 'edge:selected',
-      style: {
-        'line-color': 'red',
-        'target-arrow-color': 'red',
-        'text-outline-color': 'red'
-      }
-    }, {
-      selector: 'node:selected',
-      style: {
-        'border-color': 'red',
-        'border-width': 5,
-        'text-background-color': 'red'
-      }
-    }]
-  });
-}
-
-module.exports = createCanvas;
-
-/***/ }),
-/* 13 */
-/***/ (function(module, exports, __webpack_require__) {
-
-/* WEBPACK VAR INJECTION */(function(global, process) {(function (global, undefined) {
-    "use strict";
-
-    if (global.setImmediate) {
-        return;
-    }
-
-    var nextHandle = 1; // Spec says greater than zero
-    var tasksByHandle = {};
-    var currentlyRunningATask = false;
-    var doc = global.document;
-    var registerImmediate;
-
-    function setImmediate(callback) {
-      // Callback can either be a function or a string
-      if (typeof callback !== "function") {
-        callback = new Function("" + callback);
-      }
-      // Copy function arguments
-      var args = new Array(arguments.length - 1);
-      for (var i = 0; i < args.length; i++) {
-          args[i] = arguments[i + 1];
-      }
-      // Store and register the task
-      var task = { callback: callback, args: args };
-      tasksByHandle[nextHandle] = task;
-      registerImmediate(nextHandle);
-      return nextHandle++;
-    }
-
-    function clearImmediate(handle) {
-        delete tasksByHandle[handle];
-    }
-
-    function run(task) {
-        var callback = task.callback;
-        var args = task.args;
-        switch (args.length) {
-        case 0:
-            callback();
-            break;
-        case 1:
-            callback(args[0]);
-            break;
-        case 2:
-            callback(args[0], args[1]);
-            break;
-        case 3:
-            callback(args[0], args[1], args[2]);
-            break;
-        default:
-            callback.apply(undefined, args);
-            break;
-        }
-    }
-
-    function runIfPresent(handle) {
-        // From the spec: "Wait until any invocations of this algorithm started before this one have completed."
-        // So if we're currently running a task, we'll need to delay this invocation.
-        if (currentlyRunningATask) {
-            // Delay by doing a setTimeout. setImmediate was tried instead, but in Firefox 7 it generated a
-            // "too much recursion" error.
-            setTimeout(runIfPresent, 0, handle);
-        } else {
-            var task = tasksByHandle[handle];
-            if (task) {
-                currentlyRunningATask = true;
-                try {
-                    run(task);
-                } finally {
-                    clearImmediate(handle);
-                    currentlyRunningATask = false;
-                }
-            }
-        }
-    }
-
-    function installNextTickImplementation() {
-        registerImmediate = function(handle) {
-            process.nextTick(function () { runIfPresent(handle); });
-        };
-    }
-
-    function canUsePostMessage() {
-        // The test against `importScripts` prevents this implementation from being installed inside a web worker,
-        // where `global.postMessage` means something completely different and can't be used for this purpose.
-        if (global.postMessage && !global.importScripts) {
-            var postMessageIsAsynchronous = true;
-            var oldOnMessage = global.onmessage;
-            global.onmessage = function() {
-                postMessageIsAsynchronous = false;
-            };
-            global.postMessage("", "*");
-            global.onmessage = oldOnMessage;
-            return postMessageIsAsynchronous;
-        }
-    }
-
-    function installPostMessageImplementation() {
-        // Installs an event handler on `global` for the `message` event: see
-        // * https://developer.mozilla.org/en/DOM/window.postMessage
-        // * http://www.whatwg.org/specs/web-apps/current-work/multipage/comms.html#crossDocumentMessages
-
-        var messagePrefix = "setImmediate$" + Math.random() + "$";
-        var onGlobalMessage = function(event) {
-            if (event.source === global &&
-                typeof event.data === "string" &&
-                event.data.indexOf(messagePrefix) === 0) {
-                runIfPresent(+event.data.slice(messagePrefix.length));
-            }
-        };
-
-        if (global.addEventListener) {
-            global.addEventListener("message", onGlobalMessage, false);
-        } else {
-            global.attachEvent("onmessage", onGlobalMessage);
-        }
-
-        registerImmediate = function(handle) {
-            global.postMessage(messagePrefix + handle, "*");
-        };
-    }
-
-    function installMessageChannelImplementation() {
-        var channel = new MessageChannel();
-        channel.port1.onmessage = function(event) {
-            var handle = event.data;
-            runIfPresent(handle);
-        };
-
-        registerImmediate = function(handle) {
-            channel.port2.postMessage(handle);
-        };
-    }
-
-    function installReadyStateChangeImplementation() {
-        var html = doc.documentElement;
-        registerImmediate = function(handle) {
-            // Create a <script> element; its readystatechange event will be fired asynchronously once it is inserted
-            // into the document. Do so, thus queuing up the task. Remember to clean up once it's been called.
-            var script = doc.createElement("script");
-            script.onreadystatechange = function () {
-                runIfPresent(handle);
-                script.onreadystatechange = null;
-                html.removeChild(script);
-                script = null;
-            };
-            html.appendChild(script);
-        };
-    }
-
-    function installSetTimeoutImplementation() {
-        registerImmediate = function(handle) {
-            setTimeout(runIfPresent, 0, handle);
-        };
-    }
-
-    // If supported, we should attach to the prototype of global, since that is where setTimeout et al. live.
-    var attachTo = Object.getPrototypeOf && Object.getPrototypeOf(global);
-    attachTo = attachTo && attachTo.setTimeout ? attachTo : global;
-
-    // Don't get fooled by e.g. browserify environments.
-    if ({}.toString.call(global.process) === "[object process]") {
-        // For Node.js before 0.9
-        installNextTickImplementation();
-
-    } else if (canUsePostMessage()) {
-        // For non-IE10 modern browsers
-        installPostMessageImplementation();
-
-    } else if (global.MessageChannel) {
-        // For web workers, where supported
-        installMessageChannelImplementation();
-
-    } else if (doc && "onreadystatechange" in doc.createElement("script")) {
-        // For IE 6–8
-        installReadyStateChangeImplementation();
-
-    } else {
-        // For older browsers
-        installSetTimeoutImplementation();
-    }
-
-    attachTo.setImmediate = setImmediate;
-    attachTo.clearImmediate = clearImmediate;
-}(typeof self === "undefined" ? typeof global === "undefined" ? this : global : self));
-
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1), __webpack_require__(2)))
-
-/***/ }),
-/* 14 */
-/***/ (function(module, exports, __webpack_require__) {
-
-module.exports = __webpack_require__(15);
-
-
-/***/ }),
-/* 15 */
-/***/ (function(module, exports, __webpack_require__) {
-
-var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// Generated by CoffeeScript 1.8.0
-(function() {
-  var Heap, defaultCmp, floor, heapify, heappop, heappush, heappushpop, heapreplace, insort, min, nlargest, nsmallest, updateItem, _siftdown, _siftup;
-
-  floor = Math.floor, min = Math.min;
-
-
-  /*
-  Default comparison function to be used
-   */
-
-  defaultCmp = function(x, y) {
-    if (x < y) {
-      return -1;
-    }
-    if (x > y) {
-      return 1;
-    }
-    return 0;
-  };
-
-
-  /*
-  Insert item x in list a, and keep it sorted assuming a is sorted.
-  
-  If x is already in a, insert it to the right of the rightmost x.
-  
-  Optional args lo (default 0) and hi (default a.length) bound the slice
-  of a to be searched.
-   */
-
-  insort = function(a, x, lo, hi, cmp) {
-    var mid;
-    if (lo == null) {
-      lo = 0;
-    }
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    if (lo < 0) {
-      throw new Error('lo must be non-negative');
-    }
-    if (hi == null) {
-      hi = a.length;
-    }
-    while (lo < hi) {
-      mid = floor((lo + hi) / 2);
-      if (cmp(x, a[mid]) < 0) {
-        hi = mid;
-      } else {
-        lo = mid + 1;
-      }
-    }
-    return ([].splice.apply(a, [lo, lo - lo].concat(x)), x);
-  };
-
-
-  /*
-  Push item onto heap, maintaining the heap invariant.
-   */
-
-  heappush = function(array, item, cmp) {
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    array.push(item);
-    return _siftdown(array, 0, array.length - 1, cmp);
-  };
-
-
-  /*
-  Pop the smallest item off the heap, maintaining the heap invariant.
-   */
-
-  heappop = function(array, cmp) {
-    var lastelt, returnitem;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    lastelt = array.pop();
-    if (array.length) {
-      returnitem = array[0];
-      array[0] = lastelt;
-      _siftup(array, 0, cmp);
-    } else {
-      returnitem = lastelt;
-    }
-    return returnitem;
-  };
-
-
-  /*
-  Pop and return the current smallest value, and add the new item.
-  
-  This is more efficient than heappop() followed by heappush(), and can be
-  more appropriate when using a fixed size heap. Note that the value
-  returned may be larger than item! That constrains reasonable use of
-  this routine unless written as part of a conditional replacement:
-      if item > array[0]
-        item = heapreplace(array, item)
-   */
-
-  heapreplace = function(array, item, cmp) {
-    var returnitem;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    returnitem = array[0];
-    array[0] = item;
-    _siftup(array, 0, cmp);
-    return returnitem;
-  };
-
-
-  /*
-  Fast version of a heappush followed by a heappop.
-   */
-
-  heappushpop = function(array, item, cmp) {
-    var _ref;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    if (array.length && cmp(array[0], item) < 0) {
-      _ref = [array[0], item], item = _ref[0], array[0] = _ref[1];
-      _siftup(array, 0, cmp);
-    }
-    return item;
-  };
-
-
-  /*
-  Transform list into a heap, in-place, in O(array.length) time.
-   */
-
-  heapify = function(array, cmp) {
-    var i, _i, _j, _len, _ref, _ref1, _results, _results1;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    _ref1 = (function() {
-      _results1 = [];
-      for (var _j = 0, _ref = floor(array.length / 2); 0 <= _ref ? _j < _ref : _j > _ref; 0 <= _ref ? _j++ : _j--){ _results1.push(_j); }
-      return _results1;
-    }).apply(this).reverse();
-    _results = [];
-    for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-      i = _ref1[_i];
-      _results.push(_siftup(array, i, cmp));
-    }
-    return _results;
-  };
-
-
-  /*
-  Update the position of the given item in the heap.
-  This function should be called every time the item is being modified.
-   */
-
-  updateItem = function(array, item, cmp) {
-    var pos;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    pos = array.indexOf(item);
-    if (pos === -1) {
-      return;
-    }
-    _siftdown(array, 0, pos, cmp);
-    return _siftup(array, pos, cmp);
-  };
-
-
-  /*
-  Find the n largest elements in a dataset.
-   */
-
-  nlargest = function(array, n, cmp) {
-    var elem, result, _i, _len, _ref;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    result = array.slice(0, n);
-    if (!result.length) {
-      return result;
-    }
-    heapify(result, cmp);
-    _ref = array.slice(n);
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      elem = _ref[_i];
-      heappushpop(result, elem, cmp);
-    }
-    return result.sort(cmp).reverse();
-  };
-
-
-  /*
-  Find the n smallest elements in a dataset.
-   */
-
-  nsmallest = function(array, n, cmp) {
-    var elem, i, los, result, _i, _j, _len, _ref, _ref1, _results;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    if (n * 10 <= array.length) {
-      result = array.slice(0, n).sort(cmp);
-      if (!result.length) {
-        return result;
-      }
-      los = result[result.length - 1];
-      _ref = array.slice(n);
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        elem = _ref[_i];
-        if (cmp(elem, los) < 0) {
-          insort(result, elem, 0, null, cmp);
-          result.pop();
-          los = result[result.length - 1];
-        }
-      }
-      return result;
-    }
-    heapify(array, cmp);
-    _results = [];
-    for (i = _j = 0, _ref1 = min(n, array.length); 0 <= _ref1 ? _j < _ref1 : _j > _ref1; i = 0 <= _ref1 ? ++_j : --_j) {
-      _results.push(heappop(array, cmp));
-    }
-    return _results;
-  };
-
-  _siftdown = function(array, startpos, pos, cmp) {
-    var newitem, parent, parentpos;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    newitem = array[pos];
-    while (pos > startpos) {
-      parentpos = (pos - 1) >> 1;
-      parent = array[parentpos];
-      if (cmp(newitem, parent) < 0) {
-        array[pos] = parent;
-        pos = parentpos;
-        continue;
-      }
-      break;
-    }
-    return array[pos] = newitem;
-  };
-
-  _siftup = function(array, pos, cmp) {
-    var childpos, endpos, newitem, rightpos, startpos;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    endpos = array.length;
-    startpos = pos;
-    newitem = array[pos];
-    childpos = 2 * pos + 1;
-    while (childpos < endpos) {
-      rightpos = childpos + 1;
-      if (rightpos < endpos && !(cmp(array[childpos], array[rightpos]) < 0)) {
-        childpos = rightpos;
-      }
-      array[pos] = array[childpos];
-      pos = childpos;
-      childpos = 2 * pos + 1;
-    }
-    array[pos] = newitem;
-    return _siftdown(array, startpos, pos, cmp);
-  };
-
-  Heap = (function() {
-    Heap.push = heappush;
-
-    Heap.pop = heappop;
-
-    Heap.replace = heapreplace;
-
-    Heap.pushpop = heappushpop;
-
-    Heap.heapify = heapify;
-
-    Heap.updateItem = updateItem;
-
-    Heap.nlargest = nlargest;
-
-    Heap.nsmallest = nsmallest;
-
-    function Heap(cmp) {
-      this.cmp = cmp != null ? cmp : defaultCmp;
-      this.nodes = [];
-    }
-
-    Heap.prototype.push = function(x) {
-      return heappush(this.nodes, x, this.cmp);
-    };
-
-    Heap.prototype.pop = function() {
-      return heappop(this.nodes, this.cmp);
-    };
-
-    Heap.prototype.peek = function() {
-      return this.nodes[0];
-    };
-
-    Heap.prototype.contains = function(x) {
-      return this.nodes.indexOf(x) !== -1;
-    };
-
-    Heap.prototype.replace = function(x) {
-      return heapreplace(this.nodes, x, this.cmp);
-    };
-
-    Heap.prototype.pushpop = function(x) {
-      return heappushpop(this.nodes, x, this.cmp);
-    };
-
-    Heap.prototype.heapify = function() {
-      return heapify(this.nodes, this.cmp);
-    };
-
-    Heap.prototype.updateItem = function(x) {
-      return updateItem(this.nodes, x, this.cmp);
-    };
-
-    Heap.prototype.clear = function() {
-      return this.nodes = [];
-    };
-
-    Heap.prototype.empty = function() {
-      return this.nodes.length === 0;
-    };
-
-    Heap.prototype.size = function() {
-      return this.nodes.length;
-    };
-
-    Heap.prototype.clone = function() {
-      var heap;
-      heap = new Heap();
-      heap.nodes = this.nodes.slice(0);
-      return heap;
-    };
-
-    Heap.prototype.toArray = function() {
-      return this.nodes.slice(0);
-    };
-
-    Heap.prototype.insert = Heap.prototype.push;
-
-    Heap.prototype.top = Heap.prototype.peek;
-
-    Heap.prototype.front = Heap.prototype.peek;
-
-    Heap.prototype.has = Heap.prototype.contains;
-
-    Heap.prototype.copy = Heap.prototype.clone;
-
-    return Heap;
-
-  })();
-
-  (function(root, factory) {
-    if (true) {
-      return !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
-				__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
-				(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
-				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
-    } else if (typeof exports === 'object') {
-      return module.exports = factory();
-    } else {
-      return root.Heap = factory();
-    }
-  })(this, function() {
-    return Heap;
-  });
-
-}).call(this);
-
-
-/***/ }),
-/* 16 */
-/***/ (function(module, exports, __webpack_require__) {
-
-/* WEBPACK VAR INJECTION */(function(global) {/**
- * lodash (Custom Build) <https://lodash.com/>
- * Build: `lodash modularize exports="npm" -o ./`
- * Copyright jQuery Foundation and other contributors <https://jquery.org/>
- * Released under MIT license <https://lodash.com/license>
- * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
- * Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- */
-
-/** Used as the `TypeError` message for "Functions" methods. */
-var FUNC_ERROR_TEXT = 'Expected a function';
-
-/** Used as references for various `Number` constants. */
-var NAN = 0 / 0;
-
-/** `Object#toString` result references. */
-var symbolTag = '[object Symbol]';
-
-/** Used to match leading and trailing whitespace. */
-var reTrim = /^\s+|\s+$/g;
-
-/** Used to detect bad signed hexadecimal string values. */
-var reIsBadHex = /^[-+]0x[0-9a-f]+$/i;
-
-/** Used to detect binary string values. */
-var reIsBinary = /^0b[01]+$/i;
-
-/** Used to detect octal string values. */
-var reIsOctal = /^0o[0-7]+$/i;
-
-/** Built-in method references without a dependency on `root`. */
-var freeParseInt = parseInt;
-
-/** Detect free variable `global` from Node.js. */
-var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
-
-/** Detect free variable `self`. */
-var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
-
-/** Used as a reference to the global object. */
-var root = freeGlobal || freeSelf || Function('return this')();
-
-/** Used for built-in method references. */
-var objectProto = Object.prototype;
-
-/**
- * Used to resolve the
- * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
- * of values.
- */
-var objectToString = objectProto.toString;
-
-/* Built-in method references for those with the same name as other `lodash` methods. */
-var nativeMax = Math.max,
-    nativeMin = Math.min;
-
-/**
- * Gets the timestamp of the number of milliseconds that have elapsed since
- * the Unix epoch (1 January 1970 00:00:00 UTC).
- *
- * @static
- * @memberOf _
- * @since 2.4.0
- * @category Date
- * @returns {number} Returns the timestamp.
- * @example
- *
- * _.defer(function(stamp) {
- *   console.log(_.now() - stamp);
- * }, _.now());
- * // => Logs the number of milliseconds it took for the deferred invocation.
- */
-var now = function() {
-  return root.Date.now();
-};
-
-/**
- * Creates a debounced function that delays invoking `func` until after `wait`
- * milliseconds have elapsed since the last time the debounced function was
- * invoked. The debounced function comes with a `cancel` method to cancel
- * delayed `func` invocations and a `flush` method to immediately invoke them.
- * Provide `options` to indicate whether `func` should be invoked on the
- * leading and/or trailing edge of the `wait` timeout. The `func` is invoked
- * with the last arguments provided to the debounced function. Subsequent
- * calls to the debounced function return the result of the last `func`
- * invocation.
- *
- * **Note:** If `leading` and `trailing` options are `true`, `func` is
- * invoked on the trailing edge of the timeout only if the debounced function
- * is invoked more than once during the `wait` timeout.
- *
- * If `wait` is `0` and `leading` is `false`, `func` invocation is deferred
- * until to the next tick, similar to `setTimeout` with a timeout of `0`.
- *
- * See [David Corbacho's article](https://css-tricks.com/debouncing-throttling-explained-examples/)
- * for details over the differences between `_.debounce` and `_.throttle`.
- *
- * @static
- * @memberOf _
- * @since 0.1.0
- * @category Function
- * @param {Function} func The function to debounce.
- * @param {number} [wait=0] The number of milliseconds to delay.
- * @param {Object} [options={}] The options object.
- * @param {boolean} [options.leading=false]
- *  Specify invoking on the leading edge of the timeout.
- * @param {number} [options.maxWait]
- *  The maximum time `func` is allowed to be delayed before it's invoked.
- * @param {boolean} [options.trailing=true]
- *  Specify invoking on the trailing edge of the timeout.
- * @returns {Function} Returns the new debounced function.
- * @example
- *
- * // Avoid costly calculations while the window size is in flux.
- * jQuery(window).on('resize', _.debounce(calculateLayout, 150));
- *
- * // Invoke `sendMail` when clicked, debouncing subsequent calls.
- * jQuery(element).on('click', _.debounce(sendMail, 300, {
- *   'leading': true,
- *   'trailing': false
- * }));
- *
- * // Ensure `batchLog` is invoked once after 1 second of debounced calls.
- * var debounced = _.debounce(batchLog, 250, { 'maxWait': 1000 });
- * var source = new EventSource('/stream');
- * jQuery(source).on('message', debounced);
- *
- * // Cancel the trailing debounced invocation.
- * jQuery(window).on('popstate', debounced.cancel);
- */
-function debounce(func, wait, options) {
-  var lastArgs,
-      lastThis,
-      maxWait,
-      result,
-      timerId,
-      lastCallTime,
-      lastInvokeTime = 0,
-      leading = false,
-      maxing = false,
-      trailing = true;
-
-  if (typeof func != 'function') {
-    throw new TypeError(FUNC_ERROR_TEXT);
-  }
-  wait = toNumber(wait) || 0;
-  if (isObject(options)) {
-    leading = !!options.leading;
-    maxing = 'maxWait' in options;
-    maxWait = maxing ? nativeMax(toNumber(options.maxWait) || 0, wait) : maxWait;
-    trailing = 'trailing' in options ? !!options.trailing : trailing;
-  }
-
-  function invokeFunc(time) {
-    var args = lastArgs,
-        thisArg = lastThis;
-
-    lastArgs = lastThis = undefined;
-    lastInvokeTime = time;
-    result = func.apply(thisArg, args);
-    return result;
-  }
-
-  function leadingEdge(time) {
-    // Reset any `maxWait` timer.
-    lastInvokeTime = time;
-    // Start the timer for the trailing edge.
-    timerId = setTimeout(timerExpired, wait);
-    // Invoke the leading edge.
-    return leading ? invokeFunc(time) : result;
-  }
-
-  function remainingWait(time) {
-    var timeSinceLastCall = time - lastCallTime,
-        timeSinceLastInvoke = time - lastInvokeTime,
-        result = wait - timeSinceLastCall;
-
-    return maxing ? nativeMin(result, maxWait - timeSinceLastInvoke) : result;
-  }
-
-  function shouldInvoke(time) {
-    var timeSinceLastCall = time - lastCallTime,
-        timeSinceLastInvoke = time - lastInvokeTime;
-
-    // Either this is the first call, activity has stopped and we're at the
-    // trailing edge, the system time has gone backwards and we're treating
-    // it as the trailing edge, or we've hit the `maxWait` limit.
-    return (lastCallTime === undefined || (timeSinceLastCall >= wait) ||
-      (timeSinceLastCall < 0) || (maxing && timeSinceLastInvoke >= maxWait));
-  }
-
-  function timerExpired() {
-    var time = now();
-    if (shouldInvoke(time)) {
-      return trailingEdge(time);
-    }
-    // Restart the timer.
-    timerId = setTimeout(timerExpired, remainingWait(time));
-  }
-
-  function trailingEdge(time) {
-    timerId = undefined;
-
-    // Only invoke if we have `lastArgs` which means `func` has been
-    // debounced at least once.
-    if (trailing && lastArgs) {
-      return invokeFunc(time);
-    }
-    lastArgs = lastThis = undefined;
-    return result;
-  }
-
-  function cancel() {
-    if (timerId !== undefined) {
-      clearTimeout(timerId);
-    }
-    lastInvokeTime = 0;
-    lastArgs = lastCallTime = lastThis = timerId = undefined;
-  }
-
-  function flush() {
-    return timerId === undefined ? result : trailingEdge(now());
-  }
-
-  function debounced() {
-    var time = now(),
-        isInvoking = shouldInvoke(time);
-
-    lastArgs = arguments;
-    lastThis = this;
-    lastCallTime = time;
-
-    if (isInvoking) {
-      if (timerId === undefined) {
-        return leadingEdge(lastCallTime);
-      }
-      if (maxing) {
-        // Handle invocations in a tight loop.
-        timerId = setTimeout(timerExpired, wait);
-        return invokeFunc(lastCallTime);
-=======
-//
-// Iterator - external iterator for Call.foreach
-//
-BiwaScheme.Iterator = {
-  ForArray: BiwaScheme.Class.create({
-    initialize: function(arr){
-      this.arr = arr;
-      this.i = 0;
-    },
-    has_next: function(){
-      return this.i < this.arr.length;
-    },
-    next: function(){
-      return this.arr[this.i++];
-    }
-  }),
-  ForString: BiwaScheme.Class.create({
-    initialize: function(str){
-      this.str = str;
-      this.i = 0;
-    },
-    has_next: function(){
-      return this.i < this.str.length;
-    },
-    next: function(){
-      return BiwaScheme.Char.get(this.str.charAt(this.i++));
-    }
-  }),
-  ForList: BiwaScheme.Class.create({
-    initialize: function(ls){
-      this.ls = ls;
-    },
-    has_next: function(){
-      return (this.ls instanceof BiwaScheme.Pair) &&
-             this.ls != BiwaScheme.nil;
-    },
-    next: function(){
-      var pair = this.ls;
-      this.ls = this.ls.cdr;
-      return pair;
-    }
-  }),
-  ForMulti: BiwaScheme.Class.create({
-    initialize: function(objs){
-      this.objs = objs;
-      this.size = objs.length;
-      this.iterators = _.map(objs, function(x){
-        return BiwaScheme.Iterator.of(x);
-      })
-    },
-    has_next: function(){
-      for(var i=0; i<this.size; i++)
-        if(!this.iterators[i].has_next())
-          return false;
-      
-      return true;
-    },
-    next: function(){
-      return _.map(this.iterators, function(ite){
-        return ite.next();
-      })
-    }
-  }),
-  of: function(obj){
-    switch(true){
-      case (obj instanceof Array):
-        return new this.ForArray(obj);
-      case (typeof(obj) == "string"):
-        return new this.ForString(obj);
-      case (obj instanceof BiwaScheme.Pair):
-      case (obj === BiwaScheme.nil):
-        return new this.ForList(obj);
-      default:
-        throw new BiwaScheme.Bug("Iterator.of: unknown class: "+BiwaScheme.inspect(obj));
-    }
-  }
-}
-
-//
-// Call.foreach - shortcut for successive Calls
-//
-// Some library functions, such as for-each or map,
-// call a closure for each element. Call.foreach is 
-// a utility to help defining such methods.
-//
-// Call.foreach takes a sequence and some callbacks.
-// Sequence is an Array, String, or list.
-//
-// Example:
-//   return Call.foreach(sequence, {
-//     // before each call
-//     call: function(elem){
-//       return new Call(proc, [elem]);
-//     },
-//     // after each call
-//     result: function(value, elem){
-//       ary.push(value);
-//       // you can return a value to terminate the loop
-//     },
-//     // after all the calls
-//     finish: function(){
-//       return ary;
-//     }
-//   });
-
-BiwaScheme.Call.default_callbacks = {
-  call: function(x){ return new BiwaScheme.Call(this.proc, [x]) },
-  result: function(){},
-  finish: function(){}
-}
-BiwaScheme.Call.foreach = function(obj, callbacks, is_multi){
-  is_multi || (is_multi = false);
-  _.each(["call", "result", "finish"], function(key){
-    if(!callbacks[key])
-      callbacks[key] = BiwaScheme.Call.default_callbacks[key];
-  })
-  
-  var iterator = null;
-  var x = null;
-
-  var loop = function(ar){
-    if(iterator){
-      var ret = callbacks["result"](ar[0], x);
-      if(ret !== undefined) return ret;
-    }
-    else{ // first lap
-      if(is_multi)
-        iterator = new BiwaScheme.Iterator.ForMulti(obj);
-      else
-        iterator = BiwaScheme.Iterator.of(obj);
-    }
-
-    if(!iterator.has_next()){
-      return callbacks["finish"]();
-    }
-    else{
-      x = iterator.next();
-      var result = callbacks["call"](x);
-      result.after = loop;
-      return result;
-    }
-  }
-  return loop(null);
-}
-BiwaScheme.Call.multi_foreach = function(obj, callbacks){
-  return BiwaScheme.Call.foreach(obj, callbacks, true);
-}
-
-///
-/// Interpreter
-///
-
-BiwaScheme.Interpreter = BiwaScheme.Class.create({
-  // new BiwaScheme.Interpreter()
-  // new BiwaScheme.Interpreter(lastInterpreter)
-  // new BiwaScheme.Interpreter(errorHandler)
-  // new BiwaScheme.Interpreter(lastInterpreter, errorHandler)
-  initialize: function(){
-    var last_interpreter = null;
-    var on_error = null;
-    if (arguments.length == 2) {
-      last_interpreter = arguments[0];
-      on_error = arguments[1];
-    } else if (arguments.length == 1 && arguments[0] instanceof BiwaScheme.Interpreter) {
-      last_interpreter = arguments[0];
-    } else if (arguments.length == 1 && typeof(arguments[0]) == "function") {
-      on_error = arguments[0];
-    }
-
-    // Interpreter stack
-    this.stack = [];
-    // JS function to handle error
-    this.on_error = on_error || (last_interpreter ? last_interpreter.on_error : function(e){});
-    // JS function to handle result
-    this.after_evaluate = function(){};
-
-    // (Variables for stack trace)
-    // Name of the last variable read by refer-xx
-    this.last_refer = last_interpreter ? last_interpreter.last_refer : null;
-    // Call stack (array of last_refer)
-    this.call_stack = last_interpreter ? _.clone(last_interpreter.call_stack) : [];
-    // Counts number of tail calls (= how many times should we pop call_stack
-    // in op_return)
-    this.tco_counter = [];
-    // Maximum length of call_stack
-    // (Note: we should cap call_stack for inifinite loop with recursion)
-    this.max_trace_size = last_interpreter ? last_interpreter.max_trace_size : BiwaScheme.max_trace_size;
-  },
-
-  inspect: function(){
-    return [
-      "#<Interpreter: stack size=>",
-      this.stack.length, " ",
-      "after_evaluate=",
-      BiwaScheme.inspect(this.after_evaluate),
-      ">"
-    ].join("");
-  },
-
-  // private
-  push: function(x, s){
-    this.stack[s] = x;
-    return s+1;
-  },
-
-  // private
-  //s: depth of stack to save
-  //ret: saved(copied) stack 
-  save_stack: function(s){
-    var v = [];
-    for(var i=0; i<s; i++){
-      v[i] = this.stack[i];
-    }
-    return { stack: v, last_refer: this.last_refer, call_stack: _.clone(this.call_stack), tco_counter: _.clone(this.tco_counter) };
-  },
-
-  // private
-  //v: stack array to restore
-  //ret: lenght of restored stack
-  restore_stack: function(stuff){
-    v = stuff.stack;
-    var s = v.length;
-    for(var i=0; i<s; i++){
-      this.stack[i] = v[i];
-    }
-    this.last_refer = stuff.last_refer;
-    this.call_stack = _.clone(stuff.call_stack);
-    this.tco_counter = _.clone(stuff.tco_counter);
-    return s;
-  },
-
-  // private
-  //s: depth of stack to save
-  //n: number of args(for outer lambda) to remove (= 0 unless tail position)
-  //ret: closure array
-  continuation: function(s, n){
-    // note: implementation of this function for final version doesn't exist in 3imp.pdf..
-    var ss = this.push(n, s);
-    return this.closure(["refer-local", 0,
-                          ["nuate", this.save_stack(ss), 
-                          ["return"]]], 
-                        0,     //n (number of frees)
-                        null,  //s (stack position to get frees)
-                        -1);   // dotpos
-  },
-
-  // private
-  // shift stack 
-  // n: number of items to skip (from stack top)
-  // m: number of items to shift
-  // s: stack pointer (= index of stack top + 1)
-  shift_args: function(n, m, s){
-    for(var i = n-1; i >= -1; i--){
-      this.index_set(s, i+m+1, this.index(s, i));
-    }
-    return s-m-1;
-  },
-
-  index: function(s, i){
-    return this.stack[s-i-2];
-  },
-
-  // private
-  index_set: function(s, i, v){
-    this.stack[s-i-2] = v;
-  },
-
-  // private
-  //ret: [body, stack[s-1], stack[s-2], .., stack[s-n], dotpos]
-  closure: function(body, n, s, dotpos){
-    var v = []; //(make-vector n+1+1)
-    v[0] = body;
-    for(var i=0; i<n; i++)
-      v[i+1] = this.index(s, i-1);
-    v[n+1] = dotpos;
-
-    v.closure_p = true;
-
-    return v;
-  },
-
-  // private
-  run_dump_hook: function(a, x, f, c, s) {
-    var dumper;
-    var state;
-
-
-    if (this.dumper) {
-      dumper = this.dumper;
-    }
-    else if (BiwaScheme.Interpreter.dumper) {
-      dumper = BiwaScheme.Interpreter.dumper;
-    }
-    else
-      return;
-
-    if (dumper) {
-      state = {"a":a,
-               "f":f,
-               "c":c,
-               "s":s,
-               "x":x,
-               "stack":this.stack};
-      dumper.dump(state);
-    }
-  },
-
-  // private
-  _execute: function(a, x, f, c, s){
-    var ret = null;
-    //Console.puts("executing "+x[0]);
-    
-    while(true){ //x[0] != "halt"){
-
-      this.run_dump_hook(a, x, f, c, s);
-
-      switch(x[0]){
-      case "halt":
-        return a;
-      case "refer-local":
-        var n=x[1], x=x[2];
-        a = this.index(f, n);
-        this.last_refer = "(anon)";
-        break;
-      case "refer-free":
-        var n=x[1], x=x[2];
-        a = c[n+1];
-        this.last_refer = "(anon)";
-        break;
-      case "refer-global":
-        var sym=x[1], x=x[2];
-        if(BiwaScheme.TopEnv.hasOwnProperty(sym))
-          var val = BiwaScheme.TopEnv[sym];
-        else if(BiwaScheme.CoreEnv.hasOwnProperty(sym))
-          var val = BiwaScheme.CoreEnv[sym];
-        else
-          throw new BiwaScheme.Error("execute: unbound symbol: "+BiwaScheme.inspect(sym));
-
-        a = val;
-        this.last_refer = sym || "(anon)";
-        break;
-      case "indirect":
-        var x=x[1];
-        a = a[0]; //unboxing
-        break;
-      case "constant":
-        var obj=x[1], x=x[2];
-        a = obj;
-        this.last_refer = "(anon)";
-        break;
-      case "close":
-        var ox=x;
-        var n=ox[1], body=ox[2], x=ox[3], dotpos=ox[4];
-        a = this.closure(body, n, s, dotpos);
-        s -= n;
-        break;
-      case "box":
-        var n=x[1], x=x[2];
-        this.index_set(s, n, [this.index(s, n)]); //boxing
-        break;
-      case "test":
-        var thenc=x[1], elsec=x[2];
-        x = ((a!==false) ? thenc : elsec);
-        break;
-      case "assign-global":
-        var name=x[1], x=x[2];
-        if(!BiwaScheme.TopEnv.hasOwnProperty(name) &&
-           !BiwaScheme.CoreEnv.hasOwnProperty(name))
-          throw new BiwaScheme.Error("global variable '"+name+"' is not defined");
-        
-        BiwaScheme.TopEnv[name] = a;
-        a = BiwaScheme.undef;
-        break;
-      case "assign-local":
-        var n=x[1], x=x[2];
-        var box = this.index(f, n);
-        box[0] = a;
-        a = BiwaScheme.undef;
-        break;
-      case "assign-free":
-        var n=x[1], x=x[2];
-        var box = c[n+1];
-        box[0] = a;
-        a = BiwaScheme.undef;
-        break;
-      case "conti":
-        var n=x[1], x=x[2];
-        a = this.continuation(s, n);
-        break;
-      case "nuate":
-        var stack=x[1], x=x[2];
-        s = this.restore_stack(stack);
-        break;
-      case "frame":
-        var ret = x[2];
-        x = x[1];
-        s = this.push(ret, this.push(f, this.push(c, s)));
-        this.tco_counter[this.tco_counter.length] = 0;
-        break;
-      case "argument":
-        var x=x[1];
-        s = this.push(a, s);
-        break;
-      case "shift":
-        var n=x[1], x=x[2];
-
-        // the number of arguments in the last call
-        var n_args = this.index(s, n);  
-
-        s = this.shift_args(n, n_args, s);
-        break;
-      case "tco_hinted_apply": // just like a regular apply, except we need to trace the # of TCO calls so we can generate a stacktrace
-        this.tco_counter[this.tco_counter.length - 1]++;
-        x = ["apply"].concat(_.rest(x));
-        break;
-      case "apply": //extended: n_args as second argument
-        var func = a; //, n_args = x[1];
-
-        // Save stack trace
-        this.call_stack.push(this.last_refer);
-        if (this.call_stack.length > this.max_trace_size) {
-          // Remove old memory if it grows too long
-          // Note: this simple way may be inconvenient (e.g. no trace
-          // will be shown when an error occurred right after returning
-          // from a large function)
-          this.call_stack.shift();
-        }
-
-        // the number of arguments in the last call is
-        // pushed to the stack.
-        var n_args = this.index(s, -1);
-        if(func instanceof Array){ //closure
-          a = func;
-          x = func[0];
-
-          // The position of dot in the parameter list.
-          var dotpos = func[func.length-1];
-
-          if (dotpos >= 0) {
-            // The dot is found
-            // ----------------
-            // => Process the &rest args: packing the rest args into a list.
-            var ls = BiwaScheme.nil;
-            for (var i=n_args; --i>=dotpos; ) {
-              ls = new BiwaScheme.Pair(this.index(s, i), ls);
-            }
-            if (dotpos >= n_args) {
-              // No rest argument is passed to this closure.
-              // However, the closure expects the caller passes the rest argument.
-              // In such case this VM prepares an empty list as the rest argument.
-              // --------------------------------------------------------------
-              // => We extend the stack to put the empty list.
-              for(var i = -1; i < n_args; i++){
-                this.index_set(s, i-1, this.index(s, i));
-              }
-              s++;
-              // => Update the number of arguments
-              this.index_set(s, -1, this.index(s, -1) + 1);  
-            }
-            this.index_set(s, dotpos, ls);
-          }
-          f = s;
-          c = a;
-        }
-        else if(func instanceof Function){ // Apply JavaScript function
-          // load arguments from stack
-          var args = [];
-          for(var i=0; i<n_args; i++) 
-            args.push(this.index(s, i));
-
-          // invoke the function
-          var result = func(args, this);
-
-          if(result instanceof BiwaScheme.Pause){
-            // it requested the interpreter to suspend
-            var pause = result;
-            pause.set_state(this, ["return"], f, c, s);
-            pause.ready();
-            return pause;
-          }
-          else if(result instanceof BiwaScheme.Call){
-            // it requested the interpreter to call a scheme closure
-
-            //   [frame,
-            //     [constant... (args)
-            //     [constant, proc
-            //     [apply]]]]
-            //   [frame,
-            //     [constant, after
-            //     [apply 1]]]]
-            //   x
-            var call_after = ["frame",
-                               ["argument",
-                               ["constant", 1,
-                               ["argument",
-                               ["constant", result.after,
-                               ["apply"]]]]],
-                             ["return"]];
-            var call_proc = ["constant", result.args.length,
-                            ["argument",
-                            ["constant", result.proc, 
-                            ["apply", result.args.length]]]];
-            var push_args = _.inject(result.args, function(opc, arg){
-              // (foo 1 2) => first push 2, then 1
-              //   [constant 2 ... [constant 1 ... ]
-              return ["constant", arg, 
-                     ["argument",
-                     opc]];
-            }, call_proc);
-            x = ["frame",
-                  push_args,
-                call_after]
-          }
-          else{
-            // the JavaScript function returned a normal value
-            a = result;
-            x = ["return"];
-          }
-        }
-        else{
-          // unknown function type
-          throw new BiwaScheme.Error(BiwaScheme.inspect(func) + " is not a function");
-        }
-        break;
-      case "return":
-        // Pop stack frame
-        var n=this.index(s, -1);
-        var ss=s-n;
-        x = this.index(ss, 0),
-        f = this.index(ss, 1),
-        c = this.index(ss, 2),
-        s = ss-3-1;
-
-        // Pop stack trace (> 1 times if tail calls are done)
-        var n_pops = 1 + this.tco_counter[this.tco_counter.length - 1];
-        this.call_stack.splice(-n_pops);
-        this.tco_counter.pop();
-        break;
-      default:
-        throw new BiwaScheme.Bug("unknown opecode type: "+x[0]);
-      }
-    }
-
-//      if(ret === null)
-//        throw new BiwaScheme.Bug("interpreter exited in unusual way");
-//      else
-//        return ret;
-    return a
-  },
-
-  // Compile and evaluate Scheme program
-  evaluate: function(str, after_evaluate){
-    this.parser = new BiwaScheme.Parser(str);
-    this.compiler = new BiwaScheme.Compiler();
-    if(after_evaluate) 
-      this.after_evaluate = after_evaluate;
-
-    if(BiwaScheme.Debug) Console.puts("executing: " + str);
-     
-    this.is_top = true;
-    this.file_stack = [];
-
-    try{
-      return this.resume(false);
-    }
-    catch(e){
-      e.message = e.message + " [" + this.call_stack.join(", ") + "]";
-      return this.on_error(e);
-    }
-  },
-
-  // Resume evaluation
-  // (internally used from Interpreter#execute and Pause#resume)
-  resume: function(is_resume, a, x, f, c, s){
-    var ret = BiwaScheme.undef;
-
-    for(;;){
-      if(is_resume){
-        ret = this._execute(a, x, f, c, s);
-        is_resume = false;
-      }
-      else{
-        if(!this.parser) break; // adhoc: when Pause is used via invoke_closure
-        var expr = this.parser.getObject();
-        if(expr === BiwaScheme.Parser.EOS) break;
-
-        // expand
-        expr = BiwaScheme.Interpreter.expand(expr);
-
-        // compile
-        var opc = this.compiler.run(expr);
-        //if(BiwaScheme.Debug) Console.p(opc);
-
-        // execute
-        ret = this._execute(expr, opc, 0, [], 0);
-      }
-
-      if(ret instanceof BiwaScheme.Pause){ //suspend evaluation
-        return ret;
-      }
-    }
-
-    // finished executing all forms
-    this.after_evaluate(ret);
-    return ret;
-  },
-
-  // Invoke a scheme closure
-  invoke_closure: function(closure, args){
-    args || (args = []);
-    var n_args  = args.length;
-
-    var x = ["constant", n_args, ["argument", ["constant", closure, ["apply"]]]]
-    for(var i=0; i<n_args; i++)
-      x = ["constant", args[i], ["argument", x]]
-
-    return this._execute(closure, ["frame", x, ["halt"]], 0, closure, 0);
-  },
-
-  // only compiling (for debug use only)
-  compile: function(str){
-    var obj = BiwaScheme.Interpreter.read(str);
-    var opc = BiwaScheme.Compiler.compile(obj);
-    return opc;
-  }
-});
-
-// Take a string and returns an expression.
-BiwaScheme.Interpreter.read = function(str){
-  var parser = new BiwaScheme.Parser(str);
-  var r      = parser.getObject();
-  return (r == BiwaScheme.Parser.EOS)? BiwaScheme.eof: r;
-};
-
-// Expand macro calls in a expression recursively.
-//
-// x - expression
-// flag - used internally. do not specify this
-//
-// @throws {BiwaScheme.Error} when x has syntax error
-BiwaScheme.Interpreter.expand = function(x, flag/*optional*/){
-  var expand = BiwaScheme.Interpreter.expand;
-  flag || (flag = {})
-  var ret = null;
-
-  if(x instanceof BiwaScheme.Pair){
-    switch(x.car){
-    case BiwaScheme.Sym("define"):
-      var left = x.cdr.car, exp = x.cdr.cdr;
-      ret = new BiwaScheme.Pair(BiwaScheme.Sym("define"),
-              new BiwaScheme.Pair(left, expand(exp, flag)));
-      break;
-    case BiwaScheme.Sym("begin"):
-      ret = new BiwaScheme.Pair(BiwaScheme.Sym("begin"), expand(x.cdr, flag));
-      break;
-    case BiwaScheme.Sym("quote"):
-      ret = x;
-      break;
-    case BiwaScheme.Sym("lambda"):
-      var vars=x.cdr.car, body=x.cdr.cdr;
-      ret = new BiwaScheme.Pair(BiwaScheme.Sym("lambda"),
-              new BiwaScheme.Pair(vars, expand(body, flag)));
-      break;
-    case BiwaScheme.Sym("if"):
-      var testc=x.second(), thenc=x.third(), elsec=x.fourth();
-      ret = BiwaScheme.List(BiwaScheme.Sym("if"),
-                            expand(testc, flag),
-                            expand(thenc, flag),
-                            expand(elsec, flag));
-      break;
-    case BiwaScheme.Sym("set!"):
-      var v=x.second(), x=x.third();
-      ret = BiwaScheme.List(BiwaScheme.Sym("set!"), v, expand(x, flag));
-      break;
-    case BiwaScheme.Sym("call-with-current-continuation"): 
-    case BiwaScheme.Sym("call/cc"): 
-      var x=x.second();
-      ret = BiwaScheme.List(BiwaScheme.Sym("call/cc"), expand(x, flag));
-      break;
-    default: //apply
-      var transformer = null;
-      if(BiwaScheme.isSymbol(x.car)){
-        if(BiwaScheme.TopEnv[x.car.name] instanceof BiwaScheme.Syntax)
-          transformer = BiwaScheme.TopEnv[x.car.name];
-        else if(BiwaScheme.CoreEnv[x.car.name] instanceof BiwaScheme.Syntax)
-          transformer = BiwaScheme.CoreEnv[x.car.name];
-      }
-
-      if(transformer){
-        flag["modified"] = true;
-        ret = transformer.transform(x);
-
-//            // Debug
-//            var before = BiwaScheme.to_write(x);
-//            var after = BiwaScheme.to_write(ret);
-//            if(before != after){
-//              console.log("before: " + before)
-//              console.log("expand: " + after)
-//            }
-
-        var fl;
-        for(;;){
-          ret = expand(ret, fl={});
-          if(!fl["modified"]) 
-            break;
-        }
-      }
-      else{
-        var expanded_car = expand(x.car, flag);
-        var expanded_cdr;
-        if(!(x.cdr instanceof BiwaScheme.Pair) && (x.cdr !== BiwaScheme.nil)){
-          throw new Error("proper list required for function application "+
-                          "or macro use: "+BiwaScheme.to_write(x));
-        }
-        expanded_cdr = BiwaScheme.array_to_list(
-                         _.map(x.cdr.to_array(),
-                               function(item){ return expand(item, flag); }));
-        ret = new BiwaScheme.Pair(expanded_car, expanded_cdr);
-      }
-    }
-  }
-  else{
-    ret = x;
-  }
-  return ret;
-};
-//
-// R7RS Promise (lazy library)
-//
-BiwaScheme.Promise = BiwaScheme.Class.create({
-  initialize : function(done, thunk_or_value){
-    this.box = [done, thunk_or_value];
-  },
-
-  // Return true when this promise is already calculated
-  is_done: function() {
-    return this.box[0];
-  },
-
-  // Return calculated value of this promise
-  value: function() {
-    if (!this.is_done()) {
-      throw new BiwaScheme.Bug("this promise is not calculated yet");
-    }
-    return this.box[1];
-  },
-
-  thunk: function() {
-    if (this.is_done()) {
-      throw new BiwaScheme.Bug("this promise does not know the thunk");
-    }
-    return this.box[1];
-  },
-
-  update_with: function(new_promise) {
-    this.box[0] = new_promise.box[0];
-    this.box[1] = new_promise.box[1];
-    new_promise.box = this.box;
-  }
-});
-BiwaScheme.isPromise = function(obj) {
-  return (obj instanceof BiwaScheme.Promise);
-};
-
-// Create fresh promise
-BiwaScheme.Promise.fresh = function(thunk) {
-  return new BiwaScheme.Promise(false, thunk);
-};
-// Create calculated promise
-BiwaScheme.Promise.done = function(value) {
-  return new BiwaScheme.Promise(true, value);
-};
-///
-/// infra.js - Basis for library functions
-///
-
-//
-// define_*func - define library functions
-//
-BiwaScheme.check_arity = function(len, min, max){
-  var fname = arguments.callee.caller
-                ? arguments.callee.caller.fname
-                : "(?)";
-  if(len < min){
-    if(max && max == min)
-      throw new BiwaScheme.Error(fname+": wrong number of arguments (expected: "+min+" got: "+len+")");
-    else
-      throw new BiwaScheme.Error(fname+": too few arguments (at least: "+min+" got: "+len+")");
-  }
-  else if(max && max < len)
-    throw new BiwaScheme.Error(fname+": too many arguments (at most: "+max+" got: "+len+")");
-}
-BiwaScheme.define_libfunc = function(fname, min, max, func){
-  var f = function(ar, intp){
-    BiwaScheme.check_arity(ar.length, min, max);
-    return func(ar, intp);
-  };
-
-  func["fname"] = fname; // for assert_*
-  f["fname"]    = fname; // for check_arity
-  f["inspect"] = function(){ return this.fname; }
-  BiwaScheme.CoreEnv[fname] = f;
-}
-BiwaScheme.alias_libfunc = function(fname, aliases) {
-  if (BiwaScheme.CoreEnv[fname]) {
-    if (_.isArray(aliases)) {
-      _.map(aliases, function(a) { BiwaScheme.alias_libfunc(fname, a); });
-    } else if (_.isString(aliases)) {
-      BiwaScheme.CoreEnv[aliases] = BiwaScheme.CoreEnv[fname];
-    } else {
-      console.error("[BUG] bad alias for library function " +
-                    "`" + fname + "': " + aliases.toString());
-    }
-  } else {
-    console.error("[BUG] library function " +
-                  "`" + fname + "'" +
-                  " does not exist, so can't alias it.");
-  }
-};
-BiwaScheme.define_syntax = function(sname, func) {
-  var s = new BiwaScheme.Syntax(sname, func);
-  BiwaScheme.CoreEnv[sname] = s;
-}
-BiwaScheme.define_scmfunc = function(fname, min, max, str){
-  (new BiwaScheme.Interpreter).evaluate("(define "+fname+" "+str+"\n)");
-}
-
-//  define_scmfunc("map+", 2, null, 
-//    "(lambda (proc ls) (if (null? ls) ls (cons (proc (car ls)) (map proc (cdr ls)))))");
-
-//
-// assertions - type checks
-//
-BiwaScheme.make_assert = function(check){
-  return function(/*args*/){
-    var fname = arguments.callee.caller
-                  ? arguments.callee.caller.fname
-                  : "";
-    check.apply(this, [fname].concat(_.toArray(arguments)));
-  }
-}
-BiwaScheme.make_simple_assert = function(type, test, _fname){
-  return BiwaScheme.make_assert(function(fname, obj, opt){
-    if(_fname) fname = _fname;
-    option = opt ? ("("+opt+")") : ""
-    if(!test(obj)){
-      throw new BiwaScheme.Error(fname + option + ": " +
-                                 type + " required, but got " +
-                                 BiwaScheme.to_write(obj));
-    }
-  })
-}
-
-BiwaScheme.assert_number = BiwaScheme.make_simple_assert("number", function(obj){
-  return typeof(obj) == 'number' || (obj instanceof BiwaScheme.Complex);
-});
-
-BiwaScheme.assert_integer = BiwaScheme.make_simple_assert("integer", function(obj){
-  return typeof(obj) == 'number' && (obj % 1 == 0)
-});
-
-BiwaScheme.assert_real = BiwaScheme.make_simple_assert("real number", function(obj){
-  return typeof(obj) == 'number';
-});
-
-BiwaScheme.assert_between = BiwaScheme.make_assert(function(fname, obj, from, to){
-  if( typeof(obj) != 'number' || obj != Math.round(obj) ){
-    throw new BiwaScheme.Error(fname + ": " +
-                               "number required, but got " +
-                               BiwaScheme.to_write(obj));
-  }
-
-  if( obj < from || to < obj ){
-    throw new BiwaScheme.Error(fname + ": " +
-                               "number must be between " +
-                               from + " and " + to + ", but got " +
-                               BiwaScheme.to_write(obj));
-  }
-});
-
-BiwaScheme.assert_string = BiwaScheme.make_simple_assert("string", _.isString);
-
-BiwaScheme.assert_char = BiwaScheme.make_simple_assert("character", BiwaScheme.isChar);
-BiwaScheme.assert_symbol = BiwaScheme.make_simple_assert("symbol", BiwaScheme.isSymbol);
-BiwaScheme.assert_port = BiwaScheme.make_simple_assert("port", BiwaScheme.isPort);
-BiwaScheme.assert_pair = BiwaScheme.make_simple_assert("pair", BiwaScheme.isPair);
-BiwaScheme.assert_list = BiwaScheme.make_simple_assert("list", BiwaScheme.isList);
-BiwaScheme.assert_vector = BiwaScheme.make_simple_assert("vector", BiwaScheme.isVector);
-
-BiwaScheme.assert_hashtable = BiwaScheme.make_simple_assert("hashtable",
-                                          BiwaScheme.isHashtable);
-BiwaScheme.assert_mutable_hashtable = BiwaScheme.make_simple_assert("mutable hashtable",
-                                            BiwaScheme.isMutableHashtable);
-
-BiwaScheme.assert_record = BiwaScheme.make_simple_assert("record",
-                                          BiwaScheme.isRecord);
-BiwaScheme.assert_record_td = BiwaScheme.make_simple_assert("record type descriptor",
-                                          BiwaScheme.isRecordTD);
-BiwaScheme.assert_record_cd = BiwaScheme.make_simple_assert("record constructor descriptor",
-                                          BiwaScheme.isRecordCD);
-BiwaScheme.assert_enum_set = BiwaScheme.make_simple_assert("enum_set",
-                                          BiwaScheme.isEnumSet);
-BiwaScheme.assert_promise = BiwaScheme.make_simple_assert("promise",
-                                          BiwaScheme.isPromise);
-
-BiwaScheme.assert_function = BiwaScheme.make_simple_assert("JavaScript function",
-                                         _.isFunction);
-BiwaScheme.assert_closure = BiwaScheme.make_simple_assert("scheme function",
-                                        BiwaScheme.isClosure);
-BiwaScheme.assert_procedure = BiwaScheme.make_simple_assert("scheme/js function", function(obj){
-  return BiwaScheme.isClosure(obj) || _.isFunction(obj);
-});
-
-BiwaScheme.assert_date = BiwaScheme.make_simple_assert("date", function(obj){
-  // FIXME: this is not accurate (about cross-frame issue)
-  // https://prototype.lighthouseapp.com/projects/8886/tickets/443
-  return obj instanceof Date;
-});
-
-//var assert_instance_of = BiwaScheme.make_assert(function(fname, type, obj, klass){
-//  if(!(obj instanceof klass)){
-//    throw new BiwaScheme.Error(fname + ": " +
-//                               type + " required, but got " +
-//                               BiwaScheme.to_write(obj));
-//  }
-//});
-
-BiwaScheme.assert = BiwaScheme.make_assert(function(fname, success, message, _fname){
-  if(!success){
-    throw new BiwaScheme.Error((_fname || fname)+": "+message);
-  }
-});
-
-//
-// deprecation
-//
-
-// Show deprecation warnig
-// @param {string} title - feature to be deprecated
-// @param {string} ver - when it will be removed (eg. "1.0")
-// @param {string} alt - alternatives
-BiwaScheme.deprecate = function(title, ver, alt){
-  if(BiwaScheme.suppress_deprecation_warning) return;
-
-  var msg = title+" is deprecated and will be removed in BiwaScheme "+ver+ ". "+
-            "Please use "+alt+" instead";
-  console.warn(msg); 
-};
-//
-// R6RS Base library
-//
-
-if( typeof(BiwaScheme)!='object' ) BiwaScheme={}; with(BiwaScheme) {
-  ///
-  /// R6RS Base library
-  ///
-
-  //
-  //        11.4  Expressions
-  //
-  //            11.4.1  Quotation
-  //(quote)
-  //            11.4.2  Procedures
-  //(lambda)
-  //            11.4.3  Conditionaar
-  //(if)
-  //            11.4.4  Assignments
-  //(set!)
-  //            11.4.5  Derived conditionaar
-
-  define_syntax("cond", function(x){
-    var clauses = x.cdr;
-    if(!(clauses instanceof Pair) || clauses === nil){
-      throw new Error("malformed cond: cond needs list but got " +
-                      to_write_ss(clauses));
-    }
-    // TODO: assert that clauses is a proper list
-
-    var ret = null;
-    _.each(clauses.to_array().reverse(), function(clause){
-      if(!(clause instanceof Pair)){
-        throw new Error("bad clause in cond: " + to_write_ss(clause));
-      }
-
-      if(clause.car === Sym("else")){
-        if(ret !== null){
-          throw new Error("'else' clause of cond followed by more clauses: " +
-                          to_write_ss(clauses));
-        }
-        else if(clause.cdr === nil){
-          // pattern A: (else)
-          //  -> #f            ; not specified in R6RS...?
-          ret = false;
-        }
-        else if(clause.cdr.cdr === nil){
-          // pattern B: (else expr)
-          //  -> expr
-          ret = clause.cdr.car;
-        }
-        else{
-          // pattern C: (else expr ...)
-          //  -> (begin expr ...)
-          ret = new Pair(Sym("begin"), clause.cdr);
-        }
-      }
-      else{
-        var test = clause.car;
-        if(clause.cdr === nil){
-          // pattern 1: (test)
-          //  -> (or test ret)
-          ret = List(Sym("or"), test, ret);
-        }
-        else if (clause.cdr.cdr === nil){
-          // pattern 2: (test expr)
-          //  -> (if test expr ret)
-          ret = List(Sym("if"), test, clause.cdr.car, ret);
-        }
-        else if(clause.cdr.car === Sym("=>")){
-          // pattern 3: (test => expr)
-          //  -> (let ((#<gensym1> test))
-          //       (if test (expr #<gensym1>) ret))
-          var test = clause.car, expr = clause.cdr.cdr.car;
-          var tmp_sym = BiwaScheme.gensym();
-
-          ret = List(Sym("let"),
-                     List( List(tmp_sym, test) ),
-                     List(Sym("if"), test, List(expr, tmp_sym), ret));
-        }
-        else{
-          // pattern 4: (test expr ...)
-          //  -> (if test (begin expr ...) ret)
-          ret = List(Sym("if"), test,
-                     new Pair(Sym("begin"), clause.cdr),
-                     ret);
-        }
-      }
-    });
-    return ret;
-  });
-
-  define_syntax("case", function(x){
-    var tmp_sym = BiwaScheme.gensym();
-
-    if(x.cdr === nil){
-      throw new Error("case: at least one clause is required");
-    }
-    else if(!(x.cdr instanceof Pair)){
-      throw new Error("case: proper list is required");
-    }
-    else{
-      // (case key clauses ....)
-      //  -> (let ((#<gensym1> key))
-      var key = x.cdr.car;
-      var clauses = x.cdr.cdr;
-
-      var ret = undefined;
-      _.each(clauses.to_array().reverse(), function(clause){
-        if(clause.car === Sym("else")){
-          // pattern 0: (else expr ...)
-          //  -> (begin expr ...)
-          if(ret === undefined){
-            ret = new Pair(Sym("begin"), clause.cdr);
-          }
-          else{
-            throw new Error("case: 'else' clause followed by more clauses: " +
-                            to_write_ss(clauses));
-          }
-        }
-        else{
-          // pattern 1: ((datum ...) expr ...)
-          //  -> (if (or (eqv? key (quote d1)) ...) (begin expr ...) ret)
-          ret = List(
-            Sym("if"),
-            new Pair(Sym("or"), array_to_list(_.map(clause.car.to_array(), function(d){
-                return List(Sym("eqv?"),
-                            tmp_sym,
-                            List(Sym("quote"), d));
-            }))),
-            new Pair(Sym("begin"), clause.cdr),
-            ret
-          );
-        }
-      });
-      return new Pair(Sym("let1"),
-               new Pair(tmp_sym,
-                 new Pair(key,
-                   new Pair(ret, nil))));
-    }
-  });
-
-  define_syntax("and", function(x){
-    // (and a b c) => (if a (if b c #f) #f)
-    //todo: check improper list
-    if(x.cdr == nil) return true;
-
-    var objs = x.cdr.to_array();
-    var i = objs.length-1;
-    var t = objs[i];
-    for(i=i-1; i>=0; i--)
-      t = List(Sym("if"), objs[i], t, false);
-
-    return t;
-  })
-
-  define_syntax("or", function(x){
-    // (or a b c) => (if a a (if b b (if c c #f)))
-    //todo: check improper list
-
-    var objs = x.cdr.to_array()
-    var f = false;
-    for(var i=objs.length-1; i>=0; i--)
-      f = List(Sym("if"), objs[i], objs[i], f);
-
-    return f;
-  })
-
-  //            11.4.6  Binding constructs
-  define_syntax("let", function(x){
-    //(let ((a 1) (b 2)) (print a) (+ a b))
-    //=> ((lambda (a b) (print a) (+ a b)) 1 2)
-    var name = null;
-    if (x.cdr.car instanceof Symbol) {
-      name = x.cdr.car;
-      x = x.cdr;
-    }
-    var binds = x.cdr.car, body = x.cdr.cdr;
-
-    if((!(binds instanceof Pair)) && binds != BiwaScheme.nil){
-      throw new Error("let: need a pair for bindings: got "+to_write(binds));
-    }
-
-    var vars = nil, vals = nil;
-    for(var p=binds; p instanceof Pair; p=p.cdr){
-      if(!(p.car instanceof Pair)){
-        throw new Error("let: need a pair for bindings: got "+to_write(p.car));
-      }
-      vars = new Pair(p.car.car, vars);
-      vals = new Pair(p.car.cdr.car, vals);
-    }
-
-    var lambda = null;
-    if (name) {
-      // (let loop ((a 1) (b 2)) body ..)
-      //=> (letrec ((loop (lambda (a b) body ..))) (loop 1 2))
-      vars = array_to_list(vars.to_array().reverse());
-      vals = array_to_list(vals.to_array().reverse());
-
-      var body_lambda = new Pair(Sym("lambda"), new Pair(vars, body));
-      var init_call = new Pair(name, vals);
-
-      lambda = List(Sym("letrec"),
-                    new Pair(List(name, body_lambda), nil),
-                    init_call);
-    }
-    else {
-      lambda = new Pair(new Pair(Sym("lambda"),
-                                 new Pair(vars, body)),
-                        vals);
-    }
-    return lambda;
-  })
-
-  define_syntax("let*", function(x){
-    //(let* ((a 1) (b a)) (print a) (+ a b))
-    //-> (let ((a 1))
-    //     (let ((b a)) (print a) (+ a b)))
-    var binds = x.cdr.car, body = x.cdr.cdr;
-
-    if(!(binds instanceof Pair))
-      throw new Error("let*: need a pair for bindings: got "+to_write(binds));
-
-    var ret = null;
-    _.each(binds.to_array().reverse(), function(bind){
-      ret = new Pair(Sym("let"),
-               new Pair(new Pair(bind, nil),
-                 ret == null ? body : new Pair(ret, nil)));
-    })
-    return ret;
-  })
-
-  var expand_letrec_star = function(x){
-    var binds = x.cdr.car, body = x.cdr.cdr;
-
-    if(!(binds instanceof Pair))
-      throw new Error("letrec*: need a pair for bindings: got "+to_write(binds));
-
-    var ret = body;
-    _.each(binds.to_array().reverse(), function(bind){
-      ret = new Pair(new Pair(Sym("set!"), bind),
-              ret);
-    })
-    var letbody = nil;
-    _.each(binds.to_array().reverse(), function(bind){
-      letbody = new Pair(new Pair(bind.car,
-                           new Pair(BiwaScheme.undef, nil)),
-                  letbody);
-    })
-    return new Pair(Sym("let"),
-             new Pair(letbody,
-               ret));
-  }
-  define_syntax("letrec", expand_letrec_star);
-  define_syntax("letrec*", expand_letrec_star);
-
-  define_syntax("let-values", function(x) {
-    // (let-values (((a b) (values 1 2))
-    //               ((c d . e) (values 3 4 a)))
-    //              (print a b c d e))
-    // =>
-    // (let ((#<gensym1> (lambda () (values 1 2)))
-    //       (#<gensym2> (lambda () (values 3 4 a))))
-    //   (let*-values (((a b) #<gensym1>)
-    //                 ((c d . e) #<gensym2>))
-    //                 (print a b c d e)))
-      var mv_bindings = x.cdr.car;
-      var body = x.cdr.cdr;
-      var ret = null;
-
-      var let_bindings = nil;
-      var let_star_values_bindings = nil;
-      _.each(mv_bindings.to_array().reverse(), function (item) {
-	  var init = item.cdr.car;
-	  var tmpsym = BiwaScheme.gensym()
-	  var binding = new Pair(tmpsym,
-				 new Pair(
-					  new Pair(Sym("lambda"), new Pair(nil,
-									   new Pair(init, nil))),
-					  nil));
-	  let_bindings = new Pair(binding, let_bindings);
-
-	  var formals = item.car;
-	  let_star_values_bindings = new Pair(new Pair (formals, new Pair(new Pair(tmpsym, nil), nil)),
-					      let_star_values_bindings);
-      });
-
-      var let_star_values = new Pair(Sym("let*-values"),
-				     new Pair(let_star_values_bindings,
-					      body));
-      ret = new Pair(Sym("let"),
-		     new Pair(let_bindings,
-			      new Pair (let_star_values, nil)));
-      return ret;
-
-  });
-
-  //let*-values
-  define_syntax("let*-values", function(x){
-    // (let*-values (((a b) (values 1 2))
-    //               ((c d . e) (values 3 4 a)))
-    //   (print a b c d e))
-    // -> (call-with-values
-    //      (lambda () (values 1 2))
-    //      (lambda (a b)
-    //        (call-with-values
-    //          (lambda () (values 3 4 a))
-    //          (lambda (c d . e)
-    //            (print a b c d e)))))
-    var mv_bindings = x.cdr.car;
-    var body = x.cdr.cdr;
-
-    var ret = null;
-
-    _.each(mv_bindings.to_array().reverse(), function(item){
-      var formals = item.car, init = item.cdr.car;
-      ret = new Pair(Sym("call-with-values"),
-              new Pair(new Pair(Sym("lambda"),
-                         new Pair(nil,
-                           new Pair(init, nil))),
-                new Pair(new Pair(Sym("lambda"),
-                           new Pair(formals,
-                             (ret == null ? body
-                                          : new Pair(ret, nil)))), nil)));
-    });
-    return ret;
-  });
-  //            11.4.7  Sequencing
-  //(begin)
-
-  //
-  //        11.5  Equivalence predicates
-  //
-  define_libfunc("eqv?", 2, 2, function(ar){
-    return BiwaScheme.eqv(ar[0], ar[1]);
-  })
-  define_libfunc("eq?", 2, 2, function(ar){
-    return BiwaScheme.eq(ar[0], ar[1]);
-  })
-  define_libfunc("equal?", 2, 2, function(ar){
-    return BiwaScheme.equal(ar[0], ar[1]);
-  })
-
-  //
-  //        11.6  Procedure predicate
-  //
-  //"procedure?", 1, 1
-  define_libfunc("procedure?", 1, 1, function(ar){
-    return ((ar[0] instanceof Array) && (ar[0].closure_p === true)
-	    || (typeof ar[0] == "function"));
-  })
-
-  //
-  //        11.7  Arithmetic
-  //
-
-  //            11.7.1  Propagation of exactness and inexactness
-  //            11.7.2  Representability of infinities and NaNs
-  //            11.7.3  Semantics of common operations
-  //                11.7.3.1  Integer division
-  //                11.7.3.2  Transcendental functions
-  //(no functions are introduced by above sections)
-
-  //
-  //            11.7.4  Numerical operations
-  //
-
-  //                11.7.4.1  Numerical type predicates
-  define_libfunc("number?", 1, 1, function(ar){
-    return BiwaScheme.isNumber(ar[0]);
-  });
-  define_libfunc("complex?", 1, 1, function(ar){
-    return BiwaScheme.isComplex(ar[0]);
-  });
-  define_libfunc("real?", 1, 1, function(ar){
-    return BiwaScheme.isReal(ar[0]);
-  });
-  define_libfunc("rational?", 1, 1, function(ar){
-    return BiwaScheme.isRational(ar[0]);
-  });
-  define_libfunc("integer?", 1, 1, function(ar){
-    return BiwaScheme.isInteger(ar[0]);
-  });
-
-//(real-valued? obj)    procedure
-//(rational-valued? obj)    procedure
-//(integer-valued? obj)    procedure
-//
-//(exact? z)    procedure
-//(inexact? z)    procedure
-
-  //                11.7.4.2  Generic conversions
-  //
-//(inexact z)    procedure
-//(exact z)    procedure
-//
-  //                11.7.4.3  Arithmetic operations
-
-  //inf & nan: ok (for this section)
-  define_libfunc("=", 2, null, function(ar){
-    var v = ar[0];
-    assert_number(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_number(ar[i]);
-      if(real_part(ar[i]) != real_part(v)) return false;
-      if(imag_part(ar[i]) != imag_part(v)) return false;
-    }
-    return true;
-  });
-  define_libfunc("<", 2, null, function(ar){
-    assert_number(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_number(ar[i]);
-      if(!(ar[i-1] < ar[i])) return false;
-    }
-    return true;
-  });
-  define_libfunc(">", 2, null, function(ar){
-    assert_number(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_number(ar[i]);
-      if(!(ar[i-1] > ar[i])) return false;
-    }
-    return true;
-  });
-  define_libfunc("<=", 2, null, function(ar){
-    assert_number(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_number(ar[i]);
-      if(!(ar[i-1] <= ar[i])) return false;
-    }
-    return true;
-  });
-  define_libfunc(">=", 2, null, function(ar){
-    assert_number(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_number(ar[i]);
-      if(!(ar[i-1] >= ar[i])) return false;
-    }
-    return true;
-  });
-
-  define_libfunc("zero?", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return ar[0] === 0;
-  });
-  define_libfunc("positive?", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return (ar[0] > 0);
-  });
-  define_libfunc("negative?", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return (ar[0] < 0);
-  });
-  define_libfunc("odd?", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return (ar[0] % 2 == 1) || (ar[0] % 2 == -1);
-  })
-  define_libfunc("even?", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return ar[0] % 2 == 0;
-  })
-  define_libfunc("finite?", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return (ar[0] != Infinity) && (ar[0] != -Infinity) && !isNaN(ar[0]);
-  })
-  define_libfunc("infinite?", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return (ar[0] == Infinity) || (ar[0] == -Infinity);
-  })
-  define_libfunc("nan?", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return isNaN(ar[0]);
-  })
-  define_libfunc("max", 2, null, function(ar){
-    for(var i=0; i<ar.length; i++)
-      assert_number(ar[i]);
-
-    return Math.max.apply(null, ar)
-  });
-  define_libfunc("min", 2, null, function(ar){
-    for(var i=0; i<ar.length; i++)
-      assert_number(ar[i]);
-
-    return Math.min.apply(null, ar);
-  });
-
-  var complex_or_real = function(real,imag){
-    if(imag === 0) return real;
-    return new Complex(real,imag);
-  }
-  var polar_or_real = function(magnitude, angle){
-      if(angle === 0) return magnitude;
-      return Complex.from_polar(magnitude, angle);
-  }
-  define_libfunc("+", 0,null, function(ar){
-    var real = 0;
-    var imag = 0;
-    for(var i=0; i<ar.length; i++){
-      assert_number(ar[i]);
-      real+=real_part(ar[i]);
-      imag+=imag_part(ar[i]);
-    }
-    return complex_or_real(real,imag);
-  });
-  var the_magnitude = function(n) {
-      if(n instanceof Complex) return n.magnitude();
-      return n;
-  }
-  var the_angle = function(n) {
-      if(n instanceof Complex) return n.angle();
-      return 0;
-  }
-  define_libfunc("*", 0,null, function(ar){
-    var magnitude = 1;
-    var angle = 0;
-    for(var i=0; i<ar.length; i++){
-      assert_number(ar[i]);
-      magnitude*=the_magnitude(ar[i]);
-      angle+=the_angle(ar[i]);
-    }
-    return polar_or_real(magnitude, angle);
-  });
-  define_libfunc("-", 1,null, function(ar){
-    var len = ar.length;
-    assert_number(ar[0]);
-
-    if(len == 1) {
-      if(ar[0] instanceof Complex) return new Complex(-real_part(ar[0]),-imag_part(ar[0]));
-      return -ar[0];
-    }
-    else{
-      var real = real_part(ar[0]);
-      var imag = imag_part(ar[0]);
-      for(var i=1; i<len; i++){
-        assert_number(ar[i]);
-        real-=real_part(ar[i]);
-        imag-=imag_part(ar[i]);
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
-      }
-      return complex_or_real(real,imag);
-    }
-<<<<<<< HEAD
-    if (timerId === undefined) {
-      timerId = setTimeout(timerExpired, wait);
-    }
-    return result;
-  }
-  debounced.cancel = cancel;
-  debounced.flush = flush;
-  return debounced;
-}
-
-/**
- * Checks if `value` is the
- * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
- * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
- *
- * @static
- * @memberOf _
- * @since 0.1.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is an object, else `false`.
- * @example
- *
- * _.isObject({});
- * // => true
- *
- * _.isObject([1, 2, 3]);
- * // => true
- *
- * _.isObject(_.noop);
- * // => true
- *
- * _.isObject(null);
- * // => false
- */
-function isObject(value) {
-  var type = typeof value;
-  return !!value && (type == 'object' || type == 'function');
-}
-
-/**
- * Checks if `value` is object-like. A value is object-like if it's not `null`
- * and has a `typeof` result of "object".
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
- * @example
- *
- * _.isObjectLike({});
- * // => true
- *
- * _.isObjectLike([1, 2, 3]);
- * // => true
- *
- * _.isObjectLike(_.noop);
- * // => false
- *
- * _.isObjectLike(null);
- * // => false
- */
-function isObjectLike(value) {
-  return !!value && typeof value == 'object';
-}
-
-/**
- * Checks if `value` is classified as a `Symbol` primitive or object.
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
- * @example
- *
- * _.isSymbol(Symbol.iterator);
- * // => true
- *
- * _.isSymbol('abc');
- * // => false
- */
-function isSymbol(value) {
-  return typeof value == 'symbol' ||
-    (isObjectLike(value) && objectToString.call(value) == symbolTag);
-}
-
-/**
- * Converts `value` to a number.
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to process.
- * @returns {number} Returns the number.
- * @example
- *
- * _.toNumber(3.2);
- * // => 3.2
- *
- * _.toNumber(Number.MIN_VALUE);
- * // => 5e-324
- *
- * _.toNumber(Infinity);
- * // => Infinity
- *
- * _.toNumber('3.2');
- * // => 3.2
- */
-function toNumber(value) {
-  if (typeof value == 'number') {
-    return value;
-  }
-  if (isSymbol(value)) {
-    return NAN;
-  }
-  if (isObject(value)) {
-    var other = typeof value.valueOf == 'function' ? value.valueOf() : value;
-    value = isObject(other) ? (other + '') : other;
-  }
-  if (typeof value != 'string') {
-    return value === 0 ? value : +value;
-  }
-  value = value.replace(reTrim, '');
-  var isBinary = reIsBinary.test(value);
-  return (isBinary || reIsOctal.test(value))
-    ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
-    : (reIsBadHex.test(value) ? NAN : +value);
-}
-
-module.exports = debounce;
-
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1)))
-
-/***/ }),
-/* 17 */
-/***/ (function(module, exports, __webpack_require__) {
-
-/* WEBPACK VAR INJECTION */(function(process) {var _ = __webpack_require__(5);
-_.str = __webpack_require__(6);
-
-var Console = {};
-Console.puts = function(str, no_newline) {
-  BiwaScheme.Port.current_output.put_string(str + (no_newline ? "" : "\n"))
-};
-
-Console.p = function() {
-  [].slice.call(arguments).forEach(BiwaScheme.Port.current_output.put_string);
-};
-
-if(typeof(BiwaScheme) == "undefined") BiwaScheme = {};
-BiwaScheme.on_node = true;
-BiwaScheme._ = _;
-BiwaScheme.Console = Console;
-/*
- * BiwaScheme 0.6.8 - R6RS Scheme in JavaScript
- *
- * Copyright (c) 2007-2014 Yutaka HARA (http://www.biwascheme.org/)
- * @license Licensed under the MIT license.
- */
-
-var BiwaScheme = BiwaScheme || {};
-
-BiwaScheme.Version = "0.6.8";  // TODO: deprecate this
-BiwaScheme.VERSION = "0.6.8";
-BiwaScheme.GitCommit = "dfce3cb5a2228174dfdb9b0161483623a41b6f81";
-// 
-// Heap based scheme from 3imp.pdf
-//
-
-//
-// variables
-//
-BiwaScheme.TopEnv = {};
-BiwaScheme.CoreEnv = {};
-
-//
-// Nil
-// javascript representation of empty list( '() )
-//
-BiwaScheme.nil = {
-  toString: function() { return "nil"; },
-  to_write: function() { return "()"; },
-  to_array: function() { return []; },
-  length: function() { return 0; }
-};
-
-//
-// #<undef> (The undefined value)
-// also used as #<unspecified> values
-//
-BiwaScheme.undef = new Object();
-BiwaScheme.undef.toString = function(){ return "#<undef>"; }
-
-// Prints the arguments to console.debug.
-BiwaScheme.debug = function(/*arguments*/){
-  var args = _.toArray(arguments);
-  console.debug.apply(console, _.map(args, BiwaScheme.inspect));
-}
-
-//
-// Assertion
-//
-BiwaScheme.assert = function(cond, desc) {
-  if (!cond) {
-    throw new BiwaScheme.Bug("[BUG] Assertion failed: "+desc);
-  }
-}
-
-//
-// Configurations
-//
-
-// Maximum depth of stack trace
-// (You can also set Interpreter#max_trace_size for each Interpreter)
-BiwaScheme.max_trace_size = 40;
-
-// Stop showing deprecation warning
-BiwaScheme.suppress_deprecation_warning = false;
-//
-// Super-simple class implementation
-//
-// Example usage:
-//
-// BiwaScheme.Foo = BiwaScheme.Class.create({
-//   initialize: function(a){
-//     this.a = a;
-//   },
-//
-//   toString: function(){
-//     return "foo[" + this.a + "]";
-//   }
-// });
-//
-// BiwaScheme.Bar = BiwaScheme.Class.extend(new BiwaScheme.Foo("hello1"), {
-//   initialize: function(b){
-//     this.b = b;
-//   },
-//
-//   printEverything: function(){
-//     console.log("a = ", this.a, "b = ", this.b);
-//   },
-//
-//   toString: function(){
-//     return "bar[" + this.b + "]";
-//   }
-// });
-
-BiwaScheme.Class = {
-  create: function(methods) {
-    var klass = function(){ this.initialize.apply(this, arguments); };
-    _.extend(klass.prototype, methods);
-    return klass;
-  },
-
-  extend: function(parent, methods) {
-    var klass = function(){ this.initialize.apply(this, arguments); };
-    klass.prototype = parent;
-    _.extend(klass.prototype, methods);
-    return klass;
-  }
-};
-
-// Update the given method to memoized version.
-//
-// - klass : a class defined by BiwaScheme.Class.create
-// - name_or_names : method name (a string or an array of strings)
-//
-// Example
-//
-//   // Given this method
-//   BiwaScheme.Enumeration.EnumType = ...
-//     universe: function(){
-//       return ...
-//     }
-//   ...
-//   // Memoize
-//   BiwaScheme.Class.memoize(BiwaScheme.Enumeration.EnumType,
-//                            "_universe"); 
-//
-//   // Equal to:
-//   BiwaScheme.Enumeration.EnumType = ...
-//     universe: function(){
-//       if(!this.hasOwnProperty("cached_universe")){
-//         this.cached_universe = this.compute_universe();
-//       }
-//       return this.cached_universe;
-//     },
-//     compute_universe: function(){ 
-//       // Original function, renamed to compute_*
-//       return ...
-//     }
-//   ...
-BiwaScheme.Class.memoize = function(klass, name_or_names){
-  var proto = klass.prototype;
-  var names = _.isArray(name_or_names) ? name_or_names : [name_or_names];
-
-  _.each(names, function(name){
-    // Copy original function foo as 'compute_foo'
-    proto["compute_"+name] = proto[name];
-
-    // Define memoizing version
-    proto[name] = function(/*arguments*/){
-      if(!this.hasOwnProperty("cached_"+name)){
-        this["cached_"+name] = this["compute_"+name].apply(this, _.toArray(arguments));
-      }
-      return this["cached_"+name];
-    }
-  });
-}
-//
-// write.js: Functions to convert objects to strings
-//
-
-//
-// write
-//
-
-BiwaScheme.to_write = function(obj){
-  if(obj === undefined)
-    return "undefined";
-  else if(obj === null)
-    return "null";
-  else if(_.isFunction(obj))
-    return "#<Function "+(obj.fname ? obj.fname :
-                          obj.toSource ? _.str.truncate(obj.toSource(), 40) :
-                          "")+">";
-  else if(_.isString(obj))
-    return '"' +
-           obj.replace(/\\|\"/g,function($0){return'\\'+$0;})
-              .replace(/\x07/g, "\\a")
-              .replace(/\x08/g, "\\b")
-              .replace(/\t/g, "\\t")
-              .replace(/\n/g, "\\n")
-              .replace(/\v/g, "\\v")
-              .replace(/\f/g, "\\f")
-              .replace(/\r/g, "\\r") +
-           '"';
-  else if(_.isArray(obj) && obj.closure_p)
-    return "#<Closure>";
-  else if(_.isArray(obj))
-    return "#(" + _.map(obj, function(e) { return BiwaScheme.to_write(e); }).join(" ") + ")";
-  else if(typeof(obj.to_write) == 'function')
-    return obj.to_write();
-  else if(isNaN(obj) && typeof(obj) == 'number')
-    return "+nan.0";
-  else{
-    switch(obj){
-      case true: return "#t";
-      case false: return "#f";
-      case Infinity: return "+inf.0";
-      case -Infinity: return "-inf.0";
-    }
-  }
-  return BiwaScheme.inspect(obj);
-}
-
-//
-// display
-//
-
-BiwaScheme.to_display = function(obj){
-  if(_.isUndefined(obj))
-    return 'undefined';
-  else if(_.isNull(obj))
-    return 'null';
-  else if(typeof(obj.valueOf()) == "string")
-    return obj;
-  else if(obj instanceof BiwaScheme.Symbol)
-    return obj.name;
-  else if(obj instanceof Array)
-    return '#(' + _.map(obj, BiwaScheme.to_display).join(' ') + ')';
-  else if(obj instanceof BiwaScheme.Pair)
-    return obj.inspect(BiwaScheme.to_display);
-  else if(obj instanceof BiwaScheme.Char)
-    return obj.value;
-  else
-    return BiwaScheme.to_write(obj);
-}
-
-//
-// write/ss (write with substructure)
-//
-
-// example:  > (let ((x (list 'a))) (list x x))                   //           (#0=(a) #0#)
-// 2-pass algorithm.
-// (1) detect all the objects which appears more than once
-//     (find_cyclic, reduce_cyclic_info)
-// (2) write object using this information
-//   * add prefix '#n=' for first appearance
-//   * just write '#n#' for other appearance
-
-//TODO: support Values
-BiwaScheme.write_ss = function(obj, array_mode){
-  var known = [obj], used = [false];
-  BiwaScheme.find_cyclic(obj, known, used);
-  var cyclic   = BiwaScheme.reduce_cyclic_info(known, used);
-  var appeared = new Array(cyclic.length);
-  for(var i=cyclic.length-1; i>=0; i--) appeared[i] = false;
-
-  return BiwaScheme.to_write_ss(obj, cyclic, appeared, array_mode);
-}
-BiwaScheme.to_write_ss = function(obj, cyclic, appeared, array_mode){
-  var ret = "";
-  var i = cyclic.indexOf(obj);
-  if(i >= 0){
-    if(appeared[i]){
-      return "#"+i+"#";
-    }
-    else{
-      appeared[i] = true;
-      ret = "#"+i+"=";
-    }
-  }
-
-  if(obj instanceof BiwaScheme.Pair){
-    var a = [];
-    a.push(BiwaScheme.to_write_ss(obj.car, cyclic, appeared, array_mode));
-    for(var o=obj.cdr; o != BiwaScheme.nil; o=o.cdr){
-      if(!(o instanceof BiwaScheme.Pair) || cyclic.indexOf(o) >= 0){
-        a.push(".");
-        a.push(BiwaScheme.to_write_ss(o, cyclic, appeared, array_mode));
-        break;
-      }
-      a.push(BiwaScheme.to_write_ss(o.car, cyclic, appeared, array_mode));
-    }
-    ret += "(" + a.join(" ") + ")";
-  }
-  else if(obj instanceof Array){
-    var a = _.map(obj, function(item){
-      return BiwaScheme.to_write_ss(item, cyclic, appeared, array_mode);
-    })
-    if(array_mode)
-      ret += "[" + a.join(", ") + "]";
-    else
-      ret += "#(" + a.join(" ") + ")";
-  }
-  else{
-    ret += BiwaScheme.to_write(obj);
-  }
-  return ret;
-}
-BiwaScheme.reduce_cyclic_info = function(known, used){
-  var n_used = 0;
-  for(var i=0; i<used.length; i++){
-    if(used[i]){
-      known[n_used] = known[i];
-      n_used++;
-    }
-  }
-  return known.slice(0, n_used);
-}
-BiwaScheme.find_cyclic = function(obj, known, used){
-  var items = (obj instanceof BiwaScheme.Pair)  ? [obj.car, obj.cdr] :
-              (obj instanceof Array) ? obj :
-              null;
-  if(!items) return;
-
-  _.each(items, function(item){
-    if(typeof(item)=='number' || typeof(item)=='string' ||
-      item === BiwaScheme.undef || item === true || item === false ||
-      item === BiwaScheme.nil || item instanceof BiwaScheme.Symbol) return;
-
-    var i = known.indexOf(item);
-    if(i >= 0)
-      used[i] = true;
-    else{
-      known.push(item);
-      used.push(false);
-      BiwaScheme.find_cyclic(item, known, used);
-    }
-  });
-};
-
-//
-// inspect
-//
-BiwaScheme.inspect = function(object, opts) {
-  try {
-    if (_.isUndefined(object)) return 'undefined';
-    if (object === null) return 'null';
-    if (object === true) return '#t';
-    if (object === false) return '#f';
-    if (object.inspect) return object.inspect();
-    if (_.isString(object)) {
-      return '"' + object.replace(/"/g, '\\"') + '"';
-    }
-    if (_.isArray(object)) {
-      return '[' + _.map(object, BiwaScheme.inspect).join(', ') + ']';
-    }
-
-    if (opts && opts["fallback"]){
-      return opts["fallback"];
-    }
-    else {
-      return object.toString();
-    }
-  } catch (e) {
-    if (e instanceof RangeError) return '...';
-    throw e;
-  }
-};
-//
-// types.js - type predicators, equality, compare
-//
-
-BiwaScheme.isNil = function(obj){
-  return (obj === BiwaScheme.nil);
-};
-
-BiwaScheme.isUndef = function(obj){
-  return (obj === BiwaScheme.undef);
-};
-
-BiwaScheme.isBoolean = _.isBoolean; // Return true if arg is either true or false
-
-//BiwaScheme.isNumber is defined in number.js (Return true if arg is scheme number)
-
-BiwaScheme.isString = _.isString;
-
-BiwaScheme.isChar = function(obj){
-  return (obj instanceof BiwaScheme.Char);
-};
-
-BiwaScheme.isSymbol = function(obj){
-  return (obj instanceof BiwaScheme.Symbol);
-};
-
-BiwaScheme.isPort = function(obj){
-  return (obj instanceof BiwaScheme.Port);
-};
-
-// Note: '() is not a pair in scheme
-BiwaScheme.isPair = function(obj){
-  return (obj instanceof BiwaScheme.Pair);
-};
-
-// Returns true if obj is a proper list
-// Note: isList returns true for '()
-BiwaScheme.isList = function(obj){
-  var nil = BiwaScheme.nil, Pair = BiwaScheme.Pair;
-
-  if (obj === nil) { // Empty list
-    return true;
-  }
-  if (!(obj instanceof Pair)) { // Argument isn't even a pair
-    return false;
-  }
-
-  var tortoise = obj;
-  var hare = obj.cdr;
-  while (true) {
-    if (hare === nil) { // End of list
-      return true;
-    }
-    if (hare === tortoise) { // Cycle
-      return false;
-    }
-    if (!(hare instanceof Pair)) { // Improper list
-      return false;
-    }
-
-    if (hare.cdr === nil) { // End of list
-      return true;
-    }
-    if (!(hare.cdr instanceof Pair)) { // Improper list
-      return false;
-    }
-
-    hare = hare.cdr.cdr;
-    tortoise = tortoise.cdr;
-  }
-};
-
-BiwaScheme.isVector = function(obj){
-  return (obj instanceof Array) && (obj.closure_p !== true);
-};
-
-BiwaScheme.isHashtable = function(obj){
-  return (obj instanceof BiwaScheme.Hashtable);
-};
-
-BiwaScheme.isMutableHashtable = function(obj){
-  return (obj instanceof BiwaScheme.Hashtable) && obj.mutable;
-};
-
-BiwaScheme.isClosure = function(obj){
-  return (obj instanceof Array) && (obj.closure_p === true);
-};
-
-// procedure: Scheme closure or JavaScript function
-// valid argument for anywhere function is expected
-BiwaScheme.isProcedure = function(obj){
-  return BiwaScheme.isClosure(obj) || _.isFunction(obj);
-};
-
-// Return true if obj is a scheme value which evaluates to itself
-BiwaScheme.isSelfEvaluating = function(obj) {
-  return BiwaScheme.isBoolean(obj) ||
-         BiwaScheme.isNumber(obj) ||
-         BiwaScheme.isString(obj) ||
-         BiwaScheme.isChar(obj);
-};
-
-//
-// equality
-//
-BiwaScheme.eq = function(a, b){
-  return a === b;
-};
-// TODO: Records (etc.)
-BiwaScheme.eqv = function(a, b){
-  return a == b && (typeof(a) == typeof(b));
-};
-BiwaScheme.equal = function(a, b){
-  //TODO: must terminate for cyclic objects
-  return BiwaScheme.to_write(a) == BiwaScheme.to_write(b);
-};
-
-//
-// comaprator
-//
-// Return true when a < b
-BiwaScheme.lt = function(a, b) {
-  if(typeof a !== typeof b){
-    return compareFn(typeof a, typeof b); 	
-  }
-  return a < b;
-};
-//
-// Errors
-//
-
-BiwaScheme.Error = BiwaScheme.Class.create({
-  initialize: function(msg){
-    this.message = "Error: "+msg;
-  },
-  toString: function(){
-    return this.message;
-  }
-});
-
-BiwaScheme.Bug = BiwaScheme.Class.extend(new BiwaScheme.Error(), {
-  initialize: function(msg){
-    this.message = "[BUG] "+msg;
-  }
-});
-
-// currently used by "raise"
-BiwaScheme.UserError = BiwaScheme.Class.extend(new BiwaScheme.Error(), {
-  initialize: function(msg){
-    this.message = msg;
-  }
-});
-
-//
-// Set - set of string
-// contents must be string (or at least sortable)
-//
-BiwaScheme.Set = BiwaScheme.Class.create({
-  initialize : function(/*args*/){
-    this.arr = [];
-    var i;
-    for(i=0; i<arguments.length; i++)
-      this.arr[i] = arguments[i];
-  },
-
-  equals : function(other){
-    if(this.arr.length != other.arr.length)
-      return false;
-
-    var a1 = _.clone(this.arr);
-    var a2 = _.clone(other.arr);
-    a1.sort();
-    a2.sort();
-    for(var i=0; i<this.arr.length; i++){
-      if(a1[i] != a2[i]) return false;
-    }
-    return true;
-  },
-  set_cons : function(item){
-    var o = new BiwaScheme.Set(item);
-    o.arr = _.clone(this.arr);
-    o.arr.push(item);
-    return o;
-  },
-  set_union : function(/*args*/){
-    var o = new BiwaScheme.Set();
-    o.arr = _.clone(this.arr);
-
-    for(var k=0; k<arguments.length; k++){
-      var s2 = arguments[k];
-      if(!(s2 instanceof BiwaScheme.Set))
-        throw new BiwaScheme.Error("set_union: arguments must be a set");
-
-      for(var i=0; i<s2.arr.length; i++)
-        o.add(s2.arr[i]);
-    }
-    return o;
-  },
-  set_intersect : function(s2){
-    if(!(s2 instanceof BiwaScheme.Set))
-      throw new BiwaScheme.Error("set_intersect: arguments must be a set");
-
-    var o = new BiwaScheme.Set();
-    for(var i=0; i<this.arr.length; i++)
-      if(s2.member(this.arr[i]))
-        o.add(this.arr[i]);
-    return o;
-  },
-  set_minus : function(s2){
-    if(!(s2 instanceof BiwaScheme.Set))
-      throw new BiwaScheme.Error("set_minus: arguments must be a set");
-
-    var o = new BiwaScheme.Set();
-    for(var i=0; i<this.arr.length; i++)
-      if(!s2.member(this.arr[i]))
-        o.add(this.arr[i]);
-    return o;
-  },
-  add : function(item){
-    if(!this.member(item)){
-      this.arr.push(item);
-    }
-  },
-  member : function(item){
-    for(var i=0; i<this.arr.length; i++)
-      if(this.arr[i] == item) return true;
-
-    return false;
-  },
-  rindex : function(item){
-    for(var i=this.arr.length-1; i>=0 ; i--)
-      if(this.arr[i] == item) return (this.arr.length-1-i);
-
-    return null;
-  },
-  index : function(item){
-    for(var i=0; i<this.arr.length; i++)
-      if(this.arr[i] == item) return i;
-
-    return null;
-  },
-  inspect : function(){
-    return "Set(" + this.arr.join(", ") + ")";
-  },
-  toString : function(){
-    return this.inspect();
-  },
-  size : function(){
-    return this.arr.length;
-  }
-});
-//
-// Values
-//
-BiwaScheme.Values = BiwaScheme.Class.create({
-  initialize: function(values){
-    this.content = values;
-  },
-  to_write: function(){
-    return "#<Values " +
-             _.map(this.content, BiwaScheme.to_write).join(" ") +
-           ">";
-  }
-});
-
-//
-// Pair 
-// cons cell
-//
-
-BiwaScheme.Pair = BiwaScheme.Class.create({
-  initialize: function(car, cdr){
-    this.car = car;
-    this.cdr = cdr;
-  },
-
-  caar: function(){ return this.car.car; },
-  cadr: function(){ return this.cdr.car; },
-  cdar: function(){ return this.cdr.car; },
-  cddr: function(){ return this.cdr.cdr; },
-
-  first:  function(){ return this.car; },
-  second: function(){ return this.cdr.car; },
-  third:  function(){ return this.cdr.cdr.car; },
-  fourth: function(){ return this.cdr.cdr.cdr.car; },
-  fifth:  function(){ return this.cdr.cdr.cdr.cdr.car; },
-
-  // returns array containing all the car's of list
-  // '(1 2 3) => [1,2,3]
-  // '(1 2 . 3) => [1,2]
-  to_array: function(){
-    var ary = [];
-    for(var o = this; o instanceof BiwaScheme.Pair; o=o.cdr){
-      ary.push(o.car);
-    }
-    return ary;
-  },
-
-  to_set: function(){
-    var set = new BiwaScheme.Set();
-    for(var o = this; o instanceof BiwaScheme.Pair; o=o.cdr){
-      set.add(o.car);
-    }
-    return set;
-  },
-
-  length: function(){
-    var n = 0;
-    for(var o = this; o instanceof BiwaScheme.Pair; o=o.cdr){
-      n++;
-    }
-    return n;
-  },
-
-  // Return the last cdr
-  last_cdr: function(){
-    var o;
-    for(o = this; o instanceof BiwaScheme.Pair; o = o.cdr)
-      ;
-    return o;
-  },
-
-  // calls the given func passing each car of list
-  // returns cdr of last Pair
-  foreach: function(func){
-    for(var o = this; o instanceof BiwaScheme.Pair; o=o.cdr){
-      func(o.car);
-    }
-    return o;
-  },
-
-  // Returns an array which contains the resuls of calling func
-  // with the car's as an argument.
-  // If the receiver is not a proper list, the last cdr is ignored.
-  // The receiver must not be a cyclic list.
-  map: function(func){
-    var ary = [];
-    for(var o = this; BiwaScheme.isPair(o); o = o.cdr){
-      ary.push(func(o.car));
-    }
-    return ary;
-  },
-
-  // Destructively concat the given list to the receiver.
-  // The receiver must be a proper list.
-  // Returns the receiver.
-  concat: function(list){
-    var o = this;
-    while(o instanceof BiwaScheme.Pair && o.cdr != BiwaScheme.nil){
-      o = o.cdr;
-    }
-    o.cdr = list;
-    return this;
-  },
-
-  // returns human-redable string of pair
-  inspect: function(conv){
-    conv || (conv = BiwaScheme.inspect);
-    var a = [];
-    var last = this.foreach(function(o){
-      a.push(conv(o));
-    });
-    if(last != BiwaScheme.nil){
-      a.push(".");
-      a.push(conv(last));
-=======
-  });
-  //for r6rs specification, (/ 0 0) or (/ 3 0) raises '&assertion exception'
-  define_libfunc("/", 1,null, function(ar){
-    var len = ar.length;
-    assert_number(ar[0]);
-
-    if(len == 1){
-      if (ar[0] instanceof Complex) return Complex.from_polar(1/the_magnitude(ar[0]), -the_angle(ar[0]));
-      return 1/ar[0];
-    }
-    else{
-      var magnitude = the_magnitude(ar[0]);
-      var angle = the_angle(ar[0]);
-      for(var i=1; i<len; i++){
-        assert_number(ar[i]);
-        magnitude/=the_magnitude(ar[i]);
-        angle-=the_angle(ar[i]);
-      }
-      return polar_or_real(magnitude, angle);
-    }
-  });
-
-  define_libfunc("abs", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.abs(ar[0]);
-  });
-
-  var div = function(n, m){
-    return Math.floor(n / m);
-  }
-  var mod = function(n, m){
-    return n - Math.floor(n / m) * m;
-  }
-  var div0 = function(n, m){
-    return (n > 0) ? Math.floor(n / m) : Math.ceil(n / m);
-  }
-  var mod0 = function(n, m){
-    return (n > 0) ? n - Math.floor(n / m) * m
-                   : n - Math.ceil(n / m) * m;
-  }
-  define_libfunc("div0-and-mod0", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return new Values([div(ar[0], ar[1]), mod(ar[0], ar[1])]);
-  })
-  define_libfunc("div", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return div(ar[0], ar[1]);
-  })
-  define_libfunc("mod", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return mod(ar[0], ar[1]);
-  })
-  define_libfunc("div0-and-mod0", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return new Values([div0(ar[0], ar[1]), mod0(ar[0], ar[1])]);
-  })
-  define_libfunc("div0", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return div0(ar[0], ar[1]);
-  })
-  define_libfunc("mod0", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return mod0(ar[0], ar[1]);
-  })
-
-//(gcd n1 ...)    procedure
-//(lcm n1 ...)    procedure
-
-  define_libfunc("numerator", 1, 1, function(ar){
-    assert_number(ar[0]);
-    if(ar[0] instanceof Rational)
-      return ar[0].numerator;
-    else
-      throw new Bug("todo");
-  })
-  define_libfunc("denominator", 1, 1, function(ar){
-    assert_number(ar[0]);
-    if(ar[0] instanceof Rational)
-      return ar[0].denominator;
-    else
-      throw new Bug("todo");
-  })
-  define_libfunc("floor", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.floor(ar[0]);
-  })
-  define_libfunc("ceiling", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.ceil(ar[0]);
-  })
-  define_libfunc("truncate", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return (ar[0] < 0) ? Math.ceil(ar[0]) : Math.floor(ar[0]);
-  })
-  define_libfunc("round", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.round(ar[0]);
-  })
-
-//(rationalize x1 x2)    procedure
-
-  define_libfunc("exp", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.exp(ar[0]);
-  })
-  define_libfunc("log", 1, 2, function(ar){
-    var num = ar[0], base = ar[1];
-    assert_number(num);
-
-    if(base){ // log b num == log e num / log e b
-      assert_number(base);
-      return Math.log(num) / Math.log(b)
-    }
-    else
-      return Math.log(num);
-  })
-  define_libfunc("sin", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.sin(ar[0]);
-  })
-  define_libfunc("cos", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.cos(ar[0]);
-  })
-  define_libfunc("tan", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.tan(ar[0]);
-  })
-  define_libfunc("asin", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.asin(ar[0]);
-  })
-  define_libfunc("acos", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.acos(ar[0]);
-  })
-  define_libfunc("atan", 1, 2, function(ar){
-    assert_number(ar[0]);
-    if(ar.length == 2){
-      assert_number(ar[1]);
-      return Math.atan2(ar[0], ar[1]);
-    }
-    else
-      return Math.atan(ar[0]);
-  })
-  define_libfunc("sqrt", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.sqrt(ar[0]);
-  })
-  define_libfunc("exact-integer-sqrt", 1, 1, function(ar){
-    assert_number(ar[0]);
-    var sqrt_f = Math.sqrt(ar[0]);
-    var sqrt_i = sqrt_f - (sqrt_f % 1);
-    var rest   = ar[0] - sqrt_i * sqrt_i;
-
-    return new Values([sqrt_i, rest]);
-  })
-  define_libfunc("expt", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return Math.pow(ar[0], ar[1]);
-  })
-  define_libfunc("make-rectangular", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return new Complex(ar[0], ar[1]);
-  })
-  define_libfunc("make-polar", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return Complex.from_polar(ar[0], ar[1]);
-  })
-  var real_part = function(n) {
-    return Complex.assure(n).real;
-  }
-  var imag_part = function(n) {
-    return Complex.assure(n).imag;
-  }
-  define_libfunc("real-part", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return real_part(ar[0]);
-  })
-  define_libfunc("imag-part", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Complex.assure(ar[0]).imag;
-  })
-  define_libfunc("magnitude", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Complex.assure(ar[0]).magnitude();
-  })
-  define_libfunc("angle", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Complex.assure(ar[0]).angle();
-  })
-
-  //
-  //                11.7.4.4  Numerical Input and Output
-  //
-  define_libfunc("number->string", 1, 3, function(ar){
-    var z = ar[0], radix = ar[1], precision = ar[2];
-    if(precision)
-      throw new Bug("number->string: precision is not yet implemented");
-
-    radix = radix || 10;  //TODO: check radix is 2, 8, 10, or 16.
-    return z.toString(radix);
-  })
-  define_libfunc("string->number", 1, 3, function(ar){
-    var s = ar[0], radix = ar[1] || 10;
-    switch(s){
-      case "+inf.0": return Infinity;
-      case "-inf.0": return -Infinity;
-      case "+nan.0": return NaN;
-      default:       if(s.match(/[eE.]/))
-                       return parseFloat(s);
-                     else
-                       return parseInt(s, radix);
-
-    }
-  })
-
-  //
-  //        11.8  Booleans
-  //
-
-  define_libfunc("not", 1, 1, function(ar){
-    return (ar[0] === false) ? true : false;
-  });
-  define_libfunc("boolean?", 1, 1, function(ar){
-    return (ar[0] === false || ar[0] === true) ? true : false;
-  });
-  define_libfunc("boolean=?", 2, null, function(ar){
-    var len = ar.length;
-    for(var i=1; i<len; i++){
-      if(ar[i] != ar[0]) return false;
-    }
-    return true;
-  });
-
-  //        11.9  Pairs and lists
-
-  define_libfunc("pair?", 1, 1, function(ar){
-    return (ar[0] instanceof Pair) ? true : false;
-  });
-  define_libfunc("cons", 2, 2, function(ar){
-    return new Pair(ar[0], ar[1]);
-  });
-  define_libfunc("car", 1, 1, function(ar){
-    //should raise &assertion for '()...
-    if(!(ar[0] instanceof Pair)) throw new Error("Attempt to apply car on " + ar[0]);
-    return ar[0].car;
-  });
-  define_libfunc("cdr", 1, 1, function(ar){
-    //should raise &assertion for '()...
-    if(!(ar[0] instanceof Pair)) throw new Error("Attempt to apply cdr on " + ar[0]);
-    return ar[0].cdr;
-  });
-  define_libfunc("set-car!", 2, 2, function(ar){
-    if(!(ar[0] instanceof Pair)) throw new Error("Attempt to apply set-car! on " + ar[0]);
-    ar[0].car = ar[1];
-    return BiwaScheme.undef;
-  });
-  define_libfunc("set-cdr!", 2, 2, function(ar){
-    if(!(ar[0] instanceof Pair)) throw new Error("Attempt to apply set-cdr! on " + ar[0]);
-    ar[0].cdr = ar[1];
-    return BiwaScheme.undef;
-  });
-
-  // cadr, caddr, cadddr, etc.
-  (function(){
-    // To traverse into pair and raise error
-    var get = function(funcname, spec, obj){
-      var ret = obj;
-      _.each(spec, function(is_cdr){
-        if(ret instanceof Pair){
-          ret = (is_cdr ? ret.cdr : ret.car);
-        }
-        else{
-          throw new Error(funcname+": attempt to get "+(is_cdr ? "cdr" : "car")+" of "+ret);
-        }
-      });
-      return ret;
-    };
-    define_libfunc("caar", 1, 1, function(ar){ return get("caar", [0, 0], ar[0]); });
-    define_libfunc("cadr", 1, 1, function(ar){ return get("cadr", [1, 0], ar[0]); });
-    define_libfunc("cdar", 1, 1, function(ar){ return get("cadr", [0, 1], ar[0]); });
-    define_libfunc("cddr", 1, 1, function(ar){ return get("cadr", [1, 1], ar[0]); });
-
-    define_libfunc("caaar", 1, 1, function(ar){ return get("caaar", [0, 0, 0], ar[0]); });
-    define_libfunc("caadr", 1, 1, function(ar){ return get("caadr", [1, 0, 0], ar[0]); });
-    define_libfunc("cadar", 1, 1, function(ar){ return get("cadar", [0, 1, 0], ar[0]); });
-    define_libfunc("caddr", 1, 1, function(ar){ return get("caddr", [1, 1, 0], ar[0]); });
-    define_libfunc("cdaar", 1, 1, function(ar){ return get("cdaar", [0, 0, 1], ar[0]); });
-    define_libfunc("cdadr", 1, 1, function(ar){ return get("cdadr", [1, 0, 1], ar[0]); });
-    define_libfunc("cddar", 1, 1, function(ar){ return get("cddar", [0, 1, 1], ar[0]); });
-    define_libfunc("cdddr", 1, 1, function(ar){ return get("cdddr", [1, 1, 1], ar[0]); });
-
-    define_libfunc("caaaar", 1, 1, function(ar){ return get("caaaar", [0, 0, 0, 0], ar[0]); });
-    define_libfunc("caaadr", 1, 1, function(ar){ return get("caaadr", [1, 0, 0, 0], ar[0]); });
-    define_libfunc("caadar", 1, 1, function(ar){ return get("caadar", [0, 1, 0, 0], ar[0]); });
-    define_libfunc("caaddr", 1, 1, function(ar){ return get("caaddr", [1, 1, 0, 0], ar[0]); });
-    define_libfunc("cadaar", 1, 1, function(ar){ return get("cadaar", [0, 0, 1, 0], ar[0]); });
-    define_libfunc("cadadr", 1, 1, function(ar){ return get("cadadr", [1, 0, 1, 0], ar[0]); });
-    define_libfunc("caddar", 1, 1, function(ar){ return get("caddar", [0, 1, 1, 0], ar[0]); });
-    define_libfunc("cadddr", 1, 1, function(ar){ return get("cadddr", [1, 1, 1, 0], ar[0]); });
-    define_libfunc("cdaaar", 1, 1, function(ar){ return get("cdaaar", [0, 0, 0, 1], ar[0]); });
-    define_libfunc("cdaadr", 1, 1, function(ar){ return get("cdaadr", [1, 0, 0, 1], ar[0]); });
-    define_libfunc("cdadar", 1, 1, function(ar){ return get("cdadar", [0, 1, 0, 1], ar[0]); });
-    define_libfunc("cdaddr", 1, 1, function(ar){ return get("cdaddr", [1, 1, 0, 1], ar[0]); });
-    define_libfunc("cddaar", 1, 1, function(ar){ return get("cddaar", [0, 0, 1, 1], ar[0]); });
-    define_libfunc("cddadr", 1, 1, function(ar){ return get("cddadr", [1, 0, 1, 1], ar[0]); });
-    define_libfunc("cdddar", 1, 1, function(ar){ return get("cdddar", [0, 1, 1, 1], ar[0]); });
-    define_libfunc("cddddr", 1, 1, function(ar){ return get("cddddr", [1, 1, 1, 1], ar[0]); });
-  })();
-
-  define_libfunc("null?", 1, 1, function(ar){
-    return (ar[0] === nil);
-  });
-  define_libfunc("list?", 1, 1, function(ar){
-    return isList(ar[0]);
-  });
-  define_libfunc("list", 0, null, function(ar){
-    var l = nil;
-    for(var i=ar.length-1; i>=0; i--)
-      l = new Pair(ar[i], l);
-    return l;
-  });
-  define_libfunc("length", 1, 1, function(ar){
-    assert_list(ar[0]);
-    var n = 0;
-    for(var o=ar[0]; o!=nil; o=o.cdr)
-      n++;
-    return n;
-  });
-  define_libfunc("append", 2, null, function(ar){
-    var k = ar.length
-    var ret = ar[--k];
-    while(k--){
-      _.each(ar[k].to_array().reverse(), function(item){
-        ret = new Pair(item, ret);
-      });
-    }
-    return ret;
-  });
-  define_libfunc("reverse", 1, 1, function(ar){
-    // (reverse '()) => '()
-    if(ar[0] == nil)
-      return nil;
-    assert_pair(ar[0]);
-
-    var l = nil;
-    for(var o=ar[0]; o!=nil; o=o.cdr)
-      l = new Pair(o.car, l);
-    return l;
-  });
-  define_libfunc("list-tail", 2, 2, function(ar){
-    assert_pair(ar[0]);
-    assert_integer(ar[1]);
-    if(ar[1] < 0)
-      throw new Error("list-tail: index out of range ("+ar[1]+")");
-
-    var o = ar[0];
-    for(var i=0; i<ar[1]; i++){
-      if(!(o instanceof Pair)) throw new Error("list-tail: the list is shorter than " + ar[1]);
-      o = o.cdr;
-    }
-    return o;
-  });
-  define_libfunc("list-ref", 2, 2, function(ar){
-    assert_pair(ar[0]);
-    assert_integer(ar[1]);
-    if(ar[1] < 0)
-      throw new Error("list-tail: index out of range ("+ar[1]+")");
-
-    var o = ar[0];
-    for(var i=0; i<ar[1]; i++){
-      if(!(o instanceof Pair)) throw new Error("list-ref: the list is shorter than " + ar[1]);
-      o = o.cdr;
-    }
-    return o.car;
-  });
-  define_libfunc("map", 2, null, function(ar){
-    var proc = ar.shift(), lists = ar;
-    _.each(lists, assert_list);
-
-    var a = [];
-    return Call.multi_foreach(lists, {
-      // Called for each element
-      // input: the element (or the elements, if more than one list is given)
-      // output: a Call request of proc and args
-      call: function(xs){
-        return new Call(proc, _.map(xs, function(x){ return x.car }));
-      },
-
-      // Called when each Call request is finished
-      // input: the result of Call request,
-      //   the element(s) of the Call request (which is not used here)
-      // output: `undefined' to continue,
-      //   some value to terminate (the value will be the result)
-      result: function(res){ a.push(res); },
-
-      // Called when reached to the end of the list(s)
-      // input: none
-      // output: the resultant value
-      finish: function(){ return array_to_list(a); }
-    })
-  })
-  define_libfunc("for-each", 2, null, function(ar){
-    var proc = ar.shift(), lists = ar;
-    _.each(lists, assert_list);
-
-    return Call.multi_foreach(lists, {
-      call: function(xs){
-        return new Call(proc, _.map(xs, function(x){ return x.car }));
-      },
-      finish: function(){ return BiwaScheme.undef; }
-    })
-  })
-
-  //        11.10  Symbols
-
-  define_libfunc("symbol?", 1, 1, function(ar){
-    return (ar[0] instanceof Symbol) ? true : false;
-  });
-  define_libfunc("symbol->string", 1, 1, function(ar){
-    assert_symbol(ar[0]);
-    return ar[0].name;
-  });
-  define_libfunc("symbol=?", 2, null, function(ar){
-    assert_symbol(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_symbol(ar[i]);
-      if(ar[i] != ar[0]) return false;
-    }
-    return true;
-  });
-  define_libfunc("string->symbol", 1, 1, function(ar){
-    assert_string(ar[0]);
-    return Sym(ar[0]);
-  });
-
-  //
-  //        11.11  Characters
-  //
-  define_libfunc('char?', 1, 1, function(ar){
-    return (ar[0] instanceof Char);
-  });
-  define_libfunc('char->integer', 1, 1, function(ar){
-    assert_char(ar[0]);
-    return ar[0].value.charCodeAt(0);
-  })
-  define_libfunc('integer->char', 1, 1, function(ar){
-    assert_integer(ar[0]);
-    return Char.get(String.fromCharCode(ar[0]));
-  })
-
-  var make_char_compare_func = function(test){
-    return function(ar){
-      assert_char(ar[0]);
-      for(var i=1; i<ar.length; i++){
-        assert_char(ar[i]);
-        if(!test(ar[i-1].value, ar[i].value))
-          return false;
-      }
-      return true;
-    }
-  }
-  define_libfunc('char=?', 2, null,
-    make_char_compare_func(function(a, b){ return a == b }))
-  define_libfunc('char<?', 2, null,
-    make_char_compare_func(function(a, b){ return a < b }))
-  define_libfunc('char>?', 2, null,
-    make_char_compare_func(function(a, b){ return a > b }))
-  define_libfunc('char<=?', 2, null,
-    make_char_compare_func(function(a, b){ return a <= b }))
-  define_libfunc('char>=?', 2, null,
-    make_char_compare_func(function(a, b){ return a >= b }))
-
-  //
-  //        11.12  Strings
-  //
-  define_libfunc("string?", 1, 1, function(ar){
-    return (typeof(ar[0]) == "string");
-  })
-  define_libfunc("make-string", 1, 2, function(ar){
-    assert_integer(ar[0]);
-    var c = " ";
-    if(ar[1]){
-      assert_char(ar[1]);
-      c = ar[1].value;
-    }
-    var out = "";
-    _.times(ar[0], function() { out += c; });
-    return out;
-  })
-  define_libfunc("string", 1, null, function(ar){
-    for(var i=0; i<ar.length; i++)
-      assert_char(ar[i]);
-    return _.map(ar, function(c){ return c.value }).join("");
-  })
-  define_libfunc("string-length", 1, 1, function(ar){
-    assert_string(ar[0]);
-    return ar[0].length;
-  })
-  define_libfunc("string-ref", 2, 2, function(ar){
-    assert_string(ar[0]);
-    assert_between(ar[1], 0, ar[0].length-1);
-    return Char.get(ar[0].charAt([ar[1]]));
-  })
-  define_libfunc("string=?", 2, null, function(ar){
-    assert_string(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_string(ar[i]);
-      if(ar[0] != ar[i]) return false;
-    }
-    return true;
-  })
-  define_libfunc("string<?", 2, null, function(ar){
-    assert_string(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_string(ar[i]);
-      if(!(ar[i-1] < ar[i])) return false;
-    }
-    return true;
-  })
-  define_libfunc("string>?", 2, null, function(ar){
-    assert_string(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_string(ar[i]);
-      if(!(ar[i-1] > ar[i])) return false;
-    }
-    return true;
-  })
-  define_libfunc("string<=?", 2, null, function(ar){
-    assert_string(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_string(ar[i]);
-      if(!(ar[i-1] <= ar[i])) return false;
-    }
-    return true;
-  })
-  define_libfunc("string>=?", 2, null, function(ar){
-    assert_string(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_string(ar[i]);
-      if(!(ar[i-1] >= ar[i])) return false;
-    }
-    return true;
-  })
-
-  define_libfunc("substring", 3, 3, function(ar){
-    assert_string(ar[0]);
-    assert_integer(ar[1]);
-    assert_integer(ar[2]);
-
-    if(ar[1] < 0) throw new Error("substring: start too small: "+ar[1]);
-    if(ar[2] < 0) throw new Error("substring: end too small: "+ar[2]);
-    if(ar[0].length+1 <= ar[1]) throw new Error("substring: start too big: "+ar[1]);
-    if(ar[0].length+1 <= ar[2]) throw new Error("substring: end too big: "+ar[2]);
-    if(!(ar[1] <= ar[2])) throw new Error("substring: not start <= end: "+ar[1]+", "+ar[2]);
-
-    return ar[0].substring(ar[1], ar[2]);
-  })
-
-  define_libfunc("string-append", 0, null, function(ar){
-    for(var i=0; i<ar.length; i++)
-      assert_string(ar[i]);
-
-    return ar.join("");
-  })
-  define_libfunc("string->list", 1, 1, function(ar){
-    assert_string(ar[0]);
-    return array_to_list(_.map(ar[0].split(""), function(s){ return Char.get(s[0]); }));
-  })
-  define_libfunc("list->string", 1, 1, function(ar){
-    assert_list(ar[0]);
-    return _.map(ar[0].to_array(), function(c){ return c.value; }).join("");
-  })
-  define_libfunc("string-for-each", 2, null, function(ar){
-    var proc = ar.shift(), strs = ar;
-    _.each(strs, assert_string);
-
-    return Call.multi_foreach(strs, {
-      call: function(chars){ return new Call(proc, chars); },
-      finish: function(){ return BiwaScheme.undef; }
-    })
-  })
-  define_libfunc("string-copy", 1, 1, function(ar){
-    // note: this is useless, because javascript strings are immutable
-    assert_string(ar[0]);
-    return ar[0];
-  })
-
-
-  //
-  //        11.13  Vectors
-  //
-  define_libfunc("vector?", 1, 1, function(ar){
-    return (ar[0] instanceof Array) && (ar[0].closure_p !== true)
-  })
-  define_libfunc("make-vector", 1, 2, function(ar){
-    assert_integer(ar[0]);
-    var vec = new Array(ar[0]);
-
-    if(ar.length == 2){
-      for(var i=0; i<ar[0]; i++)
-        vec[i] = ar[1];
-    }
-    return vec;
-  })
-  define_libfunc("vector", 1, null, function(ar){
-    return ar;
-  })
-  define_libfunc("vector-length", 1, 1, function(ar){
-    assert_vector(ar[0]);
-    return ar[0].length;
-  })
-  define_libfunc("vector-ref", 2, 2, function(ar){
-    assert_vector(ar[0]);
-    assert_integer(ar[1]);
-    assert_between(ar[1], 0, ar[0].length-1);
-
-    return ar[0][ar[1]];
-  })
-  define_libfunc("vector-set!", 3, 3, function(ar){
-    assert_vector(ar[0]);
-    assert_integer(ar[1]);
-
-    ar[0][ar[1]] = ar[2];
-    return BiwaScheme.undef;
-  })
-  define_libfunc("vector->list", 1, 1, function(ar){
-    assert_vector(ar[0]);
-    return array_to_list(ar[0]);
-  })
-  define_libfunc("list->vector", 1, 1, function(ar){
-    assert_list(ar[0]);
-    return ar[0].to_array();
-  })
-  define_libfunc("vector-fill!", 2, 2, function(ar){
-    assert_vector(ar[0]);
-    var vec = ar[0], obj = ar[1];
-
-    for(var i=0; i<vec.length; i++)
-      vec[i] = obj;
-    return vec;
-  })
-  define_libfunc("vector-map", 2, null, function(ar){
-    var proc = ar.shift(), vecs = ar;
-    _.each(vecs, assert_vector);
-
-    var a = [];
-    return Call.multi_foreach(vecs, {
-      call: function(objs){ return new Call(proc, objs); },
-      result: function(res){ a.push(res); },
-      finish: function(){ return a; }
-    })
-  })
-  define_libfunc("vector-for-each", 2, null, function(ar){
-    var proc = ar.shift(), vecs = ar;
-    _.each(vecs, assert_vector);
-
-    return Call.multi_foreach(vecs, {
-      call: function(objs){ return new Call(proc, objs); },
-      finish: function(){ return BiwaScheme.undef; }
-    })
-  })
-
-  //
-  //        11.14  Errors and violations
-  //
-//(error who message irritant1 ...)    procedure
-//(assertion-violation who message irritant1 ...)    procedure
-//(assert <expression>)    syntax
-
-  //
-  //        11.15  Control features
-  //
-  define_libfunc("apply", 2, null, function(ar){
-    var proc = ar.shift(), rest_args = ar.pop(), args = ar;
-    args = args.concat(rest_args.to_array());
-
-    return new Call(proc, args);
-  })
-  define_syntax("call-with-current-continuation", function(x){
-    return new Pair(Sym("call/cc"),
-             x.cdr);
-  })
-  define_libfunc("values", 0, null, function(ar){
-    if (ar.length == 1) // eg. (values 3)
-      return ar[0];
-    else
-      return new Values(ar);
-  })
-  define_libfunc("call-with-values", 2, 2, function(ar){
-    var producer = ar[0], consumer = ar[1];
-    assert_procedure(producer);
-    assert_procedure(consumer);
-    return new Call(producer, [], function(ar){
-      var result = ar[0];
-      if(result instanceof Values){
-        return new Call(consumer, result.content);
-      }
-      else{
-        // eg. (call-with-values (lambda () 3)
-        //                       (lambda (x) x))
-        return new Call(consumer, [result]);
-      }
-    })
-  })
-
-  //
-  //dynamic-wind
-
-  //        11.16  Iteration
-  //named let
-
-  //        11.17  Quasiquotation
-  //quasiquote
-  var expand_qq = function(f, lv){
-    if(f instanceof Symbol || f === nil){
-      return List(Sym("quote"), f);
-    }
-    else if(f instanceof Pair){
-      var car = f.car;
-      if(car instanceof Pair && car.car === Sym("unquote-splicing")){
-        var lv = lv-1;
-        if(lv == 0)
-          return List(Sym("append"),
-                      f.car.cdr.car,
-                      expand_qq(f.cdr, lv+1));
-        else
-          return List(Sym("cons"),
-                      List(Sym("list"), Sym("unquote-splicing"), expand_qq(f.car.cdr.car, lv)),
-                      expand_qq(f.cdr, lv+1));
-      }
-      else if(car === Sym("unquote")){
-        var lv = lv-1;
-        if(lv == 0)
-          return f.cdr.car;
-        else
-          return List(Sym("list"),
-                      List(Sym("quote"), Sym("unquote")),
-                      expand_qq(f.cdr.car, lv));
-      }
-      else if(car === Sym("quasiquote"))
-        return List(Sym("list"),
-                    Sym("quasiquote"),
-                    expand_qq(f.cdr.car, lv+1));
-      else
-        return List(Sym("cons"),
-                    expand_qq(f.car, lv),
-                    expand_qq(f.cdr, lv));
-    }
-    else if(f instanceof Array){
-      throw new Bug("vector quasiquotation is not implemented yet");
-    }
-//      // `#(1 2 (unquote f))
-//      // (vector 1 2 f)
-//      // `#(1 2 (unquote-splicing f) 3)
-//      // (vector-append
-//      //   (vector 1 2)
-//      //   f
-//      //   (vector 3))
-//      // `#(1 2 `#(3 ,,f) 4)
-//      // (vector 1 2 `#(3 ,g) 4)
-//      var len = f.length;
-//      if(len == 0) return f;
-//
-//      var vecs = [[]];
-//      for(var i=0; i<len; i++){
-//        if(f[i] instanceof Pair){
-//          if(f[i].car === Sym("unquote")){
-//            var lv = lv - 1;
-//            if(lv == 0)
-//              vecs.last().push(f[i]);
-//            else
-//              vecs.push()
-//          }
-//      }
-//
-//      var car = f[0];
-//      if(car === Sym("unquote")){
-//        var lv = lv - 1;
-//        if(lv == 0)
-//          return f.cdr.car;
-//        else
-//          return List(Sym("vector"),
-//                      List(Sym("quote"), Sym("unquote")),
-//                      expand_qq(f.cdr.car, lv));
-//      }
-//      else{
-////        return [ Sym("vector"),
-////                 expand_qq(
-//      }
-//    }
-//  }
-    else
-      return f;
-  }
-  define_syntax("quasiquote", function(x){
-    return expand_qq(x.cdr.car, 1);
-  })
-  //unquote
-  define_syntax("unquote", function(x){
-    throw new Error("unquote(,) must be inside quasiquote(`)");
-  })
-  //unquote-splicing
-  define_syntax("unquote-splicing", function(x){
-    throw new Error("unquote-splicing(,@) must be inside quasiquote(`)");
-  })
-
-  //        11.18  Binding constructs for syntactic keywords
-  //let-syntax
-  //letrec-syntax
-
-  //        11.19  Macro transformers
-  //syntax-rules
-  //identifier-syntax
-  //
-
-  //        11.20  Tail calls and tail contexts
-  //(no library function introduced)
-
-
-  ///
-  /// R6RS Standard Libraries
-  ///
-
-  //
-  // Chapter 1 Unicode
-  //
-//(char-upcase char)    procedure
-//(char-downcase char)    procedure
-//(char-titlecase char)    procedure
-//(char-foldcase char)    procedure
-//
-//(char-ci=? char1 char2 char3 ...)    procedure
-//(char-ci<? char1 char2 char3 ...)    procedure
-//(char-ci>? char1 char2 char3 ...)    procedure
-//(char-ci<=? char1 char2 char3 ...)    procedure
-//(char-ci>=? char1 char2 char3 ...)    procedure
-//
-//(char-alphabetic? char)    procedure
-//(char-numeric? char)    procedure
-//(char-whitespace? char)    procedure
-//(char-upper-case? char)    procedure
-//(char-lower-case? char)    procedure
-//(char-title-case? char)    procedure
-//
-//(char-general-category char)    procedure
-
-  //(string-upcase string)    procedure
-  define_libfunc("string-upcase", 1, 1, function(ar){
-    assert_string(ar[0]);
-    return ar[0].toUpperCase();
-  });
-  //(string-downcase string)    procedure
-  define_libfunc("string-downcase", 1, 1, function(ar){
-    assert_string(ar[0]);
-    return ar[0].toLowerCase();
-  });
-//(string-titlecase string)    procedure
-//(string-foldcase string)    procedure
-
-  BiwaScheme.make_string_ci_function = function(compare){
-    return function(ar){
-      assert_string(ar[0]);
-      var str = ar[0].toUpperCase();
-
-      for(var i=1; i<ar.length; i++){
-        assert_string(ar[i]);
-        if (!compare(str, ar[i].toUpperCase()))
-          return false;
-      }
-      return true;
-    }
-  };
-  //(string-ci=? string1 string2 string3 ...)    procedure
-  define_libfunc("string-ci=?", 2, null,
-    make_string_ci_function(function(a, b){ return a == b; }));
-  //(string-ci<? string1 string2 string3 ...)    procedure
-  define_libfunc("string-ci<?", 2, null,
-    make_string_ci_function(function(a, b){ return a < b; }));
-  //(string-ci>? string1 string2 string3 ...)    procedure
-  define_libfunc("string-ci>?", 2, null,
-    make_string_ci_function(function(a, b){ return a > b; }));
-  //(string-ci<=? string1 string2 string3 ...)    procedure
-  define_libfunc("string-ci<=?", 2, null,
-    make_string_ci_function(function(a, b){ return a <= b; }));
-  //(string-ci>=? string1 string2 string3 ...)    procedure
-  define_libfunc("string-ci>=?", 2, null,
-    make_string_ci_function(function(a, b){ return a >= b; }));
-
-//(string-normalize-nfd string)    procedure
-//(string-normalize-nfkd string)    procedure
-//(string-normalize-nfc string)    procedure
-//(string-normalize-nfkc string)    procedure
-
-  //
-  // Chapter 2 Bytevectors
-  //
-
-  //
-  // Chapter 3 List utilities
-  //
-  define_libfunc("find", 2, 2, function(ar){
-    var proc = ar[0], ls = ar[1];
-    assert_list(ls);
-    return Call.foreach(ls, {
-      call: function(x){ return new Call(proc, [x.car]) },
-      result: function(res, x){ if(res) return x.car; },
-      finish: function(){ return false }
-    })
-  })
-  define_libfunc("for-all", 2, null, function(ar){
-    var proc = ar.shift();
-    var lists = ar;
-    _.each(lists, assert_list);
-
-    var last = true; //holds last result which proc returns
-    return Call.multi_foreach(lists, {
-      call: function(pairs){
-        return new Call(proc, _.map(pairs, function(x){ return x.car }));
-      },
-      result: function(res, pairs){
-        if(res === false) return false;
-        last = res;
-      },
-      finish: function(){ return last; }
-    })
-  })
-  define_libfunc("exists", 2, null, function(ar){
-    var proc = ar.shift();
-    var lists = ar;
-    _.each(lists, assert_list);
-
-    return Call.multi_foreach(lists, {
-      call: function(pairs){
-        return new Call(proc, _.map(pairs, function(x){ return x.car }));
-      },
-      result: function(res, pairs){
-        if(res !== false) return res;
-      },
-      finish: function(){ return false; }
-    })
-  })
-  define_libfunc("filter", 2, 2, function(ar){
-    var proc = ar[0], ls = ar[1];
-    assert_list(ls);
-
-    var a = [];
-    return Call.foreach(ls, {
-      call: function(x){ return new Call(proc, [x.car]) },
-      result: function(res, x){ if(res) a.push(x.car); },
-      finish: function(){ return array_to_list(a) }
-    })
-  })
-//  define_scmfunc("partition+", 2, 2,
-//    "(lambda (proc ls)  \
-//       (define (partition2 proc ls t f) \
-//         (if (null? ls) \
-//           (values (reverse t) (reverse f)) \
-//           (if (proc (car ls)) \
-//             (partition2 proc (cdr ls) (cons (car ls) t) f) \
-//             (partition2 proc (cdr ls) t (cons (car ls) f))))) \
-//       (partition2 proc ls '() '()))");
-
-  define_libfunc("partition", 2, 2, function(ar){
-    var proc = ar[0], ls = ar[1];
-    assert_list(ls);
-
-    var t = [], f = [];
-    return Call.foreach(ls, {
-      call: function(x){ return new Call(proc, [x.car]) },
-      result: function(res, x){
-        if(res) t.push(x.car);
-        else    f.push(x.car);
-      },
-      finish: function(){
-        return new Values([array_to_list(t), array_to_list(f)]);
-      }
-    })
-  })
-  define_libfunc("fold-left", 3, null, function(ar){
-    var proc = ar.shift(), accum = ar.shift(), lists = ar;
-    _.each(lists, assert_list);
-
-    return Call.multi_foreach(lists, {
-      call: function(pairs){
-        var args = _.map(pairs, function(x){ return x.car });
-        args.unshift(accum);
-        return new Call(proc, args);
-      },
-      result: function(res, pairs){ accum = res; },
-      finish: function(){ return accum; }
-    })
-  })
-  define_libfunc("fold-right", 3, null, function(ar){
-    var proc = ar.shift(), accum = ar.shift();
-    var lists = _.map(ar, function(ls){
-      // reverse each list
-      assert_list(ls);
-      return array_to_list(ls.to_array().reverse());
-    })
-
-    return Call.multi_foreach(lists, {
-      call: function(pairs){
-        var args = _.map(pairs, function(x){ return x.car });
-        args.push(accum);
-        return new Call(proc, args);
-      },
-      result: function(res, pairs){ accum = res; },
-      finish: function(){ return accum; }
-    })
-  })
-  define_libfunc("remp", 2, 2, function(ar){
-    var proc = ar[0], ls = ar[1];
-    assert_list(ls);
-
-    var ret = [];
-    return Call.foreach(ls, {
-      call: function(x){ return new Call(proc, [x.car]) },
-      result: function(res, x){ if(!res) ret.push(x.car); },
-      finish: function(){ return array_to_list(ret); }
-    })
-  })
-  var make_remover = function(key){
-    return function(ar){
-      var obj = ar[0], ls = ar[1];
-      assert_list(ls);
-
-      var ret = [];
-      return Call.foreach(ls, {
-        call: function(x){
-          return new Call(TopEnv[key] || CoreEnv[key], [obj, x.car])
-        },
-        result: function(res, x){ if(!res) ret.push(x.car); },
-        finish: function(){ return array_to_list(ret); }
-      })
-    }
-  }
-  define_libfunc("remove", 2, 2, make_remover("equal?"));
-  define_libfunc("remv", 2, 2, make_remover("eqv?"));
-  define_libfunc("remq", 2, 2, make_remover("eq?"));
-
-  define_libfunc("memp", 2, 2, function(ar){
-    var proc = ar[0], ls = ar[1];
-    assert_list(ls);
-
-    var ret = [];
-    return Call.foreach(ls, {
-      call: function(x){ return new Call(proc, [x.car]) },
-      result: function(res, x){ if(res) return x; },
-      finish: function(){ return false; }
-    })
-  })
-  var make_finder = function(key){
-    return function(ar){
-      var obj = ar[0], ls = ar[1];
-      assert_list(ls);
-
-      var ret = [];
-      return Call.foreach(ls, {
-        call: function(x){
-          return new Call(TopEnv[key] || CoreEnv[key], [obj, x.car])
-        },
-        result: function(res, x){ if(res) return x; },
-        finish: function(){ return false; }
-      })
-    }
-  }
-  define_libfunc("member", 2, 2, make_finder("equal?"));
-  define_libfunc("memv", 2, 2, make_finder("eqv?"));
-  define_libfunc("memq", 2, 2, make_finder("eq?"));
-
-  define_libfunc("assp", 2, 2, function(ar){
-    var proc = ar[0], als = ar[1];
-    assert_list(als);
-
-    var ret = [];
-    return Call.foreach(als, {
-      call: function(x){
-        if(x.car.car)
-          return new Call(proc, [x.car.car]);
-        else
-          throw new Error("ass*: pair required but got "+to_write(x.car));
-      },
-      result: function(res, x){ if(res) return x.car; },
-      finish: function(){ return false; }
-    })
-  })
-  var make_assoc = function(func_name, eq_func_name){
-    return function(ar){
-      var obj = ar[0], list = ar[1];
-      assert_list(list);
-
-      var ret = [];
-      return Call.foreach(list, {
-        call: function(ls){
-          if(!BiwaScheme.isPair(ls.car))
-            throw new Error(func_name+": pair required but got "+to_write(ls.car));
-
-          var equality = (TopEnv[eq_func_name] || CoreEnv[eq_func_name]);
-          return new Call(equality, [obj, ls.car.car]);
-        },
-        result: function(was_equal, ls){ if(was_equal) return ls.car; },
-        finish: function(){ return false; }
-      })
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
-    }
-    return "(" + a.join(" ") + ")";
-  },
-  toString : function(){
-    return this.inspect();
-  },
-
-  to_write: function(){
-    return this.inspect(BiwaScheme.to_write);
-  }
-<<<<<<< HEAD
-});
-
-// Creates a list out of the arguments, optionally converting any nested arrays into nested lists if the deep argument is true.
-// Example:
-//   BiwaScheme.List(1, 2, [3, 4]) ;=> (list 1 2 (vector 3 4))
-//   BiwaScheme.deep_array_to_list(1, 2, [3, 4]) ;=> (list 1 2 (list 3 4))
-var array_to_list = function(ary, deep) {
-  var list = BiwaScheme.nil;
-  for(var i=ary.length-1; i>=0; i--){
-    var obj = ary[i];
-    if(deep && _.isArray(obj) && !obj.is_vector){
-      obj = array_to_list(obj, deep);
-    }
-    list = new BiwaScheme.Pair(obj, list);
-  }
-  return list;
-}
-
-// Shallow: List(1, 2, [3]) == (list 1 2 (vector 3 4))
-BiwaScheme.List = function() {
-  var ary = _.toArray(arguments);
-  return array_to_list(ary, false);
-};
-
-// Shallow: array_to_list(1, 2, [3]) == (list 1 2 (vector 3 4))
-BiwaScheme.array_to_list = function(ary) {
-  return array_to_list(ary, false);
-};
-
-// Deep: deep_array_to_list(1, 2, [3, 4]) == (list 1 2 (list 3 4))
-// deep_array_to_list([1, 2, 3]) - deep
-BiwaScheme.deep_array_to_list = function(ary) {
-  return array_to_list(ary, true);
-};
-//
-// Symbol
-//
-
-BiwaScheme.Symbol = BiwaScheme.Class.create({
-  initialize: function(str){
-    this.name = str;
-    BiwaScheme.Symbols[ str ] = this;
-  },
-
-  inspect: function(){
-    return "'"+this.name;
-    //return "#<Symbol '"+this.name+"'>";
-  },
-
-  toString: function(){
-    return "'"+this.name;
-  },
-
-  to_write: function(){
-    return this.name;
-  }
-});
-BiwaScheme.Symbols = {};
-BiwaScheme.Sym = function(name,leaveCase){
-  if( BiwaScheme.Symbols[name] === undefined ){
-    return new BiwaScheme.Symbol(name);
-  }
-  else if( ! (BiwaScheme.Symbols[name] instanceof BiwaScheme.Symbol) ){ //pre-defined member (like 'eval' in Firefox)
-    return new BiwaScheme.Symbol(name);
-  }
-  else{
-    return BiwaScheme.Symbols[name];
-  }
-}
-
-BiwaScheme.gensym = function(){
-  return BiwaScheme.Sym(_.uniqueId("__gensym"));
-};
-//
-// Char
-//
-
-BiwaScheme.Char = BiwaScheme.Class.create({
-  initialize: function(c){
-    BiwaScheme.Chars[ this.value = c ] = this;
-  },
-  to_write: function(){
-    switch(this.value){
-      case '\n': return "#\\newline";
-      case ' ':  return "#\\space";
-      case '\t': return "#\\tab";
-      default:   return "#\\"+this.value;
-    }
-  },
-  inspect: function(){
-    return this.to_write();
-  }
-});
-BiwaScheme.Chars = {};
-BiwaScheme.Char.get = function(c) {
-  if(typeof(c) != "string") {
-    throw new BiwaScheme.Bug("Char.get: " +
-                             BiwaScheme.inspect(c) + " is not a string");
-  }
-  if( BiwaScheme.Chars[c] === undefined )
-    return new BiwaScheme.Char(c);
-  else
-    return BiwaScheme.Chars[c];
-};
-
-//
-// number.js
-//
-
-//
-// Complex
-//
-BiwaScheme.Complex = BiwaScheme.Class.create({
-  initialize: function(real, imag){
-    this.real = real;
-    this.imag = imag;
-  },
-  magnitude: function(){
-    return Math.sqrt(this.real * this.real + this.imag * this.imag);
-  },
-  angle: function(){
-    return Math.atan2(this.imag, this.real);
-  },
-  isReal: function(){
-    return this.imag == 0;
-  },
-  isRational: function() {
-    return this.imag == 0 && BiwaScheme.isRational(this.real);
-  },
-  isInteger: function(){
-    return this.imag == 0 && BiwaScheme.isInteger(this.real);
-  },
-  toString: function(radix){
-    if (this.real === 0 && this.imag === 0)
-      return "0";
-    var img = "";
-    if (this.imag !== 0) {
-      if (this.imag > 0 && this.real !== 0){
-          img+="+";
-      }
-      switch(this.imag) {
-          case 1:
-              break;
-          case -1: img+="-";
-               break;
-          default: img+=this.imag.toString(radix);
-      }
-     img+="i";
-    }
-    var real = "";
-    if (this.real !== 0){
-      real += this.real.toString(radix);
-    }
-    return real+img;
-  }
-})
-BiwaScheme.Complex.from_polar = function(r, theta){
-  var real = r * Math.cos(theta);
-  var imag = r * Math.sin(theta);
-  return new BiwaScheme.Complex(real, imag);
-}
-BiwaScheme.Complex.assure = function(num){
-  if(num instanceof BiwaScheme.Complex)
-    return num
-  else
-    return new BiwaScheme.Complex(num, 0);
-}
-
-//
-// Rational (unfinished)
-//
-BiwaScheme.Rational = BiwaScheme.Class.create({
-  initialize: function(numerator, denominator){
-    this.numerator = numerator;
-    this.denominator = denominator;
-  },
-
-  isInteger: function() {
-     // FIXME
-  }
-})
-
-//
-// Predicates
-//
-BiwaScheme.isNumber = function(x) {
-  return (x instanceof BiwaScheme.Complex)  ||
-         (x instanceof BiwaScheme.Rational) ||
-         (typeof(x) == 'number');
-};
-BiwaScheme.isComplex = BiwaScheme.isNumber;
-BiwaScheme.isReal = function(x) {
-  if (x instanceof BiwaScheme.Complex || x instanceof BiwaScheme.Rational) {
-    return x.isReal()
-  }
-  else {
-    return (typeof(x) == 'number');
-  }
-};
-BiwaScheme.isRational = function(x) {
-  if (x instanceof BiwaScheme.Complex) {
-    return x.isRational();
-  }
-  else if (x instanceof BiwaScheme.Rational) {
-    return true;
-  }
-  else {
-    return (typeof(x) == 'number');
-  }
-};
-BiwaScheme.isInteger = function(x) {
-  if (x instanceof BiwaScheme.Complex || x instanceof BiwaScheme.Rational) {
-    return x.isInteger();
-  }
-  else {
-    return (typeof(x) == 'number') && (x % 1 == 0);
-  }
-};
-//
-// Port
-//
-
-// (eof-object)
-BiwaScheme.eof = new Object;
-
-BiwaScheme.Port = BiwaScheme.Class.create({
-  initialize: function(is_in, is_out){
-    this.is_open = true;
-    this.is_binary = false; //??
-    this.is_input = is_in;
-    this.is_output = is_out;
-  },
-  close: function(){
-    // close port
-    this.is_open = false;
-  },
-  inspect: function(){
-    return "#<Port>";
-  },
-  to_write: function(){
-    return "#<Port>";
-  }
-});
-
-//
-// string ports (srfi-6)
-//
-BiwaScheme.Port.StringOutput = BiwaScheme.Class.extend(new BiwaScheme.Port(false, true), {
-  initialize: function(){
-    this.buffer = [];
-  },
-  put_string: function(str){
-    this.buffer.push(str);
-  },
-  output_string: function(str){
-    return this.buffer.join("");
-  }
-});
-
-BiwaScheme.Port.StringInput = BiwaScheme.Class.extend(new BiwaScheme.Port(true, false), {
-  initialize: function(str){
-    this.str = str;
-  },
-  get_string: function(after){
-    return after(this.str);
-  }
-});
-
-BiwaScheme.Port.NullInput = BiwaScheme.Class.extend(new BiwaScheme.Port(true, false), {
-  initialize: function(){
-  },
-  get_string: function(after){
-    // Never give them anything!
-    return after('');
-  }
-});
-
-BiwaScheme.Port.NullOutput = BiwaScheme.Class.extend(new BiwaScheme.Port(false, true), {
-  initialize: function(output_function){
-    this.output_function = output_function;
-  },
-  put_string: function(str){}
-});
-
-BiwaScheme.Port.CustomOutput = BiwaScheme.Class.extend(new BiwaScheme.Port(false, true), {
-  initialize: function(output_function){
-    this.output_function = output_function;
-  },
-  put_string: function(str){
-    this.output_function(str);
-  }
-});
-
-BiwaScheme.Port.CustomInput = BiwaScheme.Class.extend(new BiwaScheme.Port(true, false), {
-  initialize: function(input_function){
-    this.input_function = input_function;
-  },
-  get_string: function(after){
-    var input_function = this.input_function;
-    return new BiwaScheme.Pause(function(pause) {
-      input_function(function(input) {
-        pause.resume(after(input));
-      });
-    });
-  }
-});
-
-// User must set the current input/output
-BiwaScheme.Port.current_input  = new BiwaScheme.Port.NullInput();
-BiwaScheme.Port.current_output = new BiwaScheme.Port.NullOutput();
-BiwaScheme.Port.current_error  = new BiwaScheme.Port.NullOutput();
-//
-// R6RS Records
-// http://www.r6rs.org/final/html/r6rs-lib/r6rs-lib-Z-H-7.html#node_chap_6
-//
-// Record is like struct in C, but supports more feature like inheritance.
-// see also: src/library/r6rs_lib.js
-
-//
-// Record 
-// represents each instance of record type
-//
-BiwaScheme.Record = BiwaScheme.Class.create({
-  initialize: function(rtd, values){
-    BiwaScheme.assert_record_td(rtd, "new Record");
-
-    this.rtd = rtd;
-    this.fields = values;
-  },
-
-  get: function(k){
-    return this.fields[k]
-  },
-
-  set: function(k, v){
-    this.fields[k] = v;
-  },
-
-  toString: function(){
-    var contents = BiwaScheme.to_write(this.fields);
-    return "#<Record "+this.rtd.name+" "+contents+">";
-  }
-});
-
-BiwaScheme.isRecord = function(o){
-  return (o instanceof BiwaScheme.Record);
-};
-
-// Defined record types
-BiwaScheme.Record._DefinedTypes = {};
-
-BiwaScheme.Record.define_type = function(name_str, rtd, cd){
-  return BiwaScheme.Record._DefinedTypes[name_str] = {rtd: rtd, cd: cd};
-};
-BiwaScheme.Record.get_type = function(name_str){
-  return BiwaScheme.Record._DefinedTypes[name_str];
-};
-
-//
-// RTD (Record type descriptor)
-//
-BiwaScheme.Record.RTD = BiwaScheme.Class.create({
-  //                   Symbol RTD        Symbol Bool  Bool    Array
-  initialize: function(name, parent_rtd, uid, sealed, opaque, fields){
-    this.name = name;
-    this.parent_rtd = parent_rtd;
-    this.is_base_type = !parent_rtd;
-
-    if(uid){
-      this.uid = uid;
-      this.generative = false;
-    }
-    else{
-      this.uid = this._generate_new_uid();;
-      this.generative = true;
-    }
-
-    this.sealed = !!sealed;
-    this.opaque = parent_rtd.opaque || (!!opaque);
-
-    this.fields = _.map(fields, function(field){
-      return {name: field[0], mutable: !!field[1]};
-    });
-  },
-
-  // Returns the name of the k-th field.
-  // Only used for error messages.
-  field_name: function(k){
-    var names = this._field_names();
-
-    for(par = this.parent_rtd; par; par = par.parent_rtd){
-      names = par._field_names() + names;
-    }
-
-    return names[k];
-  },
-  _field_names: function(){
-    return _.map(this.fields, function(spec){
-        return spec.name;
-      });
-  },
-
-  _generate_new_uid: function(){
-    return BiwaScheme.Sym(_.uniqueId("__record_td_uid"));
-  },
-
-  toString: function(){
-    return "#<RecordTD "+name+">";
-  }
-});
-
-BiwaScheme.Record.RTD.NongenerativeRecords = {};
-BiwaScheme.isRecordTD = function(o){
-  return (o instanceof BiwaScheme.Record.RTD);
-};
-
-//
-// CD (Record constructor descriptor)
-//
-BiwaScheme.Record.CD = BiwaScheme.Class.create({
-  initialize: function(rtd, parent_cd, protocol){
-    this._check(rtd, parent_cd, protocol);
-    this.rtd = rtd;
-    this.parent_cd = parent_cd;
-    if(protocol){
-      this.has_custom_protocol = true;
-      this.protocol = protocol;
-    }
-    else{
-      this.has_custom_protocol = false;
-      if(rtd.parent_rtd)
-        this.protocol = this._default_protocol_for_derived_types();
-      else
-        this.protocol = this._default_protocol_for_base_types();
-    }
-  },
-
-  _check: function(rtd, parent_cd, protocol){
-    if(rtd.is_base_type && parent_cd)
-      throw new Error("Record.CD.new: cannot specify parent cd of a base type");
-
-    if(parent_cd && rtd.parent_rtd && (parent_cd.rtd != rtd.parent_rtd))
-      throw new Error("Record.CD.new: mismatched parents between rtd and parent_cd");
-
-    if(rtd.parent_rtd && !parent_cd && protocol)
-      throw new Error("Record.CD.new: protocol must be #f when parent_cd is not given");
-
-    if(parent_cd && parent_cd.has_custom_protocol && !protocol)
-      throw new Error("Record.CD.new: protocol must be specified when parent_cd has a custom protocol");
-  },
-  
-  _default_protocol_for_base_types: function(){
-    // (lambda (p) p)
-    // called with `p' as an argument
-    return function(ar){
-      var p = ar[0];
-      BiwaScheme.assert_procedure(p, "_default_protocol/base");
-      return p;
-    };
-  },
-
-  _default_protocol_for_derived_types: function(){
-    // (lambda (n) 
-    //   (lambda (a b x y s t)
-    //     (let1 p (n a b x y) (p s t))))
-    // called with `n' as an argument
-    var rtd = this.rtd;
-    return function(ar){
-      var n = ar[0];
-      BiwaScheme.assert_procedure(n, "_default_protocol/n");
-
-      var ctor = function(args){
-        var my_argc = rtd.fields.length;
-        var ancestor_argc = args.length - my_argc;
-
-        var ancestor_values = args.slice(0, ancestor_argc);
-        var my_values       = args.slice(ancestor_argc);
-
-        // (n a b x y) => p
-        return new BiwaScheme.Call(n, ancestor_values, function(ar){
-          var p = ar[0];
-          BiwaScheme.assert_procedure(p, "_default_protocol/p");
-
-          // (p s t) => record
-          return new BiwaScheme.Call(p, my_values, function(ar){
-            var record = ar[0];
-            BiwaScheme.assert_record(record, "_default_protocol/result");
-
-            return record;
-          });
-        });
-      };
-      return ctor;
-    };
-  },
-
-  toString: function(){
-    return "#<RecordCD "+this.rtd.name+">";
-  },
-
-  record_constructor: function(){
-    var arg_for_protocol = (this.parent_cd ? this._make_n([], this.rtd)
-                                           : this._make_p());
-    arg_for_protocol = _.bind(arg_for_protocol, this);
-
-    return new BiwaScheme.Call(this.protocol, [arg_for_protocol], function(ar){
-      var ctor = ar[0];
-      BiwaScheme.assert_procedure(ctor, "record_constructor");
-      return ctor;
-    });
-  },
-
-  // Create the function `p' which is given to the protocol.
-  _make_p: function(){
-    return function(values){
-      return new BiwaScheme.Record(this.rtd, values);
-      // TODO: check argc 
-    };
-  },
-
-  // Create the function `n' which is given to the protocol.
-  // When creating an instance of a derived type,
-  // _make_n is called for each ancestor rtd's.
-  _make_n: function(children_values, rtd){
-    var parent_cd = this.parent_cd;
-
-    if(parent_cd){
-      // called from protocol (n)
-      var n = function(args_for_n){
-
-        // called from protocol (p)
-        var p = function(args_for_p){
-          var values = [].concat(args_for_p[0]).concat(children_values)
-          var parent_n = parent_cd._make_n(values, rtd);
-
-          return new BiwaScheme.Call(parent_cd.protocol, [parent_n], function(ar){
-            var ctor = ar[0];
-            BiwaScheme.assert_procedure(ctor, "_make_n");
-
-            return new BiwaScheme.Call(ctor, args_for_n, function(ar){
-              var record = ar[0];
-              BiwaScheme.assert_record(record);
-              return record;
-            });
-          });
-        };
-        return p;
-      };
-      return n;
-    }
-    else{
-      var n = function(my_values){
-        var values = my_values.concat(children_values);
-        return new BiwaScheme.Record(rtd, values);
-        // TODO: check argc 
-      };
-      return n;
-    }
-  }
-});
-
-BiwaScheme.isRecordCD = function(o){
-  return (o instanceof BiwaScheme.Record.CD);
-};
-// 
-// R6RS Enumerations
-// http://www.r6rs.org/final/html/r6rs-lib/r6rs-lib-Z-H-15.html#node_chap_14
-//
-// Example
-//
-//   (define-enumeration color
-//     (black white purple maroon)
-//     color-set)
-//   
-//   (color black)                  ;=> 'black
-//   (color purpel)                 ;=> &syntax exception
-//   (enum-set->list
-//     (color-set maroon white))    ;=> #<enum-set (white maroon)>
-
-BiwaScheme.Enumeration = {};
-
-// Represents an enum_type.
-//
-// Becuase there is no way to access an EnumType directly from Scheme,
-// EnumType#to_write is not defined.
-//
-// Properties
-//
-// members - Array of symbols (no duplicate)
-//
-BiwaScheme.Enumeration.EnumType = BiwaScheme.Class.create({
-  // Creates a new enum_type.
-  //
-  // members - Array of symbols.
-  //           Symbols may be duplicate (I think you shouldn't, though :-p).
-  initialize: function(members){
-    this.members = _.uniq(members);
-  },
-
-  // Returns an EnumSet.
-  universe: function(){
-    return new BiwaScheme.Enumeration.EnumSet(this, this.members);
-  }, 
-
-  // Returns a function which map a symbol to an integer (or #f, if 
-  // the symbol is out of the universe).
-  // 
-  // Implementation note: don't forget this.members may have duplicates.
-  indexer: function(){
-    // ar[0] - a symbol
-    // Returns an integer or #f.
-    return _.bind(function(ar){
-      BiwaScheme.assert_symbol(ar[0], "(enum-set indexer)");
-      var idx = _.indexOf(this.members, ar[0]);
-      return (idx === -1) ? false : idx;
-    }, this);
-  },
-
-  // Retuns a function which creates an enum_set from a list of
-  // symbols (Symbols may be duplicate.)
-  constructor: function(){
-    // ar[0] - a list of symbol
-    // Returns a enum_set.
-    return _.bind(function(ar){
-      BiwaScheme.assert_list(ar[0], "(enum-set constructor)");
-      var symbols = ar[0].to_array();
-      _.each(symbols, function(arg){
-        BiwaScheme.assert_symbol(arg, "(enum-set constructor)");
-      });
-
-      return new BiwaScheme.Enumeration.EnumSet(this, symbols);
-    }, this);
-  }
-});
-BiwaScheme.Class.memoize(BiwaScheme.Enumeration.EnumType,
-  ["universe", "indexer", "constructor"]); 
-
-// Represents an enum_set of an enum_type.
-//
-// Properties
-//
-// enum_type - The enum_type.
-// symbols   - Array of symbols (no duplicate, properly ordered)
-//
-BiwaScheme.Enumeration.EnumSet = BiwaScheme.Class.create({
-  // Creates a new enum_set.
-  //
-  // enum_type - An EnumType
-  // symbols   - Array of symbols.
-  //
-  // initialize normalizes symbols.
-  //   - remove duplicates
-  //   - order by universe
-  initialize: function(enum_type, symbols){
-    this.enum_type = enum_type;
-    this.symbols = _.filter(enum_type.members, function(sym){
-      return _.include(symbols, sym);
-    });
-  },
-
-  // Returns a list of symbols.
-  symbol_list: function(){
-    return BiwaScheme.array_to_list(this.symbols); 
-  },
-  
-  // Returns true if the enum_set includes the symbol.
-  // 'symbol' is allowed to be a symbol which is not included in the universe.
-  is_member: function(symbol){
-    return _.include(this.symbols, symbol);
-  },
-  
-  // Returns true if:
-  // - the enum_set is a subset of the enum_set 'other', and
-  // - the universe of the enum_set is a subset of 
-  //   the universe of 'other'.
-  // The enum_set and 'other' may belong to different enum_type.
-  is_subset: function(other){
-    // Check elements
-    if(_.any(this.symbols, function(sym){
-         return !_.include(other.symbols, sym);
-       })){
-      return false;
-    }
-
-    // Check universe
-    if(this.enum_type === other.enum_type){
-      return true;
-    }
-    else{
-      return _.all(this.enum_type.members, function(sym){
-               return _.include(other.enum_type.members, sym);
-             });
-    }
-  },
-
-  // Returns true if:
-  //   - the enum_set contains the same set of symbols as 'other', and
-  //   - universe of the enum_set contains the same set of symbols
-  //     as the universe of 'other'.
-  //
-  // The enum_set and 'other' may belong to different enum_type.
-  equal_to: function(other){
-    return this.is_subset(other) && other.is_subset(this);
-  },
-
-  // Returns a enum_set which has:
-  // - all the symbols included in the enum_set or the enum_set 'other'.
-  // The enum_set and 'other' *must* belong to the same enum_type.
-  union: function(other){
-    var syms = _.filter(this.enum_type.members, _.bind(function(sym){
-                 return _.include(this.symbols, sym) ||
-                        _.include(other.symbols, sym);
-               }, this));
-    return new BiwaScheme.Enumeration.EnumSet(this.enum_type, syms);
-  },
-
-  // Returns a enum_set which has:
-  // - the symbols included both in the enum_set or the enum_set 'other'.
-  // The enum_set and 'other' *must* belong to the same enum_type.
-  intersection: function(other){
-    var syms = _.filter(this.symbols, function(sym){
-                 return _.include(other.symbols, sym);
-               });
-    return new BiwaScheme.Enumeration.EnumSet(this.enum_type, syms);
-  },
-
-  // Returns a enum_set which has:
-  // - the symbols included in the enum_set and not in the enum_set 'other'.
-  // The enum_set and 'other' *must* belong to the same enum_type.
-  difference: function(other){
-    var syms = _.filter(this.symbols, function(sym){
-                 return !_.include(other.symbols, sym);
-               });
-    return new BiwaScheme.Enumeration.EnumSet(this.enum_type, syms);
-  },
-
-  // Returns a enum_set which has:
-  // - the symbols included in the universe but not in the enum_set.
-  complement: function(){
-    var syms = _.filter(this.enum_type.members, _.bind(function(sym){
-                 return !_.include(this.symbols, sym);
-               }, this));
-    return new BiwaScheme.Enumeration.EnumSet(this.enum_type, syms);
-  },
-
-  // Returns a enum_set which has:
-  // - the symbols included in the enum_set and the universe of the enum_set 'other'.
-  // The enum_set and 'other' may belong to different enum_type.
-  projection: function(other){
-    var syms = _.filter(this.symbols, function(sym){
-                 return _.include(other.enum_type.members, sym);
-               });
-    return new BiwaScheme.Enumeration.EnumSet(other.enum_type, syms);
-  },
-
-  // Returns a string which represents the enum_set.
-  toString: function(){
-    return "#<EnumSet "+BiwaScheme.inspect(this.symbols)+">";
-  }
-});
-BiwaScheme.Class.memoize(BiwaScheme.Enumeration.EnumSet, "symbol_list");
-
-BiwaScheme.isEnumSet = function(obj){
-  return (obj instanceof BiwaScheme.Enumeration.EnumSet);
-};
-//
-// Hashtable
-//
-// Based on the base JavaScript Object class, but
-//  * Object takes only strings as keys
-//  * R6RS hashtable needs its own hash function
-// so some hacks are needed.
-
-BiwaScheme.Hashtable = BiwaScheme.Class.create({
-  initialize: function(_hash_proc, _equiv_proc, mutable){
-    this.mutable = (mutable === undefined) ? true :
-                   mutable ? true : false;
-
-    this.hash_proc = _hash_proc;
-    this.equiv_proc = _equiv_proc;
-
-    // Hash (hashed) => (array of (key and value))
-    this.pairs_of = {};
-  },
-
-  clear: function(){
-    this.pairs_of = {};
-  },
-
-  candidate_pairs: function(hashed){
-    return this.pairs_of[hashed];
-  },
-
-  add_pair: function(hashed, key, value){
-    var pairs = this.pairs_of[hashed];
-
-    if (pairs) {
-      pairs.push([key, value]);
-    }
-    else {
-      this.pairs_of[hashed] = [[key, value]];
-    }
-  },
-
-  remove_pair: function(hashed, pair){
-    var pairs = this.pairs_of[hashed];
-    var i = pairs.indexOf(pair);
-    if (i == -1){
-      throw new BiwaScheme.Bug("Hashtable#remove_pair: pair not found!");
-    }
-    else {
-      pairs.splice(i, 1); //remove 1 element from i-th index
-    }
-  },
-
-  create_copy: function(mutable){
-    var copy = new BiwaScheme.Hashtable(this.hash_proc, this.equiv_proc,
-                                        mutable);
-    // clone the pairs to copy
-    _.each(_.keys(this.pairs_of), _.bind(function(hashed){
-      var pairs = this.pairs_of[hashed];
-      var cloned = _.map(pairs, function(pair){
-        return _.clone(pair);
-      });
-      copy.pairs_of[hashed] = cloned;
-    }, this));
-
-    return copy;
-  },
-
-  size: function(){
-    var n = 0;
-    this._apply_pair(function(pair){
-      n++;
-    });
-    return n;
-  },
-
-  keys: function(){
-    return this._apply_pair(function(pair){
-      return pair[0];
-    });
-  },
-
-  values: function(){
-    return this._apply_pair(function(pair){
-      return pair[1];
-    });
-  },
-
-  _apply_pair: function(func){
-    var a = [];
-    _.each(_.values(this.pairs_of), function(pairs){
-      _.each(pairs, function(pair){
-        a.push(func(pair));
-      });
-    });
-    return a;
-  },
-
-  to_write: function(){
-    return "#<Hashtable size=" + this.size() + ">";
-  }
-});
-
-//
-// Hash functions
-//
-
-BiwaScheme.Hashtable.equal_hash = function(ar){
-  return BiwaScheme.to_write(ar[0]);
-};
-BiwaScheme.Hashtable.eq_hash = BiwaScheme.Hashtable.equal_hash;
-BiwaScheme.Hashtable.eqv_hash = BiwaScheme.Hashtable.equal_hash;
-
-BiwaScheme.Hashtable.string_hash = function(ar){
-  return ar[0];
-};
-
-BiwaScheme.Hashtable.string_ci_hash = function(ar){
-  return _.isString(ar[0]) ? ar[0].toLowerCase() : ar[0];
-};
-
-BiwaScheme.Hashtable.symbol_hash = function(ar){
-  return (ar[0] instanceof BiwaScheme.Symbol) ? ar[0].name : ar[0];
-};
-
-//
-// Equivalence functions
-//
-
-BiwaScheme.Hashtable.eq_equiv = function(ar){
-  return BiwaScheme.eq(ar[0], ar[1]);
-};
-
-BiwaScheme.Hashtable.eqv_equiv = function(ar){
-  return BiwaScheme.eqv(ar[0], ar[1]);
-};
-//
-// Syntax
-//
-BiwaScheme.Syntax = BiwaScheme.Class.create({
-  initialize: function(sname, func){
-    this.sname = sname;
-    this.func = func;
-  },
-  transform: function(x){
-    if (!this.func){
-      throw new BiwaScheme.Bug("sorry, syntax "+this.sname+
-                               " is a pseudo syntax now");
-    }
-    return this.func(x);
-  },
-  inspect: function(){
-    return "#<Syntax " + this.sname +">";
-  }
-})
-
-// A built-in syntax did not have associated Syntax object.
-// Following code installed dummy Syntax objects to built-in syntax.
-BiwaScheme.CoreEnv["define"] = new BiwaScheme.Syntax("define");
-BiwaScheme.CoreEnv["begin"]  = new BiwaScheme.Syntax("begin");
-BiwaScheme.CoreEnv["quote"]  = new BiwaScheme.Syntax("quote");
-BiwaScheme.CoreEnv["lambda"] = new BiwaScheme.Syntax("lambda");
-BiwaScheme.CoreEnv["if"]     = new BiwaScheme.Syntax("if");
-BiwaScheme.CoreEnv["set!"]   = new BiwaScheme.Syntax("set!");
-  //
-  // Parser 
-  // copied from jsScheme - should be rewrriten (support #0=, etc)
-  //
-  BiwaScheme.Parser = BiwaScheme.Class.create({
-    initialize: function(txt){
-      this.tokens = this.tokenize(txt);
-      this.i = 0;
-    },
-
-    inspect: function(){
-      return [
-        "#<Parser:",
-        this.i, "/", this.tokens.length, " ",
-        BiwaScheme.inspect(this.tokens),
-        ">"
-      ].join("");
-    },
-
-    tokenize: function(txt) {
-      var tokens = new Array(), oldTxt=null;
-      var in_srfi_30_comment = 0;
-
-      while( txt != "" && oldTxt != txt ) {
-        oldTxt = txt;
-        txt = txt.replace( /^\s*(;[^\r\n]*(\r|\n|$)|#;|#\||#\\[^\w]|#?(\(|\[|{)|\)|\]|}|\'|`|,@|,|\+inf\.0|-inf\.0|\+nan\.0|\"(\\(.|$)|[^\"\\])*(\"|$)|[^\s()\[\]{}]+)/,
-        function($0,$1) {
-          var t = $1;
-
-          if (t == "#|") {
-            in_srfi_30_comment++;
-            return "";
-          }
-          else if (in_srfi_30_comment > 0) {
-            if ( /(.*\|#)/.test(t) ) {
-              in_srfi_30_comment--;
-              if (in_srfi_30_comment < 0) {
-                throw new BiwaScheme.Error("Found an extra comment terminator: `|#'")
-              }
-              // Push back the rest substring to input stream.
-              return t.substring(RegExp.$1.length, t.length);
-            }
-            else {
-              return "";
-            }
-          }
-          else {
-            if( t.charAt(0) != ';' ) tokens[tokens.length]=t;
-            return "";
-          }
-        } );
-      }
-      return tokens;
-    },
-
-    sexpCommentMarker: new Object,
-    getObject: function() {
-      var r = this.getObject0();
-
-      if (r != this.sexpCommentMarker)
-        return r;
-
-      r = this.getObject();
-      if (r == BiwaScheme.Parser.EOS)
-        throw new BiwaScheme.Error("Readable object not found after S exression comment");
-
-      r = this.getObject();
-      return r;
-    },
-    
-    getList: function( close ) {
-      var list = BiwaScheme.nil, prev = list;
-      while( this.i < this.tokens.length ) {
-
-        this.eatObjectsInSexpComment("Input stream terminated unexpectedly(in list)");
-
-        if( this.tokens[ this.i ] == ')' || this.tokens[ this.i ] == ']' || this.tokens[ this.i ] == '}' ) {
-          this.i++; break;
-        }
-
-        if( this.tokens[ this.i ] == '.' ) {
-          this.i++;
-          var o = this.getObject();
-          if( o != BiwaScheme.Parser.EOS && list != BiwaScheme.nil ) {
-            prev.cdr = o;
-          }
-        } else {
-            var cur = new BiwaScheme.Pair( this.getObject(), BiwaScheme.nil);
-            if( list == BiwaScheme.nil ) list = cur;
-            else prev.cdr = cur;
-            prev = cur;
-        }
-      }
-      return list;
-    },
-
-    getVector: function( close ) {
-      var arr = new Array();
-      while( this.i < this.tokens.length ) {
-        
-        this.eatObjectsInSexpComment("Input stream terminated unexpectedly(in vector)");
-        
-        if( this.tokens[ this.i ] == ')' ||
-        this.tokens[ this.i ] == ']' ||
-        this.tokens[ this.i ] == '}' ) { this.i++; break; }
-        arr[ arr.length ] = this.getObject();
-      }
-      return arr;
-    },
-
-    eatObjectsInSexpComment: function(err_msg) {
-      while( this.tokens[ this.i ] == '#;' ) {
-        this.i++;
-        if ((this.getObject() == BiwaScheme.Parser.EOS) || (this.i >= this.tokens.length))
-          throw new BiwaScheme.Error(err_msg);  
-      }
-    }, 
-
-    getObject0: function() {
-      if( this.i >= this.tokens.length )
-        return BiwaScheme.Parser.EOS;
-
-      var t = this.tokens[ this.i++ ];
-      // if( t == ')' ) return null;
-
-      if (t == '#;')
-        return this.sexpCommentMarker;
-
-      var s = t == "'"  ? 'quote' :
-              t == "`"  ? 'quasiquote' :
-              t == ","  ? 'unquote' :
-              t == ",@" ? 'unquote-splicing' : false;
-
-      if( s || t == '(' || t == '#(' || t == '[' || t == '#[' || t == '{' || t == '#{' ) {
-        return s ? new BiwaScheme.Pair( BiwaScheme.Sym(s), new BiwaScheme.Pair( this.getObject(), BiwaScheme.nil ))
-        : (t=='(' || t=='[' || t=='{') ? this.getList(t) : this.getVector(t);
-      } 
-      else {
-        switch(t){
-          case "+inf.0" : return Infinity;
-          case "-inf.0" : return -Infinity;
-          case "+nan.0" : return NaN;
-        }
-
-        var n;
-        if( /^#x[0-9a-z]+$/i.test(t) ) {  // #x... Hex
-          n = new Number('0x'+t.substring(2,t.length) );
-        } 
-        else if( /^#d[0-9\.]+$/i.test(t) ) {  // #d... Decimal
-          n = new Number( t.substring(2,t.length) );
-        } 
-        else{
-          n = new Number(t);  // use constrictor as parser
-        }
-
-        if( ! isNaN(n) ) {
-          return n.valueOf();
-        } else if( t == '#f' || t == '#F' ) {
-          return false;
-        } else if( t == '#t' || t == '#T' ) {
-          return true;
-        } else if( t.toLowerCase() == '#\\newline' ) {
-          return BiwaScheme.Char.get('\n');
-        } else if( t.toLowerCase() == '#\\space' ) {
-          return BiwaScheme.Char.get(' ');
-        } else if( t.toLowerCase() == '#\\tab' ) {
-          return BiwaScheme.Char.get('\t');
-        } else if( /^#\\.$/.test(t) ) {
-          return BiwaScheme.Char.get( t.charAt(2) );
-        } else if( /^#\\x[a-zA-Z0-9]+$/.test(t) ) {
-          var scalar = parseInt(t.slice(3), 16);
-          // R6RS 11.11 (surrogate codepoints)
-          if (scalar >= 0xD800 && scalar <= 0xDFFF) {
-            throw new BiwaScheme.Error("Character in Unicode excluded range.");
-          }
-          // ECMA-262 4.3.16 -- Basically, strings are sequences of 16-bit
-          // unsigned integers, so anything greater than 0xFFFF won't fit.
-          // NOTE: This violates R6RS which requires the full Unicode range!
-          else if (scalar > 0xFFFF) {
-            throw new BiwaScheme.Error("Character literal out of range.");
-          } else {
-            return BiwaScheme.Char.get(String.fromCharCode(scalar));
-          }
-        } else if( /^\"(\\(.|$)|[^\"\\])*\"?$/.test(t) ) {
-          return t.replace(/(\r?\n|\\n)/g, "\n").replace( /^\"|\\(.|$)|\"$/g, function($0,$1) {
-            return $1 ? $1 : '';
-          } );
-        } else return BiwaScheme.Sym(t);  // 2Do: validate !!
-      }
-    }
-  });
-  // indicates end of source file
-  BiwaScheme.Parser.EOS = new Object();
-  
-
-///
-/// Compiler
-///
-/// Note: macro expansion is done by Intepreter#expand
-
-BiwaScheme.Compiler = BiwaScheme.Class.create({
-  initialize: function(){
-  },
-
-  is_tail: function(x){
-    return (x[0] == "return");
-  },
-
-  //free: set
-  //e: env(= [locals, frees])
-  //next: opc
-  //ret: opc["refer_*", n, ["argument", 
-  //          ["refer_*", n, ... ["argument", next]
-  collect_free: function(free, e, next){
-    var vars = free;
-    var opc = next;
-    var arr = vars.arr;
-    for(var i=0; i<arr.length; i++){
-      opc = this.compile_refer(arr[i], e, ["argument", opc]);
-    }
-    //Console.puts("collect_free "+free.inspect()+" / "+e.inspect()+" => "+opc.inspect());
-    return opc;
-  },
-
-  //x: Symbol
-  //e: env [set of locals, set of frees]
-  //ret: opc
-  compile_refer: function(x, e, next){
-    return this.compile_lookup(x, e,
-             function(n){ return ["refer-local", n, next] },
-             function(n){ return ["refer-free",  n, next] },
-             function(sym){ return ["refer-global", sym, next] });
-  },
-
-  compile_lookup: function(x, e, return_local, return_free, return_global){
-    var locals = e[0], free = e[1];
-    if((n = locals.index(x)) != null){
-      //Console.puts("compile_refer:"+x.inspect()+" in "+e.inspect()+" results refer-local "+n);
-      return return_local(n);
-    }
-    else if((n = free.index(x)) != null){
-      //Console.puts("compile_refer:"+x.inspect()+" in "+e.inspect()+" results refer-free "+n);
-      return return_free(n);
-    }
     else{
       var sym = x.name;
       return return_global(sym);
@@ -41805,1930 +36644,6 @@ if( typeof(BiwaScheme)!='object' ) BiwaScheme={}; with(BiwaScheme) {
       })
     }
   }
-  define_libfunc("assoc", 2, 2, make_assoc("assoc", "equal?"));
-  define_libfunc("assv", 2, 2, make_assoc("assv", "eqv?"));
-  define_libfunc("assq", 2, 2, make_assoc("assq", "eq?"));
-
-  define_libfunc("cons*", 1, null, function(ar){
-    if(ar.length == 1)
-      return ar[0];
-    else{
-      var ret = null;
-      _.each(ar.reverse(), function(x){
-        if(ret){
-          ret = new Pair(x, ret);
-        }
-        else
-          ret = x;
-      })
-      return ret;
-    }
-  });
-
-  //
-  // Chapter 4 Sorting
-  //
-  (function(){
-    // Destructively sort the given array
-    // with scheme function `proc` as comparator
-    var mergeSort = function(ary, proc, finish) {
-      if (ary.length <= 1) return finish(ary);
-      return mergeSort_(ary, proc, finish, [[0, ary.length, false]], false);
-    };
-
-    var mergeSort_ = function(ary, proc, finish, stack, up) {
-      while(true) {
-        var start = stack[stack.length-1][0],
-            end   = stack[stack.length-1][1],
-            left  = stack[stack.length-1][2];
-        var len = end - start;
-        //console.debug("mergeSort_", ary, stack.join(' '), up?"u":"d", ""+start+".."+(end-1))
-
-        if (len >= 2 && !up) {
-          // There are parts to be sorted
-          stack.push([start, start+(len>>1), true]); continue;
-        }
-        else if (left) {
-          // Left part sorted. Continue to the right one
-          stack.pop();
-          var rend = stack[stack.length-1][1];
-          stack.push([end, rend, false]); up = false; continue;
-        }
-        else {
-          // Right part sorted. Merge left and right
-          stack.pop();
-          var lstart = stack[stack.length-1][0];
-          var ary1 = ary.slice(lstart, start),
-              ary2 = ary.slice(start, end);
-          return merge_(ary1, ary2, proc, [], 0, 0, function(ret) {
-            //console.debug("mergeSortd", ary, stack.join(' '), up?"u":"d", ary1, ary2, ret, ""+start+".."+(start+len-1));
-            for (var i = 0; i < ret.length; i++) {
-              ary[lstart + i] = ret[i];
-            }
-
-            if (stack.length == 1) {
-              return finish(ary);
-            }
-            else {
-              return mergeSort_(ary, proc, finish, stack, true);
-            }
-          });
-        }
-      }
-    };
-
-    var merge_ = function(ary1, ary2, proc, ret, i, j, cont) {
-      //console.debug("merge_", ary1, ary2, ret, i, j);
-      var len1 = ary1.length, len2 = ary2.length;
-      if (i < len1 && j < len2) {
-        return new Call(proc, [ary2[j], ary1[i]], function(ar) {
-          //console.debug("comp", [ary2[j], ary1[i]], ar[0]);
-          if (ar[0]) {
-            ret.push(ary2[j]); j+=1;
-          }
-          else {
-            ret.push(ary1[i]); i+=1;
-          }
-          return merge_(ary1, ary2, proc, ret, i, j, cont);
-        });
-      }
-      else {
-        while (i < len1) { ret.push(ary1[i]); i+=1; }
-        while (j < len2) { ret.push(ary2[j]); j+=1; }
-        return cont(ret)
-      }
-    };
-
-    var compareFn = function(a,b){
-      return BiwaScheme.lt(a, b) ? -1 :
-             BiwaScheme.lt(b, a) ? 1 : 0;
-    };
-
-    define_libfunc("list-sort", 1, 2, function(ar){
-      if(ar[1]){
-        assert_procedure(ar[0]);
-        assert_list(ar[1]);
-        return mergeSort(ar[1].to_array(), ar[0], function(ret) {
-          return array_to_list(ret);
-        });
-      }
-      else {
-        assert_list(ar[0]);
-        return array_to_list(ar[0].to_array().sort(compareFn));
-      }
-    });
-
-    //(vector-sort proc vector)    procedure
-    define_libfunc("vector-sort", 1, 2, function(ar){
-      if(ar[1]){
-        assert_procedure(ar[0]);
-        assert_vector(ar[1]);
-        return mergeSort(_.clone(ar[1]), ar[0], function(ret){
-          return ret;
-        });
-      }
-      else {
-        assert_vector(ar[0]);
-        return _.clone(ar[0]).sort(compareFn);
-      }
-    });
-
-    //(vector-sort! proc vector)    procedure
-    define_libfunc("vector-sort!", 1, 2, function(ar){
-      if(ar[1]){
-        assert_procedure(ar[0]);
-        assert_vector(ar[1]);
-        return mergeSort(ar[1], ar[0], function(ret) {
-          return BiwaScheme.undef;
-        });
-      }
-      else {
-        assert_vector(ar[0]);
-        ar[0].sort(compareFn);
-        return BiwaScheme.undef;
-      }
-    });
-  })();
-
-  //
-  // Chapter 5 Control Structures
-  //
-  define_syntax("when", function(x){
-    //(when test body ...)
-    //=> (if test (begin body ...) #<undef>)
-    var test = x.cdr.car, body = x.cdr.cdr;
-
-    return new Pair(Sym("if"),
-             new Pair(test,
-               new Pair(new Pair(Sym("begin"), body),
-                 new Pair(BiwaScheme.undef, nil))));
-  });
-
-  define_syntax("unless", function(x){
-    //(unless test body ...)
-    //=> (if (not test) (begin body ...) #<undef>)
-    var test = x.cdr.car, body = x.cdr.cdr;
-
-    return new Pair(Sym("if"),
-             new Pair(new Pair(Sym("not"), new Pair(test, nil)),
-               new Pair(new Pair(Sym("begin"), body),
-                 new Pair(BiwaScheme.undef, nil))));
-  });
-
-  define_syntax("do", function(x){
-    //(do ((var1 init1 step1)
-    //     (var2 init2 step2) ...)
-    //    (test expr1 expr2 ...)
-    //  body1 body2 ...)
-    //=> (let loop` ((var1 init1) (var2 init2) ...)
-    //     (if test
-    //       (begin expr1 expr2 ...)
-    //       (begin body1 body2 ...
-    //              (loop` step1 step2 ...)))))
-
-    // parse arguments
-    if(!BiwaScheme.isPair(x.cdr))
-      throw new Error("do: no variables of do");
-    var varsc = x.cdr.car;
-    if(!BiwaScheme.isPair(varsc))
-      throw new Error("do: variables must be given as a list");
-    if(!BiwaScheme.isPair(x.cdr.cdr))
-      throw new Error("do: no resulting form of do");
-    var resultc = x.cdr.cdr.car;
-    var bodyc = x.cdr.cdr.cdr;
-
-    // construct subforms
-    var loop = BiwaScheme.gensym();
-
-    var init_vars = array_to_list(varsc.map(function(var_def){
-      var a = var_def.to_array();
-      return List(a[0], a[1]);
-    }));
-
-    var test = resultc.car;
-    var result_exprs = new Pair(Sym("begin"), resultc.cdr);
-
-    var next_loop = new Pair(loop, array_to_list(varsc.map(function(var_def){
-      var a = var_def.to_array();
-      return a[2] || a[0];
-    })));
-    var body_exprs = new Pair(Sym("begin"), bodyc).concat(List(next_loop));
-
-    // combine subforms
-    return List(Sym("let"),
-                loop,
-                init_vars,
-                List(Sym("if"),
-                     test,
-                     result_exprs,
-                     body_exprs));
-  });
-
-  //(case-lambda <case-lambda clause> ...)    syntax
-  define_syntax("case-lambda", function(x){
-    if(!BiwaScheme.isPair(x.cdr))
-      throw new Error("case-lambda: at least 1 clause required");
-    var clauses = x.cdr.to_array();
-    
-    var args_ = BiwaScheme.gensym();
-    var exec = List(Sym("raise"), "case-lambda: no matching clause found");
-
-    clauses.reverse().forEach(function(clause) {
-      if(!BiwaScheme.isPair(clause))
-        throw new Error("case-lambda: clause must be a pair: "+
-                        BiwaScheme.to_write(clause));
-      var formals = clause.car, clause_body = clause.cdr;
-
-      if (formals === BiwaScheme.nil) {
-        exec = List(Sym("if"),
-                    List(Sym("null?"), args_),
-                    new Pair(Sym("begin"), clause_body),
-                    exec);
-      }
-      else if (BiwaScheme.isPair(formals)) {
-        var len = formals.length(), last_cdr = formals.last_cdr();
-        var pred = (last_cdr === BiwaScheme.nil ? Sym("=") : Sym(">="));
-        var lambda = new Pair(Sym("lambda"),
-                       new Pair(formals,
-                         clause_body));
-        exec = List(Sym("if"),
-                    List(pred, List(Sym("length"), args_), len),
-                    List(Sym("apply"), lambda, args_),
-                    exec);
-      }
-      else if (BiwaScheme.isSymbol(formals)) {
-        exec = new Pair(Sym("let1"),
-                 new Pair(formals,
-                   new Pair(args_,
-                     clause_body)));
-        // Note: previous `exec` is just discarded because this is a wildcard pattern.
-      }
-      else {
-        throw new Error("case-lambda: invalid formals: "+
-                        BiwaScheme.to_write(formals));
-      }
-    });
-
-    return List(Sym("lambda"), args_, exec);
-  });
-
-  //
-  // Chapter 6 Records
-  // see also: src/system/record.js
-  //
-
-  // 6.2 Records: Syntactic layer
-  //eqv, eq
-
-  //(define-record-type <name spec> <record clause>*)    syntax
-  define_syntax("define-record-type", function(x){
-    // (define-record-type <name spec> <record clause>*)
-    var name_spec = x.cdr.car;
-    var record_clauses = x.cdr.cdr;
-
-    // 1. parse name spec
-    // <name spec>: either
-    // - <record name> eg: point
-    // - (<record name> <constructor name> <predicate name>)
-    //   eg: (point make-point point?)
-    if(BiwaScheme.isSymbol(name_spec)){
-      var record_name = name_spec;
-      var constructor_name = Sym("make-"+name_spec.name);
-      var predicate_name = Sym(name_spec.name+"?");
-    }
-    else{
-      assert_list(name_spec);
-      var record_name = name_spec.car;
-      var constructor_name = name_spec.cdr.car;
-      var predicate_name = name_spec.cdr.cdr.car;
-      assert_symbol(record_name);
-      assert_symbol(constructor_name);
-      assert_symbol(predicate_name);
-    }
-
-    // 2. parse record clauses
-    var sealed = false;
-    var opaque = false;
-    var nongenerative = false;
-    var uid = false;
-    var parent_name;
-    var parent_rtd = false;
-    var parent_cd = false;
-    var protocol = false;
-    var fields = [];
-
-    // <record clause>:
-    _.each(record_clauses.to_array(), function(clause){
-      switch(clause.car){
-        // - (fields <field spec>*)
-        case Sym("fields"):
-          fields = _.map(clause.cdr.to_array(), function(field_spec, idx){
-            if(BiwaScheme.isSymbol(field_spec)){
-              // - <field name>
-              return {name: field_spec, idx: idx, mutable: false,
-                      accessor_name: null, mutator_name: null};
-            }
-            else{
-              assert_list(field_spec);
-              assert_symbol(field_spec.car);
-              switch(field_spec.car){
-                case Sym("immutable"):
-                  // - (immutable <field name>)
-                  // - (immutable <field name> <accessor name>)
-                  var field_name = field_spec.cdr.car;
-                  assert_symbol(field_name);
-
-                  if(BiwaScheme.isNil(field_spec.cdr.cdr))
-                    return {name: field_name, idx: idx, mutable: false};
-                  else
-                    return {name: field_name, idx: idx, mutable: false,
-                            accessor_name: field_spec.cdr.cdr.car};
-                  break;
-
-                case Sym("mutable"):
-                  // - (mutable <field name>)
-                  // - (mutable <field name> <accessor name> <mutator name>)
-                  var field_name = field_spec.cdr.car;
-                  assert_symbol(field_name);
-
-                  if(BiwaScheme.isNil(field_spec.cdr.cdr))
-                    return {name: field_name, idx: idx, mutable: true}
-                  else
-                    return {name: field_name, idx: idx, mutable: true,
-                            accessor_name: field_spec.cdr.cdr.car,
-                            mutator_name:  field_spec.cdr.cdr.cdr.car};
-                  break;
-                default:
-                  throw new Error("define-record-type: field definition "+
-                              "must start with `immutable' or `mutable' "+
-                              "but got "+BiwaScheme.inspect(field_spec.car));
-              }
-            }
-          });
-          break;
-        // - (parent <name>)
-        case Sym("parent"):
-          parent_name = clause.cdr.car;
-          assert_symbol(parent_name);
-          break;
-        // - (protocol <expr>)
-        case Sym("protocol"):
-          protocol = clause.cdr.car;
-          break;
-        // - (sealed <bool>)
-        case Sym("sealed"):
-          sealed = !!clause.cdr.car;
-          break;
-        // - (opaque <bool>)
-        case Sym("opaque"):
-          opaque = !!clause.cdr.car;
-          break;
-        // - (nongenerative <uid>?)
-        case Sym("nongenerative"):
-          nongenerative = true;
-          uid = clause.cdr.car;
-          break;
-        // - (parent-rtd <rtd> <cd>)
-        case Sym("parent-rtd"):
-          parent_rtd = clause.cdr.car;
-          parent_cd = clause.cdr.cdr.car;
-          break;
-        default:
-          throw new BiwaScheme.Error("define-record-type: unknown clause `"+
-                                     BiwaScheme.to_write(clause.car)+"'");
-      }
-    });
-
-    if(parent_name){
-      parent_rtd = [Sym("record-type-descriptor"), parent_name];
-      parent_cd  = [Sym("record-constructor-descriptor"), parent_name];
-    }
-
-    // 3. build the definitions
-    // Note: In this implementation, rtd and cd are not bound to symbols.
-    // They are referenced through record name by record-type-descriptor
-    // and record-constructor-descriptor. These relation are stored in
-    // the hash BiwaScheme.Record._DefinedTypes.
-    var rtd = [Sym("record-type-descriptor"), record_name];
-    var cd  = [Sym("record-constructor-descriptor"), record_name];
-
-    // registration
-    var rtd_fields = _.map(fields, function(field){
-      return List(Sym(field.mutable ? "mutable" : "immutable"), field.name);
-    });
-    rtd_fields.is_vector = true; //tell List not to convert
-    var rtd_def = [Sym("make-record-type-descriptor"),
-                    [Sym("quote"), record_name], parent_rtd, uid,
-                    sealed, opaque, rtd_fields];
-    var cd_def = [Sym("make-record-constructor-descriptor"),
-                    Sym("__rtd"), parent_cd, protocol];
-    var registration =
-      [Sym("let*"), [[Sym("__rtd"), rtd_def],
-                    [Sym("__cd"), cd_def]],
-        [Sym("_define-record-type"),
-          [Sym("quote"), record_name], Sym("__rtd"), Sym("__cd")]];
-
-    // accessors and mutators
-    var accessor_defs = _.map(fields, function(field){
-      var name = field.accessor_name ||
-                   Sym(record_name.name+"-"+field.name.name);
-
-      return [Sym("define"), name, [Sym("record-accessor"), rtd, field.idx]];
-    });
-
-    var mutator_defs = _.filter(fields, function(field){
-      return field.mutable;
-    });
-    mutator_defs = _.map(mutator_defs, function(field){
-      var name = field.mutator_name ||
-                   Sym(record_name.name+"-"+field.name.name+"-set!");
-
-      return [Sym("define"), name, [Sym("record-mutator"), rtd, field.idx]];
-    });
-
-    // Wrap the definitions with `begin'
-    // Example:
-    //   (begin
-    //     (let* ((__rtd (make-record-type-descriptor 'square
-    //                     (record-type-descriptor rect)
-    //                     #f #f #f
-    //                     #((mutable w) (mutable h))))
-    //            (__cd (make-record-constructor-descriptor __rtd
-    //                    (record-constructor-descriptor rect)
-    //                    (lambda (n) ...))))
-    //       (_define-record-type 'square __rtd __cd))
-    //
-    //     (define make-square
-    //       (record-constructor
-    //         (record-constructor-descriptor square)))
-    //     (define square?
-    //       (record-predicate (record-type-descriptor square)))
-    //     (define square-w
-    //       (record-accessor (record-type-descriptor square) 0))
-    //     (define square-h
-    //       (record-accessor (record-type-descriptor square) 1))
-    //     (define set-square-w!
-    //       (record-mutator (record-type-descriptor square) 0))
-    //     (define set-square-h!
-    //       (record-mutator (record-type-descriptor square) 1)))
-    //
-    return deep_array_to_list(
-      [Sym("begin"),
-        registration,
-        [Sym("define"), constructor_name, [Sym("record-constructor"), cd]],
-        [Sym("define"), predicate_name, [Sym("record-predicate"), rtd]],
-        ].concat(accessor_defs).
-          concat(mutator_defs)
-    );
-  });
-
-  define_libfunc("_define-record-type", 3, 3, function(ar){
-    assert_symbol(ar[0]);
-    assert_record_td(ar[1]);
-    assert_record_cd(ar[2]);
-    BiwaScheme.Record.define_type(ar[0].name, ar[1], ar[2]);
-    return BiwaScheme.undef;
-  });
-
-  //(record-type-descriptor <record name>)    syntax
-  define_syntax("record-type-descriptor", function(x){
-    return deep_array_to_list([Sym("_record-type-descriptor"), [Sym("quote"), x.cdr.car]]);
-  });
-  define_libfunc("_record-type-descriptor", 1, 1, function(ar){
-    assert_symbol(ar[0]);
-    var type = BiwaScheme.Record.get_type(ar[0].name);
-    if(type)
-      return type.rtd;
-    else
-      throw new Error("record-type-descriptor: unknown record type "+ar[0].name);
-  });
-
-  //(record-constructor-descriptor <record name>)    syntax
-  define_syntax("record-constructor-descriptor", function(x){
-    return deep_array_to_list([Sym("_record-constructor-descriptor"), [Sym("quote"), x.cdr.car]]);
-  });
-  define_libfunc("_record-constructor-descriptor", 1, 1, function(ar){
-    assert_symbol(ar[0]);
-    var type = BiwaScheme.Record.get_type(ar[0].name);
-    if(type)
-      return type.cd;
-    else
-      throw new Error("record-constructor-descriptor: unknown record type "+ar[0].name);
-  });
-
-  // 6.3  Records: Procedural layer
-  //(make-record-type-descriptor name    procedure
-  define_libfunc("make-record-type-descriptor", 6, 6, function(ar){
-    var name = ar[0], parent_rtd = ar[1], uid = ar[2],
-        sealed = ar[3], opaque = ar[4], fields = ar[5];
-
-    assert_symbol(name);
-    if(parent_rtd) assert_record_td(parent_rtd);
-    if(uid){
-      assert_symbol(uid);
-      var _rtd = BiwaScheme.Record.RTD.NongenerativeRecords[uid.name];
-      if(_rtd){
-        // the record type is already defined.
-        return _rtd;
-        // should check equality of other arguments..
-      }
-    }
-    sealed = !!sealed;
-    opaque = !!opaque;
-    assert_vector(fields);
-    for(var i=0; i<fields.length; i++){
-      var list = fields[i];
-      assert_symbol(list.car, "mutability");
-      assert_symbol(list.cdr.car, "field name");
-      fields[i] = [list.cdr.car.name, (list.car == Sym("mutable"))];
-    };
-
-    var rtd = new BiwaScheme.Record.RTD(name, parent_rtd, uid,
-                                     sealed, opaque, fields);
-    if(uid)
-      BiwaScheme.Record.RTD.NongenerativeRecords[uid.name] = rtd;
-
-    return rtd;
-  });
-
-  //(record-type-descriptor? obj)    procedure
-  define_libfunc("record-type-descriptor?", 1, 1, function(ar){
-    return (ar[0] instanceof BiwaScheme.Record.RTD);
-  });
-
-  //(make-record-constructor-descriptor rtd    procedure
-  define_libfunc("make-record-constructor-descriptor", 3, 3, function(ar){
-    var rtd = ar[0], parent_cd = ar[1], protocol = ar[2];
-
-    assert_record_td(rtd);
-    if(parent_cd) assert_record_cd(parent_cd);
-    if(protocol) assert_procedure(protocol);
-
-    return new BiwaScheme.Record.CD(rtd, parent_cd, protocol);
-  });
-
-  //(record-constructor constructor-descriptor)    procedure
-  define_libfunc("record-constructor", 1, 1, function(ar){
-    var cd = ar[0];
-    assert_record_cd(cd);
-
-    return cd.record_constructor();
-  });
-
-  //(record-predicate rtd)    procedure
-  define_libfunc("record-predicate", 1, 1, function(ar){
-    var rtd = ar[0];
-    assert_record_td(rtd);
-
-    return function(args){
-      var obj = args[0];
-
-      return (obj instanceof BiwaScheme.Record) &&
-             (obj.rtd === rtd);
-    };
-  });
-
-  //(record-accessor rtd k)    procedure
-  define_libfunc("record-accessor", 2, 2, function(ar){
-    var rtd = ar[0], k = ar[1];
-    assert_record_td(rtd);
-    assert_integer(k);
-    for(var _rtd = rtd.parent_rtd; _rtd; _rtd = _rtd.parent_rtd)
-      k += _rtd.fields.length;
-
-    return function(args){
-      var record = args[0];
-      var error_msg = rtd.name.name+"-"+rtd.field_name(k)+": "+
-                      BiwaScheme.to_write(record)+
-                      " is not a "+rtd.name.name;
-      assert(BiwaScheme.isRecord(record), error_msg);
-
-      var descendant = false;
-      for(var _rtd = record.rtd; _rtd; _rtd = _rtd.parent_rtd){
-        if(_rtd == rtd) descendant = true;
-      }
-      assert(descendant, error_msg);
-
-      return record.get(k);
-    };
-  });
-
-  //(record-mutator rtd k)    procedure
-  define_libfunc("record-mutator", 2, 2, function(ar){
-    var rtd = ar[0], k = ar[1];
-    assert_record_td(rtd);
-    assert_integer(k);
-    for(var _rtd = rtd.parent_rtd; _rtd; _rtd = _rtd.parent_rtd)
-      k += _rtd.fields.length;
-
-    return function(args){
-      var record = args[0], val = args[1];
-      var func_name = rtd.field_name(k);
-
-      assert_record(record);
-      assert(record.rtd === rtd,
-            func_name+": "+BiwaScheme.to_write(record)+
-            " is not a "+rtd.name.name);
-      assert(!record.rtd.sealed,
-            func_name+": "+rtd.name.name+" is sealed (can't mutate)");
-
-      record.set(k, val);
-    };
-  });
-
-  // 6.4  Records: Inspection
-  //(record? obj)    procedure
-  define_libfunc("record?", 1, 1, function(ar){
-    var obj = ar[0];
-    if(BiwaScheme.isRecord(obj)){
-      if(obj.rtd.opaque)
-        return false; // opaque records pretend as if it is not a record.
-      else
-        return true;
-    }
-    else
-      return false;
-  });
-
-  //(record-rtd record)    procedure
-  define_libfunc("record-rtd", 1, 1, function(ar){
-    assert_record(ar[0]);
-    return ar[0].rtd;
-  });
-
-  //(record-type-name rtd)    procedure
-  define_libfunc("record-type-name", 1, 1, function(ar){
-    assert_record_td(ar[0]);
-    return ar[0].name;
-  });
-
-  //(record-type-parent rtd)    procedure
-  define_libfunc("record-type-parent", 1, 1, function(ar){
-    assert_record_td(ar[0]);
-    return ar[0].parent_rtd;
-  });
-
-  //(record-type-uid rtd)    procedure
-  define_libfunc("record-type-uid", 1, 1, function(ar){
-    assert_record_td(ar[0]);
-    return ar[0].uid;
-  });
-
-  //(record-type-generative? rtd)    procedure
-  define_libfunc("record-type-generative?", 1, 1, function(ar){
-    assert_record_td(ar[0]);
-    return ar[0].generative;
-  });
-
-  //(record-type-sealed? rtd)    procedure
-  define_libfunc("record-type-sealed?", 1, 1, function(ar){
-    assert_record_td(ar[0]);
-    return ar[0].sealed;
-  });
-
-  //(record-type-opaque? rtd)    procedure
-  define_libfunc("record-type-opaque?", 1, 1, function(ar){
-    assert_record_td(ar[0]);
-    return ar[0].opaque;
-  });
-
-  //(record-type-field-names rtd)    procedure
-  define_libfunc("record-type-field-names", 1, 1, function(ar){
-    assert_record_td(ar[0]);
-    return _.map(ar[0].fields, function(field){ return field.name; });
-  });
-
-  //(record-field-mutable? rtd k)    procedure
-  define_libfunc("record-field-mutable?", 2, 2, function(ar){
-    var rtd = ar[0], k = ar[1];
-    assert_record_td(ar[0]);
-    assert_integer(k);
-
-    for(var _rtd = rtd.parent_rtd; _rtd; _rtd = _rtd.parent_rtd)
-      k += _rtd.fields.length;
-
-    return ar[0].fields[k].mutable;
-  });
-
-  //
-  // Chapter 7 Exceptions and conditions
-  //
-//(with-exception-handler handler thunk)    procedure
-//(guard (<variable>    syntax
-  //(raise obj)    procedure
-  define_libfunc("raise", 1, 1, function(ar){
-    throw new BiwaScheme.UserError(BiwaScheme.to_write(ar[0]));
-  });
-//(raise-continuable obj)    procedure
-//
-//&condition    condition type
-//(condition condition1 ...)    procedure
-//(simple-conditions condition)    procedure
-//(condition? obj)    procedure
-//(condition-predicate rtd)    procedure
-//(condition-accessor rtd proc)    procedure
-//
-//&message    condition type
-//&warning    condition type
-//&serious    condition type
-//&error    condition type
-//&violation    condition type
-//&assertion    condition type
-//&irritants    condition type
-//&who    condition type
-//&non-continuable    condition type
-//&implementation-restriction    condition type
-//&lexical    condition type
-//&syntax    condition type
-//&undefined    condition type
-
-  //
-  // Chapter 8 I/O
-  //
-//  //    8  I/O
-//  //        8.1  Condition types
-//&i/o    condition type
-//&i/o-read    condition type
-//&i/o-write    condition type
-//&i/o-invalid-position    condition type
-//&i/o-filename    condition type
-//&i/o-file-protection    condition type
-//&i/o-file-is-read-only    condition type
-//&i/o-file-already-exists    condition type
-//&i/o-file-does-not-exist    condition type
-//&i/o-port    condition type
-//
-//  //        8.2  Port I/O
-//  //            8.2.1  File names
-//  //(no function introduced)
-//
-//  //            8.2.2  File options
-//(file-options <file-options symbol> ...)    syntax
-//
-//  //            8.2.3  Buffer modes
-//(buffer-mode <buffer-mode symbol>)    syntax
-//(buffer-mode? obj)    procedure
-//
-//  //            8.2.4  Transcoders
-//(latin-1-codec)    procedure
-//(utf-8-codec)    procedure
-//(utf-16-codec)    procedure
-//(eol-style <eol-style symbol>)    syntax
-//(native-eol-style)    procedure
-//&i/o-decoding    condition type
-//&i/o-encoding    condition type
-//(error-handling-mode <error-handling-mode symbol>)    syntax
-//(make-transcoder codec)    procedure
-//(make-transcoder codec eol-style)    procedure
-//(make-transcoder codec eol-style handling-mode)    procedure
-//(native-transcoder)    procedure
-//(transcoder-codec transcoder)    procedure
-//(transcoder-eol-style transcoder)    procedure
-//(transcoder-error-handling-mode transcoder)    procedure
-//(bytevector->string bytevector transcoder)    procedure
-//(string->bytevector string transcoder)    procedure
-//
-  //            8.2.5  End-of-file object
-  //-> 8.3 (eof-object)    procedure
-  //-> 8.3 (eof-object? obj)    procedure
-
-  //            8.2.6  Input and output ports
-  define_libfunc("port?", 1, 1, function(ar){
-    return (ar[0] instanceof Port);
-  })
-//(port-transcoder port)    procedure
-  define_libfunc("textual-port?", 1, 1, function(ar){
-    assert_port(ar[0]);
-    return !ar[0].is_binary;
-  })
-  define_libfunc("binary-port?", 1, 1, function(ar){
-    assert_port(ar[0]);
-    return ar[0].is_binary;
-  })
-//(transcoded-port binary-port transcoder)    procedure
-//(port-has-port-position? port)    procedure
-//(port-position port)    procedure
-//(port-has-set-port-position!? port)    procedure
-//(set-port-position! port pos)    procedure
-  define_libfunc("close-port", 1, 1, function(ar){
-    assert_port(ar[0]);
-    ar[0].close();
-    return BiwaScheme.undef;
-  })
-  //(call-with-port port proc)    procedure
-  define_libfunc("call-with-port", 2, 2, function(ar){
-    var port = ar[0], proc = ar[1];
-    assert_port(port);
-    assert_closure(proc);
-
-    return new Call(proc, [port], function(ar){
-      // Automatically close the port
-      port.close();
-      return ar[0]; // TODO: values
-    });
-  });
-
-  //            8.2.7  Input ports
-  //8.3 (input-port? obj)    procedure
-//(port-eof? input-port)    procedure
-//(open-file-input-port filename)    procedure
-//(open-bytevector-input-port bytevector)    procedure
-//(open-string-input-port string)    procedure
-//(standard-input-port)    procedure
-//8.3 (current-input-port)    procedure
-//(make-custom-binary-input-port id read!    procedure
-//(make-custom-textual-input-port id read!    procedure
-//
-//  //            8.2.8  Binary input
-//(get-u8 binary-input-port)    procedure
-//(lookahead-u8 binary-input-port)    procedure
-//(get-bytevector-n binary-input-port count)    procedure
-//(get-bytevector-n! binary-input-port    procedure
-//(get-bytevector-some binary-input-port)    procedure
-//(get-bytevector-all binary-input-port)    procedure
-//
-//  //            8.2.9  Textual input
-//(get-char textual-input-port)    procedure
-//(lookahead-char textual-input-port)    procedure
-//(get-string-n textual-input-port count)    procedure
-//(get-string-n! textual-input-port string start count)    procedure
-//(get-string-all textual-input-port)    procedure
-//(get-line textual-input-port)    procedure
-//(get-datum textual-input-port)    procedure
-//
-  //            8.2.10  Output ports
-  //8.3 (output-port? obj)    procedure
-//(flush-output-port output-port)    procedure
-//(output-port-buffer-mode output-port)    procedure
-//(open-file-output-port filename)    procedure
-//(open-bytevector-output-port)    procedure
-//(call-with-bytevector-output-port proc)    procedure
-//(open-string-output-port)    procedure
-  //(call-with-string-output-port proc)    procedure
-  define_libfunc("call-with-string-output-port", 1, 1, function(ar){
-    var proc = ar[0];
-    assert_procedure(proc);
-
-    var port = new BiwaScheme.Port.StringOutput();
-
-    return new Call(proc, [port], function(ar){
-      port.close();
-      return port.output_string();
-    });
-  });
-
-//(standard-output-port)    procedure
-//(standard-error-port)    procedure
-//8.3 (current-output-port)    procedure
-//8.3 (current-error-port)    procedure
-//(make-custom-binary-output-port id    procedure
-  //(make-custom-textual-output-port id write! get-position set-position! close)
-//  define_libfunc("make-custom-textual-output-port", 5, 5, function(ar){
-//    assert_string(ar[0]);
-//    assert_closure(ar[1]);
-//    assert_closure(ar[2]);
-//    assert_closure(ar[3]);
-//    assert_closure(ar[4]);
-//    return new Port(ar[0], ar[1], ar[2], ar[3], ar[4]);
-//  })
-//
-//  //            8.2.11  Binary output
-//(put-u8 binary-output-port octet)    procedure
-//(put-bytevector binary-output-port bytevector)    procedure
-//
-  //            8.2.12  Textual output
-  define_libfunc("put-char", 2, 2, function(ar){
-    assert_port(ar[0]);
-    assert_char(ar[1]);
-    ar[0].put_string(ar[1].value);
-    return BiwaScheme.undef;
-  })
-  define_libfunc("put-string", 2, 2, function(ar){
-    assert_port(ar[0]);
-    assert_string(ar[1]);
-    ar[0].put_string(ar[1]);
-    return BiwaScheme.undef;
-  })
-  define_libfunc("put-datum", 2, 2, function(ar){
-    assert_port(ar[0]);
-    ar[0].put_string(to_write(ar[1]));
-    return BiwaScheme.undef;
-  })
-//
-//  //            8.2.13  Input/output ports
-//(open-file-input/output-port filename)    procedure
-//(make-custom-binary-input/output-port    procedure
-//(make-custom-textual-input/output-port    procedure
-//
-//  //        8.3  Simple I/O
-  define_libfunc("eof-object", 0, 0, function(ar){
-    return eof;
-  })
-  define_libfunc("eof-object?", 1, 1, function(ar){
-    return ar[0] === eof;
-  })
-//(call-with-input-file filename proc)    procedure
-//(call-with-output-file filename proc)    procedure
-  define_libfunc("input-port?", 1, 1, function(ar){
-    assert_port(ar[0]);
-    return ar[0].is_input;
-  })
-  define_libfunc("output-port?", 1, 1, function(ar){
-    assert_port(ar[0]);
-    return ar[0].is_output;
-  })
-  define_libfunc("current-input-port", 0, 0, function(ar){
-    return Port.current_input;
-  })
-  define_libfunc("current-output-port", 0, 0, function(ar){
-    return Port.current_output;
-  })
-  define_libfunc("current-error-port", 0, 0, function(ar){
-    return Port.current_error;
-  })
-//(with-input-from-file filename thunk)    procedure
-//(with-output-to-file filename thunk)    procedure
-//(open-input-file filename)    procedure
-//(open-output-file filename)    procedure
-  define_libfunc("close-input-port", 1, 1, function(ar){
-    assert_port(ar[0]);
-    if(!ar[0].is_input)
-      throw new Error("close-input-port: port is not input port");
-    ar[0].close();
-    return BiwaScheme.undef;
-  });
-  define_libfunc("close-output-port", 1, 1, function(ar){
-    assert_port(ar[0]);
-    if(!ar[0].is_output)
-      throw new Error("close-output-port: port is not output port");
-    ar[0].close();
-    return BiwaScheme.undef;
-  });
-//(read-char)    procedure
-//(peek-char)    procedure
-  define_libfunc("read", 0, 1, function(ar){
-    var port = ar[0] || Port.current_input;
-    assert_port(port);
-
-    return port.get_string(function(str){
-	    return Interpreter.read(str);
-    });
-  })
-
-  define_libfunc("write-char", 1, 2, function(ar){
-    var port = ar[1] || Port.current_output;
-    assert_char(ar[0]);
-    port.put_string(ar[0].value);
-    return BiwaScheme.undef;
-  });
-  define_libfunc("newline", 0, 1, function(ar){
-    var port = ar[0] || Port.current_output;
-    port.put_string("\n");
-    return BiwaScheme.undef;
-  });
-  define_libfunc("display", 1, 2, function(ar){
-    var port = ar[1] || Port.current_output;
-    port.put_string(to_display(ar[0]));
-    return BiwaScheme.undef;
-  });
-  define_libfunc("write", 1, 2, function(ar){
-    var port = ar[1] || Port.current_output;
-    assert_port(port);
-    port.put_string(to_write(ar[0]));
-    return BiwaScheme.undef;
-  });
-
-  //
-  // Chapter 9 File System
-  // Chapter 10 Command-line access and exit values
-  //
-  // see src/library/node_functions.js
-
-  //
-  // Chapter 11 Arithmetic
-  //
-////        11.1  Bitwise operations
-////        11.2  Fixnums
-//(fixnum? obj)    procedure
-//(fixnum-width)    procedure
-//(least-fixnum)    procedure
-//(greatest-fixnum)    procedure
-//(fx=? fx1 fx2 fx3 ...)    procedure
-//(fx>? fx1 fx2 fx3 ...)    procedure
-//(fx<? fx1 fx2 fx3 ...)    procedure
-//(fx>=? fx1 fx2 fx3 ...)    procedure
-//(fx<=? fx1 fx2 fx3 ...)    procedure
-//(fxzero? fx)    procedure
-//(fxpositive? fx)    procedure
-//(fxnegative? fx)    procedure
-//(fxodd? fx)    procedure
-//(fxeven? fx)    procedure
-//(fxmax fx1 fx2 ...)    procedure
-//(fxmin fx1 fx2 ...)    procedure
-//(fx+ fx1 fx2)    procedure
-//(fx* fx1 fx2)    procedure
-//(fx- fx1 fx2)    procedure
-//(fxdiv-and-mod fx1 fx2)    procedure
-//(fxdiv fx1 fx2)    procedure
-//(fxmod fx1 fx2)    procedure
-//(fxdiv0-and-mod0 fx1 fx2)    procedure
-//(fxdiv0 fx1 fx2)    procedure
-//(fxmod0 fx1 fx2)    procedure
-//(fx+/carry fx1 fx2 fx3)    procedure
-//(fx-/carry fx1 fx2 fx3)    procedure
-//(fx*/carry fx1 fx2 fx3)    procedure
-//(fxnot fx)    procedure
-//(fxand fx1 ...)    procedure
-//(fxior fx1 ...)    procedure
-//(fxxor fx1 ...)    procedure
-//(fxif fx1 fx2 fx3)    procedure
-//(fxbit-count fx)    procedure
-//(fxlength fx)    procedure
-//(fxfirst-bit-set fx)    procedure
-//(fxbit-set? fx1 fx2)    procedure
-//(fxcopy-bit fx1 fx2 fx3)    procedure
-//(fxbit-field fx1 fx2 fx3)    procedure
-//(fxcopy-bit-field fx1 fx2 fx3 fx4)    procedure
-//(fxarithmetic-shift fx1 fx2)    procedure
-//(fxarithmetic-shift-left fx1 fx2)    procedure
-//(fxarithmetic-shift-right fx1 fx2)    procedure
-//(fxrotate-bit-field fx1 fx2 fx3 fx4)    procedure
-//(fxreverse-bit-field fx1 fx2 fx3)    procedure
-//
-////        11.3  Flonums
-//(flonum? obj)    procedure
-//(real->flonum x)    procedure
-//(fl=? fl1 fl2 fl3 ...)    procedure
-//(fl<? fl1 fl2 fl3 ...)    procedure
-//(fl<=? fl1 fl2 fl3 ...)    procedure
-//(fl>? fl1 fl2 fl3 ...)    procedure
-//(fl>=? fl1 fl2 fl3 ...)    procedure
-//(flinteger? fl)    procedure
-//(flzero? fl)    procedure
-//(flpositive? fl)    procedure
-//(flnegative? fl)    procedure
-//(flodd? ifl)    procedure
-//(fleven? ifl)    procedure
-//(flfinite? fl)    procedure
-//(flinfinite? fl)    procedure
-//(flnan? fl)    procedure
-//(flmax fl1 fl2 ...)    procedure
-//(flmin fl1 fl2 ...)    procedure
-//(fl+ fl1 ...)    procedure
-//(fl* fl1 ...)    procedure
-//(fl- fl1 fl2 ...)    procedure
-//(fl- fl)    procedure
-//(fl/ fl1 fl2 ...)    procedure
-//(fl/ fl)    procedure
-//(flabs fl)    procedure
-//(fldiv-and-mod fl1 fl2)    procedure
-//(fldiv fl1 fl2)    procedure
-//(flmod fl1 fl2)    procedure
-//(fldiv0-and-mod0 fl1 fl2)    procedure
-//(fldiv0 fl1 fl2)    procedure
-//(flmod0 fl1 fl2)    procedure
-//(flnumerator fl)    procedure
-//(fldenominator fl)    procedure
-//(flfloor fl)    procedure
-//(flceiling fl)    procedure
-//(fltruncate fl)    procedure
-//(flround fl)    procedure
-//(flexp fl)    procedure
-//(fllog fl)    procedure
-//(fllog fl1 fl2)    procedure
-//(flsin fl)    procedure
-//(flcos fl)    procedure
-//(fltan fl)    procedure
-//(flasin fl)    procedure
-//(flacos fl)    procedure
-//(flatan fl)    procedure
-//(flatan fl1 fl2)    procedure
-//(flsqrt fl)    procedure
-//(flexpt fl1 fl2)    procedure
-//&no-infinities    condition type
-//&no-nans    condition type
-//(fixnum->flonum fx)    procedure
-
-  ////        11.4  Exact bitwise arithmetic
-  //(bitwise-not ei)    procedure
-  define_libfunc("bitwise-not", 1, 1, function(ar){
-    return ~(ar[0]);
-  });
-
-  //(bitwise-and ei1 ...)    procedure
-  define_libfunc("bitwise-and", 1, null, function(ar){
-    return _.reduce(ar, function(ret, item){ return ret & item; });
-  });
-
-  //(bitwise-ior ei1 ...)    procedure
-  define_libfunc("bitwise-ior", 1, null, function(ar){
-    return _.reduce(ar, function(ret, item){ return ret | item; });
-  });
-
-  //(bitwise-xor ei1 ...)    procedure
-  define_libfunc("bitwise-xor", 1, null, function(ar){
-    return _.reduce(ar, function(ret, item){ return ret ^ item; });
-  });
-
-  //(bitwise-if ei1 ei2 ei3)    procedure
-  define_libfunc("bitwise-if", 3, 3, function(ar){
-    return (ar[0] & ar[1]) | (~ar[0] & ar[2]);
-  });
-
-  //(bitwise-bit-count ei)    procedure
-  define_libfunc("bitwise-bit-count", 1, 1, function(ar){
-    var e = Math.abs(ar[0]), ret = 0;
-    for (; e != 0; e >>= 1) {
-      if(e & 1) ret++;
-    }
-    return ret;
-  });
-
-  //(bitwise-length ei)    procedure
-  define_libfunc("bitwise-length", 1, 1, function(ar){
-    var e = Math.abs(ar[0]), ret = 0;
-    for (; e != 0; e >>= 1) {
-      ret++;
-    }
-    return ret;
-  });
-
-  //(bitwise-first-bit-set ei)    procedure
-  define_libfunc("bitwise-first-bit-set", 1, 1, function(ar){
-    var e = Math.abs(ar[0]), ret = 0;
-    if (e == 0) return -1;
-    for (; e != 0; e >>= 1) {
-      if (e & 1) return ret;
-      ret++;
-    }
-  });
-
-  //(bitwise-bit-set? ei1 ei2)    procedure
-  define_libfunc("bitwise-bit-set?", 2, 2, function(ar){
-    return !!(ar[0] & (1 << ar[1]));
-  });
-
-  //(bitwise-copy-bit ei1 n b)    procedure
-  define_libfunc("bitwise-copy-bit", 3, 3, function(ar){
-    var mask = (1 << ar[1]);
-    return (mask & (ar[2] << ar[1])) |   // Set n-th bit to b
-           (~mask & ar[0]);              // and use ei1 for rest of the bits
-  });
-
-  //(bitwise-bit-field ei1 start end)    procedure
-  define_libfunc("bitwise-bit-field", 3, 3, function(ar){
-    var mask = ~(-1 << ar[2]);  // Has 1 at 0...end
-    return (mask & ar[0]) >> ar[1];
-  });
-
-  //(bitwise-copy-bit-field dst start end src)    procedure
-  define_libfunc("bitwise-copy-bit-field", 4, 4, function(ar){
-    var dst=ar[0], start=ar[1], end=ar[2], src=ar[3];
-    var mask = ~(-1 << end) &   // Has 1 at 0...end
-                (-1 << start)   // Clear 0...start
-    return (mask & (src << start)) |
-           (~mask & dst);
-  });
-
-  //(bitwise-arithmetic-shift ei1 ei2)    procedure
-  define_libfunc("bitwise-arithmetic-shift", 2, 2, function(ar){
-    return (ar[1] >= 0) ? (ar[0] << ar[1]) : (ar[0] >> -ar[1]);
-  });
-
-  //(bitwise-arithmetic-shift-left ei1 ei2)    procedure
-  define_libfunc("bitwise-arithmetic-shift-left", 2, 2, function(ar){
-    return ar[0] << ar[1];
-  });
-
-  //(bitwise-arithmetic-shift-right ei1 ei2)    procedure
-  define_libfunc("bitwise-arithmetic-shift-right", 2, 2, function(ar){
-    return ar[0] >> ar[1];
-  });
-
-  //(bitwise-rotate-bit-field ei1 start end count)    procedure
-  define_libfunc("bitwise-rotate-bit-field", 4, 4, function(ar){
-    var n=ar[0], start=ar[1], end=ar[2], count=ar[3];
-    var width = end - start;
-    if (width <= 0) return n;
-
-    count %= width;
-    var orig_field = (~(-1 << end) & n) >> start;
-    var rotated_field = (orig_field << count) |
-                        (orig_field >> (width - count))
-
-    var mask = ~(-1 << end) & (-1 << start);
-    return (mask & (rotated_field << start)) |
-           (~mask & n);
-  });
-
-  //(bitwise-reverse-bit-field ei1 ei2 ei3)    procedure
-  define_libfunc("bitwise-reverse-bit-field", 3, 3, function(ar){
-    var ret=n=ar[0], start=ar[1], end=ar[2];
-    var orig_field = ((~(-1 << end) & n) >> start);
-    for (var i=0; i<(end-start); i++, orig_field>>=1) {
-      var bit = orig_field & 1;
-      var setpos = end - 1 - i;
-      var mask = (1 << setpos);
-      ret = (mask & (bit << setpos)) | (~mask & ret);
-    }
-    return ret;
-  });
-
-  //
-  // Chapter 12 syntax-case
-  //
-
-  //
-  // Chapter 13 Hashtables
-  //
-
-  //13.1  Constructors
-  //(define h (make-eq-hashtale)
-  //(define h (make-eq-hashtable 1000))
-  define_libfunc("make-eq-hashtable", 0, 1, function(ar){
-    // Note: ar[1] (hashtable size) is just ignored
-    return new Hashtable(Hashtable.eq_hash, Hashtable.eq_equiv);
-  });
-  //(make-eqv-hashtable)    procedure
-  //(make-eqv-hashtable k)    procedure
-  define_libfunc("make-eqv-hashtable", 0, 1, function(ar){
-    return new Hashtable(Hashtable.eqv_hash, Hashtable.eqv_equiv);
-  });
-  //(make-hashtable hash-function equiv)    procedure
-  //(make-hashtable hash-function equiv k)    procedure
-  define_libfunc("make-hashtable", 2, 3, function(ar){
-    assert_procedure(ar[0]);
-    assert_procedure(ar[1]);
-    return new Hashtable(ar[0], ar[1]);
-  });
-
-  //13.2  Procedures
-  // (hashtable? hash)
-  define_libfunc("hashtable?", 1, 1, function(ar){
-    return ar[0] instanceof Hashtable;
-  });
-  //(hashtable-size hash)
-  define_libfunc("hashtable-size", 1, 1, function(ar){
-    assert_hashtable(ar[0]);
-    return ar[0].keys().length;
-  });
-
-  // Find a pair from a hashtable with given key.
-  //
-  // hash      - a BiwaScheme.Hashtable
-  // key       - an object
-  // callbacks - an object contains callback functions
-  //             .on_found     - function(pair, hashed)
-  //               pair   - [Object key, Object value]
-  //               hashed - Object hashed
-  //             .on_not_found - function(hashed)
-  //               hashed - Object hashed
-  //
-  // Returns an instance of BiwaScheme.Call.
-  BiwaScheme.find_hash_pair = function(hash, key, callbacks){
-    // invoke hash proc
-    return new Call(hash.hash_proc, [key], function(ar){
-      var hashed = ar[0];
-      var candidate_pairs = hash.candidate_pairs(hashed);
-
-      if (!candidate_pairs){ // shortcut: obviously not found
-        return callbacks.on_not_found(hashed);
-      }
-
-      // search the exact key from candidates
-      return Call.foreach(candidate_pairs, {
-        call: function(pair){
-          // invoke the equivalence proc
-          return new Call(hash.equiv_proc, [key, pair[0]]);
-        },
-        result: function(equal, pair){
-          if(equal) {       // found
-            return callbacks.on_found(pair, hashed);
-          }
-        },
-        finish: function(){ // not found
-          return callbacks.on_not_found(hashed);
-        }
-      });
-    });
-  };
-
-  //(hashtable-ref hash "foo" #f)
-  define_libfunc("hashtable-ref", 3, 3, function(ar){
-    var hash = ar[0], key = ar[1], ifnone = ar[2];
-    assert_hashtable(hash);
-
-    return BiwaScheme.find_hash_pair(hash, key, {
-      on_found: function(pair){
-        return pair[1];
-      },
-      on_not_found: function(hashed){
-        return ifnone;
-      }
-    });
-  });
-
-  //(hashtable-set! hash "foo" '(1 2))
-  define_libfunc("hashtable-set!", 3, 3, function(ar){
-    var hash = ar[0], key = ar[1], value = ar[2];
-    assert_hashtable(hash);
-    assert(hash.mutable, "hashtable is not mutable");
-
-    return BiwaScheme.find_hash_pair(hash, key, {
-      on_found: function(pair){
-        pair[1] = value;
-        return BiwaScheme.undef;
-      },
-      on_not_found: function(hashed){
-        hash.add_pair(hashed, key, value);
-        return BiwaScheme.undef;
-      }
-    });
-  });
-
-  //(hashtable-delete! hash "foo")
-  define_libfunc("hashtable-delete!", 2, 2, function(ar){
-    var hash = ar[0], key = ar[1];
-    assert_hashtable(hash);
-    assert(hash.mutable, "hashtable is not mutable");
-
-    return BiwaScheme.find_hash_pair(hash, key, {
-      on_found: function(pair, hashed){
-        hash.remove_pair(hashed, pair);
-        return BiwaScheme.undef;
-      },
-      on_not_found: function(hashed){
-        return BiwaScheme.undef;
-      }
-    });
-  });
-
-  //(hashtable-contains? hash "foo")
-  define_libfunc("hashtable-contains?", 2, 2, function(ar){
-    var hash = ar[0], key = ar[1];
-    assert_hashtable(hash);
-
-    return BiwaScheme.find_hash_pair(hash, key, {
-      on_found: function(pair){
-        return true;
-      },
-      on_not_found: function(hashed){
-        return false;
-      }
-    });
-  });
-
-  //(hashtable-update! hashtable key proc default)    procedure
-  define_libfunc("hashtable-update!", 4, 4, function(ar){
-    var hash = ar[0], key = ar[1], proc = ar[2], ifnone = ar[3];
-    assert_hashtable(hash);
-    assert(hash.mutable, "hashtable is not mutable");
-    assert_procedure(proc);
-
-    return BiwaScheme.find_hash_pair(hash, key, {
-      on_found: function(pair, hashed){
-        // invoke proc and get new value
-        return new Call(proc, [pair[1]], function(ar){
-          // replace the value
-          pair[1] = ar[0];
-          return BiwaScheme.undef;
-        });
-      },
-      on_not_found: function(hashed){
-        // invoke proc and get new value
-        return new Call(proc, [ifnone], function(ar){
-          // create new pair
-          hash.add_pair(hashed, key, ar[0]);
-          return BiwaScheme.undef;
-        });
-      }
-    });
-  });
-  //(hashtable-copy hashtable)    procedure
-  //(hashtable-copy hashtable mutable)    procedure
-  define_libfunc("hashtable-copy", 1, 2, function(ar){
-    var mutable = (ar[1]===undefined) ? false : !!ar[1];
-    assert_hashtable(ar[0]);
-    return ar[0].create_copy(mutable);
-  });
-  //(hashtable-clear! hashtable)    procedure
-  //(hashtable-clear! hashtable k)    procedure
-  define_libfunc("hashtable-clear!", 0, 1, function(ar){
-    assert_hashtable(ar[0]);
-    assert(ar[0].mutable, "hashtable is not mutable");
-    ar[0].clear();
-    return BiwaScheme.undef;
-  });
-  //(hashtable-keys hash)  ; => vector
-  define_libfunc("hashtable-keys", 1, 1, function(ar){
-    assert_hashtable(ar[0]);
-    return ar[0].keys();
-  });
-  //(hashtable-entries hash)  ; => two vectors (keys, values)
-  define_libfunc("hashtable-entries", 1, 1, function(ar){
-    assert_hashtable(ar[0]);
-    return new Values([ar[0].keys(), ar[0].values()]);
-  });
-
-  //13.3  Inspection
-
-  //(hashtable-equivalence-function hashtable)    procedure
-  define_libfunc("hashtable-equivalence-function", 1, 1, function(ar){
-    assert_hashtable(ar[0]);
-    return ar[0].equiv_proc;
-  });
-  //(hashtable-hash-function hashtable)    procedure
-  define_libfunc("hashtable-hash-function", 1, 1, function(ar){
-    assert_hashtable(ar[0]);
-    return ar[0].hash_proc;
-  });
-  //(hashtable-mutable? hashtable)    procedure
-  define_libfunc("hashtable-mutable?", 1, 1, function(ar){
-    assert_hashtable(ar[0]);
-    return ar[0].mutable;
-  });
-
-  //13.4  Hash functions
-
-  //(equal-hash obj)    procedure
-  define_libfunc("equal-hash", 0, 0, function(ar){
-    return Hashtable.equal_hash;
-  });
-  //(string-hash string)    procedure
-  define_libfunc("string-hash", 0, 0, function(ar){
-    return Hashtable.string_hash;
-  });
-  //(string-ci-hash string)    procedure
-  define_libfunc("string-ci-hash", 0, 0, function(ar){
-    return Hashtable.string_ci_hash;
-  });
-  //(symbol-hash symbol)    procedure
-  define_libfunc("symbol-hash", 0, 0, function(ar){
-    return Hashtable.symbol_hash;
-  });
-
-  //
-  // Chapter 14 Enumerators
-  //
-  //(make-enumeration symbol-list) -> enum-set(new type)
-  define_libfunc("make-enumeration", 1, 1, function(ar){
-    assert_list(ar[0]);
-    var members = ar[0].to_array();
-    var enum_type = new BiwaScheme.Enumeration.EnumType(members);
-    return enum_type.universe();
-  });
-
-  //(enum-set-universe enum-set) -> enum-set(same type as the argument)
-  define_libfunc("enum-set-universe", 1, 1, function(ar){
-    assert_enum_set(ar[0]);
-    return ar[0].enum_type.universe();
-  });
-
-  //(enum-set-indexer enum-set) -> (lambda (sym)) -> integer or #f
-  define_libfunc("enum-set-indexer", 1, 1, function(ar){
-    assert_enum_set(ar[0]);
-    return ar[0].enum_type.indexer();
-  });
-
-  //(enum-set-constructor enum-set) -> (lambda (syms)) -> enum-set(same type as the argument)
-  define_libfunc("enum-set-constructor", 1, 1, function(ar){
-    assert_enum_set(ar[0]);
-    return ar[0].enum_type.constructor();
-  });
-
-  //(enum-set->list enum-set) -> symbol-list
-  define_libfunc("enum-set->list", 1, 1, function(ar){
-    assert_enum_set(ar[0]);
-    return ar[0].symbol_list();
-  });
-
-  //(enum-set-member? symbol enum-set) -> bool
-  define_libfunc("enum-set-member?", 2, 2, function(ar){
-    assert_symbol(ar[0]);
-    assert_enum_set(ar[1]);
-    return ar[1].is_member(ar[0]);
-  });
-
-  //(enum-set-subset? esa esb) -> bool
-  define_libfunc("enum-set-subset?", 2, 2, function(ar){
-    assert_enum_set(ar[0]);
-    assert_enum_set(ar[1]);
-    return ar[0].is_subset(ar[1]);
-  });
-
-  //(enum-set=? esa esb) -> bool
-  define_libfunc("enum-set=?", 2, 2, function(ar){
-    assert_enum_set(ar[0]);
-    assert_enum_set(ar[1]);
-    return ar[0].equal_to(ar[1]);
-  });
-
-  //(enum-set-union es1 es2) -> enum-set
-  define_libfunc("enum-set-union", 2, 2, function(ar){
-    assert_enum_set(ar[0]);
-    assert_enum_set(ar[1]);
-    assert(ar[0].enum_type === ar[1].enum_type,
-           "two enum-sets must be the same enum-type", "enum-set-union");
-    return ar[0].union(ar[1]);
-  });
-
-  //(enum-set-intersection es1 es2) -> enum-set
-  define_libfunc("enum-set-intersection", 2, 2, function(ar){
-    assert_enum_set(ar[0]);
-    assert_enum_set(ar[1]);
-    return ar[0].intersection(ar[1]);
-  });
-
-  //(enum-set-difference es1 es2) -> enum-set
-  define_libfunc("enum-set-difference", 2, 2, function(ar){
-    assert_enum_set(ar[0]);
-    assert_enum_set(ar[1]);
-    return ar[0].difference(ar[1]);
-  });
-
-  //(enum-set-complement enum-set) -> enum-set
-  define_libfunc("enum-set-complement", 1, 1, function(ar){
-    assert_enum_set(ar[0]);
-    return ar[0].complement();
-  });
-
-  //(enum-set-projection esa esb) -> enum-set
-  define_libfunc("enum-set-projection", 2, 2, function(ar){
-    assert_enum_set(ar[0]);
-    assert_enum_set(ar[1]);
-    return ar[0].projection(ar[1]);
-  });
-
-  //(define-enumeration <type-name> (<symbol> ...) <constructor-syntax>)
-  // Example:
-  //   (define-enumeration color (red green black white) color-set)
-  //   this defines:
-  //     - an EnumType
-  //     - (color red) ;=> 'red
-  //     - (color-set red black) ;=> #<enum-set (red black)>
-  define_syntax("define-enumeration", function(x){
-    // Extract parameters
-    var type_name = x.cdr.car;
-    assert(BiwaScheme.isSymbol(type_name),
-           "expected symbol for type_name", "define-enumeration");
-    type_name = type_name.name;
-
-    var members = x.cdr.cdr.car;
-    assert(BiwaScheme.isList(members),
-           "expected list of symbol for members", "define-enumeration");
-    members = members.to_array();
-
-    var constructor_name = x.cdr.cdr.cdr.car;
-    assert(BiwaScheme.isSymbol(constructor_name),
-           "expected symbol for constructor_name", "define-enumeration");
-    constructor_name = constructor_name.name;
-
-    // Define EnumType
-    var enum_type = new BiwaScheme.Enumeration.EnumType(members);
-
-    // Define (color red)
-    define_syntax(type_name, function(x){
-      // (color)
-      assert(!BiwaScheme.isNil(x.cdr),
-             "an argument is needed", type_name);
-
-      var arg = x.cdr.car;
-      assert_symbol(arg, type_name);
-
-      // Check arg is included in the universe
-      assert(_.include(enum_type.members, arg),
-        arg.name+" is not included in the universe: "+
-          BiwaScheme.to_write(enum_type.members),
-        type_name);
-
-      return BiwaScheme.List(Sym("quote"), arg);
-    });
-
-    // Define (color-set red black)
-    define_syntax(constructor_name, function(x){
-      assert_list(x.cdr, constructor_name);
-
-      var symbols = x.cdr.to_array();
-
-      // Check each argument is included in the universe
-      _.each(symbols, function(arg){
-        assert_symbol(arg, constructor_name);
-        assert(_.include(enum_type.members, arg),
-          arg.name+" is not included in the universe: "+
-            BiwaScheme.to_write(enum_type.members),
-          constructor_name);
-      });
-
-      // Create an EnumSet
-      return new BiwaScheme.Enumeration.EnumSet(enum_type, symbols);
-    });
-  });
-
-  //
-  // Chapter 15 Composite library
-  //
-  //(rnrs 6) = all - eval - mutable pairs - mutable strings - r5rs compatibility
-
-  //
-  // Chapter 16 eval
-  //
-  //(eval expression environment)    procedure
-  define_libfunc("eval", 1, 1, function(ar, intp){
-    //TODO: environment
-    //TODO: this implementation has a bug that
-    //  expressions which contains #<undef>, etc. cannot be evaluated.
-    var expr = ar[0];
-    var intp2 = new Interpreter(intp);
-    return intp2.evaluate(BiwaScheme.to_write(expr));
-  });
-//(environment import-spec ...)    procedure
-
-  //
-  // Chapter 17 Mutable pairs
-  //
-//(set-car! pair obj)    procedure
-//(set-cdr! pair obj)    procedure
-
-  //
-  // Chapter 18 Mutable strings
-  //
-  //(string-set! string k char)    procedure
- // (string-fill! string char)    procedure
-
-  //
-  // Chapter 19 R5RS compatibility
-  //
-//(exact->inexact z)    procedure
-//(inexact->exact z)    procedure
-//
-//(quotient n1 n2)    procedure
-//(remainder n1 n2)    procedure
-//(modulo n1 n2)    procedure
-//
-//(null-environment n)    procedure
-//(scheme-report-environment n)    procedure
-
-  //
-  // R7RS (TODO: split file?)
-  //
-
-  // R7RS Promise
-  //
-  // (delay expression)
-  define_syntax("delay", function(x){
-    if (x.cdr === BiwaScheme.nil) {
-      throw new Error("malformed delay: no argument");
-    }
-    if (x.cdr.cdr !== nil) {
-      throw new Error("malformed delay: too many arguments: "+
-                      BiwaScheme.to_write_ss(x));
-    }
-    var expr = x.cdr.car;
-    // Expand into call of internal function
-    // ( procedure->promise (lambda () (make-promise expr)))
-    return new Pair(Sym(" procedure->promise"),
-             new Pair(new Pair(Sym("lambda"),
-                        new Pair(BiwaScheme.nil,
-                          new Pair(new Pair(Sym("make-promise"),
-                                     new Pair(expr, BiwaScheme.nil)),
-                            BiwaScheme.nil)))));
-  });
-
-  // (delay-force promise-expr)
-  define_syntax("delay-force", function(x){
-    if (x.cdr === BiwaScheme.nil) {
-      throw new Error("malformed delay-force: no argument");
-    }
-    if (x.cdr.cdr !== nil) {
-      throw new Error("malformed delay-force: too many arguments: "+
-                      BiwaScheme.to_write_ss(x));
-    }
-    var expr = x.cdr.car;
-    // Expand into call of internal function
-    // ( procedure->promise (lambda () expr))
-    return new Pair(Sym(" procedure->promise"),
-             new Pair(new Pair(Sym("lambda"),
-                        new Pair(BiwaScheme.nil,
-                          new Pair(expr, BiwaScheme.nil))), BiwaScheme.nil));
-  });
-
-  // (force promise)
-  var force = function(promise) {
-    if (promise.is_done()) {
-      return promise.value();
-    }
-    return new Call(promise.thunk(), [], function(ar) {
-      assert_promise(ar[0]);
-      var new_promise = ar[0];
-      if (promise.is_done()) {  // reentrant!
-        return promise.value();
-      }
-      else {
-        promise.update_with(new_promise);
-        return force(new_promise);
-      }
-    });
-  };
-  define_libfunc("force", 1, 1, function(ar, intp){
-    assert_promise(ar[0]);
-    return force(ar[0]);
-  });
-
-  // (promise? obj)
-  define_libfunc("promise?", 1, 1, function(ar, intp){
-    return (ar[0] instanceof BiwaScheme.Promise);
-  });
-
-  // (make-promise obj)
-  define_libfunc("make-promise", 1, 1, function(ar, intp){
-    var obj = ar[0];
-    if (obj instanceof BiwaScheme.Promise) {
-      return obj;
-    }
-    else {
-      return BiwaScheme.Promise.done(obj);
-    }
-  });
-
-  // internal function
-  // ( procedure->promise proc)
-  // proc must be a procedure with no argument and return a promise
-  define_libfunc(" procedure->promise", 1, 1, function(ar, intp){
-    assert_procedure(ar[0]);
-    return BiwaScheme.Promise.fresh(ar[0]);
-  });
-}
-if( typeof(BiwaScheme)!='object' ) BiwaScheme={}; with(BiwaScheme) {
-
-  //
-  // interface to javascript
-  //
-  define_libfunc("js-eval", 1, 1, function(ar){
-    return eval(ar[0]);
-  });
-  define_libfunc("js-ref", 2, 2, function(ar){
-    if(_.isString(ar[1])){
-      return ar[0][ar[1]];
-    }
-    else{
-      assert_symbol(ar[1]);
-      return ar[0][ar[1].name];
-    }
-  });
-  define_libfunc("js-set!", 3, 3, function(ar){
-    assert_string(ar[1]);
-    ar[0][ar[1]] = ar[2];
-    return BiwaScheme.undef;
-  });
-
-  // (js-call (js-eval "Math.pow") 2 4)
-  define_libfunc("js-call", 1, null, function(ar){
-    var js_func = ar.shift();
-    assert_function(js_func);
-
-    var receiver = null;
-    return js_func.apply(receiver, ar);
-  });
-  // (js-invoke (js-new "Date") "getTime")
-  define_libfunc("js-invoke", 2, null, function(ar){
-    var js_obj = ar.shift();
-    var func_name = ar.shift();
-    if(!_.isString(func_name)){
-      assert_symbol(func_name);
-      func_name = func_name.name;
-    }
-    if(js_obj[func_name])
-      return js_obj[func_name].apply(js_obj, ar);
-    else
-      throw new Error("js-invoke: function "+func_name+" is not defined");
-  });
-
-  // Short hand for JavaScript method call.
-  //
-  // (js-invocation obj '(foo 1 2 3))  ;=> obj.foo(1,2,3)
-  // (js-invocation obj '(foo 1 2 3)   ;=> obj.foo(1,2,3)
-  //                    'bar           ;      .bar
-  //                    '(baz 4 5))    ;      .baz(4,5)
-  // (js-invocation 'Math '(pow 2 3))  ;=> Math.pow(2,3)
-  //
-  // It also converts
-  //   (lambda (e) ...) to
-  //   (js-closure (lambda (e) ...))
-  //   and
-  //   '((a . b) (c . 4)) to
-  //   {a: "b", c: 4}
-  //
-  define_libfunc("js-invocation", 2, null, function(ar, intp){
-    var receiver = ar.shift();
-    // TODO: convert lambdas by js-closure 
-    if(BiwaScheme.isSymbol(receiver)){
-      receiver = eval(receiver.name); //XXX: is this ok?
-    }
-
-    var v = receiver;
-
-    // Process each method call
-    _.each(ar, function(callspec){
-        if(BiwaScheme.isSymbol(callspec)){
-          // Property access
-          v = v[callspec.name];
-        }
-        else if(BiwaScheme.isList(callspec)){
-          // Method call
-          var args = callspec.to_array();
-
-          assert_symbol(args[0]);
-          var method = args.shift().name;
-
-          // Convert arguments
-          args = _.map(args, function(arg){
-              if(BiwaScheme.isClosure(arg)){
-                // closure -> JavaScript funciton
-                return BiwaScheme.js_closure(arg, intp);
-              }
-              else if(BiwaScheme.isList(arg)){
-                // alist -> JavaScript Object
-                var o = {};
-                arg.foreach(function(pair){
-                    assert_symbol(pair.car);
-                    o[pair.car.name] = pair.cdr;
-                  });
-                return o;
-              }
-              else
-                return arg;
-            });
-
-          // Call the method
-          if(!_.isFunction(v[method])){
-            throw new BiwaScheme.Error("js-invocation: the method `"+method+"' not found");
-          }
-          v = v[method].apply(v, args);
-        }
-        else{
-          // (wrong argument)
-          throw new BiwaScheme.Error("js-invocation: expected list or symbol for callspec but got " + BiwaScheme.inspect(callspec));
-        }
-      });
-
-    return v;
-  });
-
-  // TODO: provide corresponding macro ".." 
-  define_syntax("..", function(x){
-    if (x.cdr == nil) {
-      throw new Error("malformed ..");
-    }
-    return new Pair(Sym("js-invocation"), x.cdr);
-  });
-
-  // (js-new (js-eval "Date") 2005 1 1)
-  // (js-new (js-eval "Draggable") elem 'onEnd (lambda (drg) ...))
-  //   If symbol is given, following arguments are converted to 
-  //   an js object. If any of them is a scheme closure,
-  //   it is converted to js function which invokes that closure.
-  //
-  // (js-new "Date" 2005 1 1)
-  //   You can pass javascript program string for constructor.
-  define_libfunc("js-new", 1, null, function(ar, intp){
-    // make js object from key-value pair
-    var array_to_obj = function(ary){
-      if((ary.length % 2) != 0)
-        throw new Error("js-new: odd number of key-value pair");
-
-      var obj = {};
-      for(var i=0; i<ary.length; i+=2){
-        var key = ary[i], value = ary[i+1];
-        assert_symbol(key);
-        if(value.closure_p === true)
-          value = BiwaScheme.js_closure(value, intp);
-
-        obj[key.name] = value;
-      }
-      return obj;
-    };
-
-    var ctor = ar.shift();
-    if (_.isString(ctor)) ctor = eval(ctor);
-
-    if(ar.length == 0){
-      return new ctor();
-    }
-    else{
-      // pack args to js object, if symbol appears
-      var args = [];
-      for(var i=0; i<ar.length; i++){
-        if(ar[i] instanceof Symbol){
-          args.push(array_to_obj(ar.slice(i)));
-          break;
-        }
-        else{
-          args.push(ar[i]);
-        }
-      }
-      // Run `new ctor(...args)`;
-      return new (Function.prototype.bind.apply(ctor, [null].concat(args)))();
-=======
   define_libfunc("assoc", 2, 2, make_assoc("assoc", "equal?"));
   define_libfunc("assv", 2, 2, make_assoc("assv", "eqv?"));
   define_libfunc("assq", 2, 2, make_assoc("assq", "eq?"));
@@ -46773,1650 +39688,6 @@ for(x in BiwaScheme){
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1)))
 
 /***/ }),
-/* 6 */
-/***/ (function(module, exports) {
-
-function getText() {
-  var newName = window.prompt('name:', '');
-  keysPressed = new Set();
-  return newName;
-}
-
-module.exports = {
-  getText: getText
-};
-
-/***/ }),
-/* 7 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _editor = _interopRequireDefault(__webpack_require__(8));
-
-var _parse = _interopRequireDefault(__webpack_require__(42));
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function displayResult(result, compiledLisp) {
-  var newHtml = '>> ' + result + '<br />' + compiledLisp;
-  document.getElementById('lispOutput').innerHTML = newHtml;
-}
-
-var c = (0, _editor.default)();
-window.loadState = c['loadState'];
-window.saveState = c['saveState'];
-window.resetGraph = c['resetGraph'];
-
-window.parseButton = function () {
-  var cy = c['cy'];
-  var results = (0, _parse.default)(cy.$('node:orphan'));
-  displayResult.apply(this, results);
-};
-
-/***/ }),
-/* 8 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _cytoscape_init = _interopRequireDefault(__webpack_require__(9));
-
-var _newRemove = _interopRequireDefault(__webpack_require__(27));
-
-var _cytoscapeUndoRedo = _interopRequireDefault(__webpack_require__(28));
-
-var _cytoscape = _interopRequireDefault(__webpack_require__(3));
-
-var _mousetrap = _interopRequireDefault(__webpack_require__(29));
-
-var _colormap = _interopRequireDefault(__webpack_require__(30));
-
-var _cytoscapeCanvas = _interopRequireDefault(__webpack_require__(33));
-
-var comments = _interopRequireWildcard(__webpack_require__(34));
-
-var utils = _interopRequireWildcard(__webpack_require__(6));
-
-function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = Object.defineProperty && Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : {}; if (desc.get || desc.set) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } } newObj.default = obj; return newObj; } }
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function buildEditor() {
-  var cy = (0, _cytoscape_init.default)();
-  (0, _cytoscapeUndoRedo.default)(_cytoscape.default);
-  (0, _cytoscapeCanvas.default)(_cytoscape.default); // Register undo/redo, and other imported functions
-
-  var ur = cy.undoRedo();
-  (0, _cytoscape.default)('collection', 'delete', _newRemove.default);
-  ur.action('deleteEles', function (eles) {
-    eles.delete();
-    return eles;
-  }, function (eles) {
-    eles.restore();
-  });
-  var commentPoints = new comments.CommentsCanvas(cy);
-  var commentMode = false; // =====================
-  // || GRAPH FUNCTIONS ||
-  // =====================
-
-  function setType(ele, newtype) {
-    ele.data('type', newtype);
-  }
-
-  (0, _cytoscape.default)('collection', 'setType', function (newType) {
-    setType(this, newType);
-  });
-
-  function newNode(pos) {
-    var color = getColor();
-    var createdNode = cy.add({
-      group: 'nodes',
-      position: pos,
-      data: {
-        'variable': false,
-        'name': '',
-        'type': 'Free',
-        'defaultColor': color
-      }
-    });
-    return createdNode;
-  }
-
-  function newEdge(origins, dest) {
-    var newEdges = origins.map(function (source) {
-      cy.add({
-        group: 'edges',
-        style: {
-          'target-arrow-shape': 'triangle'
-        },
-        data: {
-          source: source.id(),
-          target: dest.id(),
-          name: ''
-        },
-        selectable: true
-      });
-    });
-    return newEdges;
-  }
-
-  function getColor() {
-    var name = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
-    var node = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
-
-    // Method to generate a color for the node that the method is called on.
-    function isString(name) {
-      function matchBrackets(bra, n) {
-        return n[0] === bra && n[n.length - 1] === bra;
-      }
-
-      return matchBrackets('\'', name) || matchBrackets('"', name) || matchBrackets('`', name);
-    }
-
-    if (name !== '') {
-      var sameNamedEles;
-
-      if (node === null) {
-        sameNamedEles = cy.$([name = ' + name + ']);
-      } else {
-        sameNamedEles = cy.$([name = ' + name + ']).difference(node);
-      } // Look for something named the same, and make this node the same color.
-
-
-      if (sameNamedEles.length > 0 && name !== '') {
-        return sameNamedEles.data('defaultColor');
-      } else if (isString(name)) {
-        // If the name represents a string, make the node green.
-        return 'lime';
-      } else if (!isNaN(name)) {
-        // We want numbers (including floats, ints, etc) to be one color.
-        return 'blue';
-      }
-    } // Else generate a random color from a colormap (and convert it to hash).
-
-
-    var ncolors = 72;
-    var index = Math.floor(Math.random() * ncolors);
-    var col = (0, _colormap.default)('nature', ncolors, 'hex')[index];
-    return col;
-  }
-
-  (0, _cytoscape.default)('collection', 'getColor', function () {
-    return getColor(this.data('name'), this);
-  });
-
-  function setColor() {
-    var color = this.getColor();
-    this.data('defaultColor', color);
-  }
-
-  (0, _cytoscape.default)('collection', 'setColor', setColor);
-
-  function rename(ele) {
-    var newName = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
-
-    if (newName === null) {
-      newName = utils.getText();
-    }
-
-    if (!(newName === null)) {
-      ele.data('name', newName);
-      ele.setColor();
-    }
-  }
-
-  (0, _cytoscape.default)('collection', 'rename', function () {
-    var name = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
-    rename(this, name);
-  });
-
-  function setParent(newParent) {
-    // Set self's parent to newParent.
-    if (newParent != null && newParent.id()) {
-      ur.do('changeParent', {
-        'parentData': newParent.id(),
-        'nodes': this,
-        'posDiffX': 0,
-        'posDiffY': 0
-      });
-    } else {
-      // If newParent is null, remove the parent from the node.
-      var oldParent = this.parent();
-      ur.do('changeParent', {
-        'parentData': null,
-        'nodes': this,
-        'posDiffX': 0,
-        'posDiffY': 0
-      }); // Remove childless parents
-
-      if (oldParent.length > 0 && oldParent.children().length === 0) {
-        oldParent.remove();
-      }
-    }
-
-    return cy.$id(this.id());
-  }
-
-  (0, _cytoscape.default)('collection', 'setParent', setParent);
-
-  function toggleVariable() {
-    switch (this.data('type')) {
-      case 'Free':
-        this.setType('NearBoundVariable');
-        break;
-
-      case 'NearBoundVariable':
-        this.setType('FarBoundVariable');
-        break;
-
-      case 'FarBoundVariable':
-        this.setType('Free');
-        break;
-    }
-  }
-
-  (0, _cytoscape.default)('collection', 'toggleVariable', toggleVariable); // =========================
-  // || USER INPUT HANDLERS ||
-  // =========================
-
-  var dclickPrevTap;
-  var dclickTappedTimeout;
-  var eSelected; // __Handlers for clicking on the background__
-  // Double-tap or single-tap with 'e'/'w' to add a new node.
-
-  cy.on('tap', function (event) {
-    var tapTarget = event.target;
-
-    if (tapTarget === cy) {
-      if (keysPressed.has('e')) {
-        // Click on the background with 'e'
-        var n = newNode(event.position);
-        dclickTappedTimeout = false;
-
-        if (eSelected.length > 0 && eSelected.parent().length <= 1) {
-          newEdge(eSelected, n);
-          n = n.setParent(eSelected.parent());
-        }
-
-        selectOnly(n);
-      } else if (tapTarget === cy && keysPressed.has('w')) {
-        // Click on the background with 'e'
-        n = newNode(event.position);
-        dclickTappedTimeout = false;
-
-        if (eSelected.length === 1) {
-          newEdge(n, eSelected);
-          n = n.setParent(eSelected.parent());
-        }
-
-        selectOnly(eSelected);
-      } else if (dclickTappedTimeout && dclickPrevTap) {
-        clearTimeout(dclickTappedTimeout);
-      } // If double clicked:
-
-
-      if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
-        n = newNode(event.position);
-        selectOnly(n);
-        dclickPrevTap = null;
-      }
-    } else {
-      if (tapTarget.isNode() && dclickTappedTimeout && dclickPrevTap) {
-        clearTimeout(dclickTappedTimeout);
-      } // If double clicked:
-
-
-      if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
-        rename(tapTarget);
-      }
-    } // Update doubleclick handlers
-
-
-    dclickTappedTimeout = setTimeout(function () {
-      dclickPrevTap = null;
-    }, 300);
-    dclickPrevTap = tapTarget;
-  }); // Hold 'e/w' and tap a node to make a new edge
-
-  cy.on('tap', 'node', function (event) {
-    var target = event.target;
-    var sources = cy.$('node:selected').difference(event.target);
-
-    if (sources.length > 0) {
-      if (keysPressed.has('e')) {
-        newEdge(sources, target);
-        selectOnly(target);
-        sources.connectedClosure().setParent(target.parent());
-      } else if (keysPressed.has('w')) {
-        sources.map(function (source) {
-          return newEdge(target, source);
-        });
-        sources = sources.connectedClosure().setParent(target.parent());
-        selectOnly(sources);
-      }
-    }
-  }); // Hold 'r' and tap a node to rename it.
-
-  cy.on('tap', 'node, edge', function (event) {
-    if (keysPressed.has('r')) {
-      event.target.rename();
-    }
-  }); // l to 'lambda': wrap selection in a hypernode, containing the selection
-  // and its closed neighbourhood, corresponding to a lambda function.
-
-  _mousetrap.default.bind('l', function () {
-    // If all of them belong to the same parent, take them out of the parent.
-    var selected = cy.$('node:selected');
-
-    if (selected.parents().length === 1) {
-      selected.setParent(null);
-    } else {
-      var parent = newNode();
-      parent.setType('Lambda');
-      var closure = selected.connectedClosure();
-      closure.setParent(parent);
-      selectOnly(parent);
-    }
-  }, 'keypress'); // p to 'parens': wrap selection in a hypernode representing 'evaluate all this together',
-  // corresponding to wrapping () around a group.
-
-
-  _mousetrap.default.bind('p', function () {
-    // If all of them belong to the same parent, take them out of the parent.
-    var selected = cy.$('node:selected');
-
-    if (selected.parents().length === 1) {
-      selected.setParent(null);
-    } else {
-      var parent = newNode();
-      parent.setType('Parens');
-      var closure = selected.connectedClosure();
-      closure.setParent(parent);
-      selectOnly(parent);
-    }
-  }, 'keypress'); // d to 'define': wrap selection in a hypernode, containing the selection
-  // and its closed neighbourhood, corresponding to a define statement.
-
-
-  _mousetrap.default.bind('d', function () {
-    // If all of them belong to the same parent, take them out of the parent.
-    var selected = cy.$('node:selected');
-
-    if (selected.parents().length === 1) {
-      selected.setParent(null);
-    } else {
-      var parent = newNode();
-      parent.setType('Define');
-      var closure = selected.connectedClosure();
-      parent.rename();
-      closure.setParent(parent);
-      selectOnly(parent);
-    }
-  }, 'keypress'); // Backspace to delete selection
-
-
-  _mousetrap.default.bind('backspace', function () {
-    ur.do('deleteEles', cy.$(':selected'));
-  });
-
-  _mousetrap.default.bind('V', function () {
-    cy.$(':selected').toggleVariable();
-  });
-
-  _mousetrap.default.bind('P', function () {
-    toLisp(cy.$(':selected'));
-  });
-
-  _mousetrap.default.bind('Z', function () {
-    ur.undo();
-  }); // Recognise keys pressed down
-
-
-  var keysPressed = new Set();
-
-  _mousetrap.default.bind('e', function () {
-    keysPressed.add('e');
-    eSelected = cy.$('node:selected');
-  }, 'keypress');
-
-  _mousetrap.default.bind('e', function () {
-    keysPressed.delete('e');
-  }, 'keyup');
-
-  _mousetrap.default.bind('w', function () {
-    keysPressed.add('w');
-    eSelected = cy.$('node:selected');
-  }, 'keypress');
-
-  _mousetrap.default.bind('w', function () {
-    keysPressed.delete('w');
-  }, 'keyup');
-
-  _mousetrap.default.bind('c', function () {
-    if (!keysPressed.has('c')) {
-      keysPressed.add('c');
-      commentPoints.enableDrawingMode();
-    }
-  }, 'keydown');
-
-  _mousetrap.default.bind('c', function () {
-    keysPressed.delete('c');
-    commentPoints.disableDrawingMode();
-  }, 'keyup');
-
-  _mousetrap.default.bind('r', function () {
-    keysPressed.add('r');
-    var selected = cy.$(':selected');
-
-    if (selected.length === 1) {
-      selected.rename();
-      keysPressed.delete('r');
-    }
-  }, 'keypress');
-
-  _mousetrap.default.bind('r', function () {
-    keysPressed.delete('r');
-  }, 'keyup');
-
-  function loadState(objectId) {
-    var x = document.getElementById(objectId).files[0];
-    var reader = new FileReader();
-
-    reader.onload = function (e) {
-      var graphString = e.target.result; // We HAVE to double-load elements here: once to get them into the
-      // graph, and once to set their parents correctly. If we don't, when
-      // elements are loaded and don't have a parent in place already,
-      // not only do they set the parent to 'undefined', they also
-      // _edit the fucking json_ so that the parent is thereafter undefined.
-      //
-      // That means that if you try to use the same JSON object twice for the
-      // two loads, it WON'T WORK because it's been modified by the first.
-      // WHAT THE HELL, CYTOSCAPE??? (Yes I lost several hours to this bug.)
-
-      cy.json();
-      cy.json(JSON.parse(graphString));
-      JSON.parse(graphString).elements.nodes.map(function (jsn) {
-        var nodeId = jsn.data.id;
-        var nodeParent = jsn.data.parent;
-        cy.$id(nodeId).setParent(cy.$id(nodeParent));
-      });
-      commentPoints.load(JSON.parse(graphString).comments);
-    };
-
-    reader.readAsText(x, 'UTF-8');
-  }
-
-  function saveState() {
-    var fileName = window.prompt('File name:', '');
-    var comments = commentPoints.serialize();
-
-    if (!(fileName === null)) {
-      var jsonData = JSON.stringify({
-        'elements': cy.json()['elements'],
-        'comments': comments
-      });
-      var a = document.createElement('a');
-      var file = new Blob([jsonData], {
-        type: 'text/plain'
-      });
-      a.href = URL.createObjectURL(file);
-      a.download = fileName + '.txt';
-      a.click();
-    }
-  }
-
-  function resetGraph() {
-    if (confirm('REALLY CLEAR ALL? (There\'s no autosave and no undo!)')) {
-      console.log('RESET');
-      cy.remove(cy.$(''));
-      commentPoints.reset();
-      cy.forceRender();
-    }
-  }
-
-  function selectOnly(ele) {
-    cy.$().deselect();
-    ele.select();
-  }
-
-  function connectedClosure() {
-    // Returns the closure (union with all-depth family) of the eles.
-    var nextLevel = this.closedNeighborhood('node');
-
-    if (nextLevel.length === this.length) {
-      return this;
-    } else {
-      return nextLevel.connectedClosure();
-    }
-  }
-
-  (0, _cytoscape.default)('collection', 'connectedClosure', connectedClosure);
-  return {
-    'cy': cy,
-    'loadState': loadState,
-    'saveState': saveState,
-    'resetGraph': resetGraph
-  };
-}
-
-module.exports = buildEditor;
-
-/***/ }),
-/* 9 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _cytoscape = _interopRequireDefault(__webpack_require__(3));
-
-__webpack_require__(5);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function createCanvas() {
-  // cytoscape.use( require('undo-redo') );
-  return (0, _cytoscape.default)({
-    container: document.getElementById('cy'),
-    boxSelectionEnabled: true,
-    style: [{
-      selector: 'node',
-      style: {
-        'background-color': 'data(defaultColor)',
-        'border-width': 0,
-        'content': 'UNKNOWN TYPE',
-        // text
-        'text-outline-width': 2,
-        'text-outline-color': 'black',
-        'color': 'white',
-        // font color
-        'text-valign': 'center'
-      }
-    }, {
-      selector: 'node[type = "NearBoundVariable"]',
-      style: {
-        'shape': 'diamond',
-        'border-width': 1,
-        'border-color': 'black',
-        'background-color': 'cyan',
-        'content': 'data(name)' // text
-
-      }
-    }, {
-      selector: 'node[type = "FarBoundVariable"]',
-      style: {
-        'shape': 'square',
-        'border-width': 1,
-        'border-color': 'black',
-        'background-color': 'cyan',
-        'content': 'data(name)' // text
-
-      }
-    }, {
-      selector: 'node[type = "Free"], node[type = "If"]',
-      style: {
-        'content': 'data(name)' // text
-
-      }
-    }, {
-      selector: 'node[type = "Lambda"]',
-      style: {
-        // Compound node, by definition.
-        'background-color': 'white',
-        'text-valign': 'bottom',
-        'text-halign': 'center',
-        'border-width': 5,
-        'shape': 'roundrectangle',
-        'border-color': 'gray',
-        'padding': '10px',
-        'font-size': '15px',
-        'text-margin-y': '-10px',
-        'text-background-color': 'gray',
-        'text-background-opacity': 1,
-        'text-background-shape': 'roundrectangle',
-        'text-background-padding': '3px',
-        'content': 'data(name)'
-      }
-    }, {
-      selector: 'node[type = "Define"]',
-      style: {
-        // Compound node, by definition.
-        'background-color': 'white',
-        'text-valign': 'top',
-        'text-halign': 'center',
-        'border-width': 5,
-        'border-style': 'double',
-        'shape': 'roundrectangle',
-        'border-color': 'data(defaultColor)',
-        'padding': '3px',
-        'text-margin-y': '3px',
-        'font-size': '20px',
-        'text-background-color': 'data(defaultColor)',
-        'text-background-opacity': 1,
-        'text-background-shape': 'roundrectangle',
-        'text-background-padding': '1px',
-        'content': 'data(name)'
-      }
-    }, {
-      selector: 'node[type = "Parens"]',
-      style: {
-        // Compound node, by definition.
-        'background-color': 'white',
-        'border-width': 5,
-        'border-style': 'dotted',
-        'shape': 'roundrectangle',
-        'border-color': '#DEDDC5',
-        'padding': '10px',
-        'text-margin-y': '3px',
-        'font-size': '20px',
-        'content': ''
-      }
-    }, {
-      selector: 'edge',
-      style: {
-        'curve-style': 'bezier',
-        'width': 4,
-        'target-arrow-shape': 'triangle',
-        'line-color': 'black',
-        'target-arrow-color': 'black',
-        'target-label': 'data(name)',
-        'target-text-offset': 20,
-        'color': 'white',
-        'text-outline-width': 2,
-        'text-outline-color': 'black'
-      }
-    }, {
-      selector: 'edge:selected',
-      style: {
-        'line-color': 'red',
-        'target-arrow-color': 'red',
-        'text-outline-color': 'red'
-      }
-    }, {
-      selector: 'node:selected',
-      style: {
-        'border-color': 'red',
-        'border-width': 5,
-        'text-background-color': 'red'
-      }
-    }]
-  });
-}
-
-module.exports = createCanvas;
-
-/***/ }),
-/* 10 */
-/***/ (function(module, exports, __webpack_require__) {
-
-/* WEBPACK VAR INJECTION */(function(global, process) {(function (global, undefined) {
-    "use strict";
-
-    if (global.setImmediate) {
-        return;
-    }
-
-    var nextHandle = 1; // Spec says greater than zero
-    var tasksByHandle = {};
-    var currentlyRunningATask = false;
-    var doc = global.document;
-    var registerImmediate;
-
-    function setImmediate(callback) {
-      // Callback can either be a function or a string
-      if (typeof callback !== "function") {
-        callback = new Function("" + callback);
-      }
-      // Copy function arguments
-      var args = new Array(arguments.length - 1);
-      for (var i = 0; i < args.length; i++) {
-          args[i] = arguments[i + 1];
-      }
-      // Store and register the task
-      var task = { callback: callback, args: args };
-      tasksByHandle[nextHandle] = task;
-      registerImmediate(nextHandle);
-      return nextHandle++;
-    }
-
-    function clearImmediate(handle) {
-        delete tasksByHandle[handle];
-    }
-
-    function run(task) {
-        var callback = task.callback;
-        var args = task.args;
-        switch (args.length) {
-        case 0:
-            callback();
-            break;
-        case 1:
-            callback(args[0]);
-            break;
-        case 2:
-            callback(args[0], args[1]);
-            break;
-        case 3:
-            callback(args[0], args[1], args[2]);
-            break;
-        default:
-            callback.apply(undefined, args);
-            break;
-        }
-    }
-
-    function runIfPresent(handle) {
-        // From the spec: "Wait until any invocations of this algorithm started before this one have completed."
-        // So if we're currently running a task, we'll need to delay this invocation.
-        if (currentlyRunningATask) {
-            // Delay by doing a setTimeout. setImmediate was tried instead, but in Firefox 7 it generated a
-            // "too much recursion" error.
-            setTimeout(runIfPresent, 0, handle);
-        } else {
-            var task = tasksByHandle[handle];
-            if (task) {
-                currentlyRunningATask = true;
-                try {
-                    run(task);
-                } finally {
-                    clearImmediate(handle);
-                    currentlyRunningATask = false;
-                }
-            }
-        }
-    }
-
-    function installNextTickImplementation() {
-        registerImmediate = function(handle) {
-            process.nextTick(function () { runIfPresent(handle); });
-        };
-    }
-
-    function canUsePostMessage() {
-        // The test against `importScripts` prevents this implementation from being installed inside a web worker,
-        // where `global.postMessage` means something completely different and can't be used for this purpose.
-        if (global.postMessage && !global.importScripts) {
-            var postMessageIsAsynchronous = true;
-            var oldOnMessage = global.onmessage;
-            global.onmessage = function() {
-                postMessageIsAsynchronous = false;
-            };
-            global.postMessage("", "*");
-            global.onmessage = oldOnMessage;
-            return postMessageIsAsynchronous;
-        }
-    }
-
-    function installPostMessageImplementation() {
-        // Installs an event handler on `global` for the `message` event: see
-        // * https://developer.mozilla.org/en/DOM/window.postMessage
-        // * http://www.whatwg.org/specs/web-apps/current-work/multipage/comms.html#crossDocumentMessages
-
-        var messagePrefix = "setImmediate$" + Math.random() + "$";
-        var onGlobalMessage = function(event) {
-            if (event.source === global &&
-                typeof event.data === "string" &&
-                event.data.indexOf(messagePrefix) === 0) {
-                runIfPresent(+event.data.slice(messagePrefix.length));
-            }
-        };
-
-        if (global.addEventListener) {
-            global.addEventListener("message", onGlobalMessage, false);
-        } else {
-            global.attachEvent("onmessage", onGlobalMessage);
-        }
-
-        registerImmediate = function(handle) {
-            global.postMessage(messagePrefix + handle, "*");
-        };
-    }
-
-    function installMessageChannelImplementation() {
-        var channel = new MessageChannel();
-        channel.port1.onmessage = function(event) {
-            var handle = event.data;
-            runIfPresent(handle);
-        };
-
-        registerImmediate = function(handle) {
-            channel.port2.postMessage(handle);
-        };
-    }
-
-    function installReadyStateChangeImplementation() {
-        var html = doc.documentElement;
-        registerImmediate = function(handle) {
-            // Create a <script> element; its readystatechange event will be fired asynchronously once it is inserted
-            // into the document. Do so, thus queuing up the task. Remember to clean up once it's been called.
-            var script = doc.createElement("script");
-            script.onreadystatechange = function () {
-                runIfPresent(handle);
-                script.onreadystatechange = null;
-                html.removeChild(script);
-                script = null;
-            };
-            html.appendChild(script);
-        };
-    }
-
-    function installSetTimeoutImplementation() {
-        registerImmediate = function(handle) {
-            setTimeout(runIfPresent, 0, handle);
-        };
-    }
-
-    // If supported, we should attach to the prototype of global, since that is where setTimeout et al. live.
-    var attachTo = Object.getPrototypeOf && Object.getPrototypeOf(global);
-    attachTo = attachTo && attachTo.setTimeout ? attachTo : global;
-
-    // Don't get fooled by e.g. browserify environments.
-    if ({}.toString.call(global.process) === "[object process]") {
-        // For Node.js before 0.9
-        installNextTickImplementation();
-
-    } else if (canUsePostMessage()) {
-        // For non-IE10 modern browsers
-        installPostMessageImplementation();
-
-    } else if (global.MessageChannel) {
-        // For web workers, where supported
-        installMessageChannelImplementation();
-
-    } else if (doc && "onreadystatechange" in doc.createElement("script")) {
-        // For IE 6–8
-        installReadyStateChangeImplementation();
-
-    } else {
-        // For older browsers
-        installSetTimeoutImplementation();
-    }
-
-    attachTo.setImmediate = setImmediate;
-    attachTo.clearImmediate = clearImmediate;
-}(typeof self === "undefined" ? typeof global === "undefined" ? this : global : self));
-
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0), __webpack_require__(1)))
-
-/***/ }),
-/* 11 */
-/***/ (function(module, exports, __webpack_require__) {
-
-module.exports = __webpack_require__(12);
-
-
-/***/ }),
-/* 12 */
-/***/ (function(module, exports, __webpack_require__) {
-
-var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// Generated by CoffeeScript 1.8.0
-(function() {
-  var Heap, defaultCmp, floor, heapify, heappop, heappush, heappushpop, heapreplace, insort, min, nlargest, nsmallest, updateItem, _siftdown, _siftup;
-
-  floor = Math.floor, min = Math.min;
-
-
-  /*
-  Default comparison function to be used
-   */
-
-  defaultCmp = function(x, y) {
-    if (x < y) {
-      return -1;
-    }
-    if (x > y) {
-      return 1;
-    }
-    return 0;
-  };
-
-
-  /*
-  Insert item x in list a, and keep it sorted assuming a is sorted.
-  
-  If x is already in a, insert it to the right of the rightmost x.
-  
-  Optional args lo (default 0) and hi (default a.length) bound the slice
-  of a to be searched.
-   */
-
-  insort = function(a, x, lo, hi, cmp) {
-    var mid;
-    if (lo == null) {
-      lo = 0;
-    }
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    if (lo < 0) {
-      throw new Error('lo must be non-negative');
-    }
-    if (hi == null) {
-      hi = a.length;
-    }
-    while (lo < hi) {
-      mid = floor((lo + hi) / 2);
-      if (cmp(x, a[mid]) < 0) {
-        hi = mid;
-      } else {
-        lo = mid + 1;
-      }
-    }
-    return ([].splice.apply(a, [lo, lo - lo].concat(x)), x);
-  };
-
-
-  /*
-  Push item onto heap, maintaining the heap invariant.
-   */
-
-  heappush = function(array, item, cmp) {
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    array.push(item);
-    return _siftdown(array, 0, array.length - 1, cmp);
-  };
-
-
-  /*
-  Pop the smallest item off the heap, maintaining the heap invariant.
-   */
-
-  heappop = function(array, cmp) {
-    var lastelt, returnitem;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    lastelt = array.pop();
-    if (array.length) {
-      returnitem = array[0];
-      array[0] = lastelt;
-      _siftup(array, 0, cmp);
-    } else {
-      returnitem = lastelt;
-    }
-    return returnitem;
-  };
-
-
-  /*
-  Pop and return the current smallest value, and add the new item.
-  
-  This is more efficient than heappop() followed by heappush(), and can be
-  more appropriate when using a fixed size heap. Note that the value
-  returned may be larger than item! That constrains reasonable use of
-  this routine unless written as part of a conditional replacement:
-      if item > array[0]
-        item = heapreplace(array, item)
-   */
-
-  heapreplace = function(array, item, cmp) {
-    var returnitem;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    returnitem = array[0];
-    array[0] = item;
-    _siftup(array, 0, cmp);
-    return returnitem;
-  };
-
-
-  /*
-  Fast version of a heappush followed by a heappop.
-   */
-
-  heappushpop = function(array, item, cmp) {
-    var _ref;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    if (array.length && cmp(array[0], item) < 0) {
-      _ref = [array[0], item], item = _ref[0], array[0] = _ref[1];
-      _siftup(array, 0, cmp);
-    }
-    return item;
-  };
-
-
-  /*
-  Transform list into a heap, in-place, in O(array.length) time.
-   */
-
-  heapify = function(array, cmp) {
-    var i, _i, _j, _len, _ref, _ref1, _results, _results1;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    _ref1 = (function() {
-      _results1 = [];
-      for (var _j = 0, _ref = floor(array.length / 2); 0 <= _ref ? _j < _ref : _j > _ref; 0 <= _ref ? _j++ : _j--){ _results1.push(_j); }
-      return _results1;
-    }).apply(this).reverse();
-    _results = [];
-    for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-      i = _ref1[_i];
-      _results.push(_siftup(array, i, cmp));
-    }
-    return _results;
-  };
-
-
-  /*
-  Update the position of the given item in the heap.
-  This function should be called every time the item is being modified.
-   */
-
-  updateItem = function(array, item, cmp) {
-    var pos;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    pos = array.indexOf(item);
-    if (pos === -1) {
-      return;
-    }
-    _siftdown(array, 0, pos, cmp);
-    return _siftup(array, pos, cmp);
-  };
-
-
-  /*
-  Find the n largest elements in a dataset.
-   */
-
-  nlargest = function(array, n, cmp) {
-    var elem, result, _i, _len, _ref;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    result = array.slice(0, n);
-    if (!result.length) {
-      return result;
-    }
-    heapify(result, cmp);
-    _ref = array.slice(n);
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      elem = _ref[_i];
-      heappushpop(result, elem, cmp);
-    }
-    return result.sort(cmp).reverse();
-  };
-
-
-  /*
-  Find the n smallest elements in a dataset.
-   */
-
-  nsmallest = function(array, n, cmp) {
-    var elem, i, los, result, _i, _j, _len, _ref, _ref1, _results;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    if (n * 10 <= array.length) {
-      result = array.slice(0, n).sort(cmp);
-      if (!result.length) {
-        return result;
-      }
-      los = result[result.length - 1];
-      _ref = array.slice(n);
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        elem = _ref[_i];
-        if (cmp(elem, los) < 0) {
-          insort(result, elem, 0, null, cmp);
-          result.pop();
-          los = result[result.length - 1];
-        }
-      }
-      return result;
-    }
-    heapify(array, cmp);
-    _results = [];
-    for (i = _j = 0, _ref1 = min(n, array.length); 0 <= _ref1 ? _j < _ref1 : _j > _ref1; i = 0 <= _ref1 ? ++_j : --_j) {
-      _results.push(heappop(array, cmp));
-    }
-    return _results;
-  };
-
-  _siftdown = function(array, startpos, pos, cmp) {
-    var newitem, parent, parentpos;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    newitem = array[pos];
-    while (pos > startpos) {
-      parentpos = (pos - 1) >> 1;
-      parent = array[parentpos];
-      if (cmp(newitem, parent) < 0) {
-        array[pos] = parent;
-        pos = parentpos;
-        continue;
-      }
-      break;
-    }
-    return array[pos] = newitem;
-  };
-
-  _siftup = function(array, pos, cmp) {
-    var childpos, endpos, newitem, rightpos, startpos;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    endpos = array.length;
-    startpos = pos;
-    newitem = array[pos];
-    childpos = 2 * pos + 1;
-    while (childpos < endpos) {
-      rightpos = childpos + 1;
-      if (rightpos < endpos && !(cmp(array[childpos], array[rightpos]) < 0)) {
-        childpos = rightpos;
-      }
-      array[pos] = array[childpos];
-      pos = childpos;
-      childpos = 2 * pos + 1;
-    }
-    array[pos] = newitem;
-    return _siftdown(array, startpos, pos, cmp);
-  };
-
-  Heap = (function() {
-    Heap.push = heappush;
-
-    Heap.pop = heappop;
-
-    Heap.replace = heapreplace;
-
-    Heap.pushpop = heappushpop;
-
-    Heap.heapify = heapify;
-
-    Heap.updateItem = updateItem;
-
-    Heap.nlargest = nlargest;
-
-    Heap.nsmallest = nsmallest;
-
-    function Heap(cmp) {
-      this.cmp = cmp != null ? cmp : defaultCmp;
-      this.nodes = [];
-    }
-
-    Heap.prototype.push = function(x) {
-      return heappush(this.nodes, x, this.cmp);
-    };
-
-    Heap.prototype.pop = function() {
-      return heappop(this.nodes, this.cmp);
-    };
-
-    Heap.prototype.peek = function() {
-      return this.nodes[0];
-    };
-
-    Heap.prototype.contains = function(x) {
-      return this.nodes.indexOf(x) !== -1;
-    };
-
-    Heap.prototype.replace = function(x) {
-      return heapreplace(this.nodes, x, this.cmp);
-    };
-
-    Heap.prototype.pushpop = function(x) {
-      return heappushpop(this.nodes, x, this.cmp);
-    };
-
-    Heap.prototype.heapify = function() {
-      return heapify(this.nodes, this.cmp);
-    };
-
-    Heap.prototype.updateItem = function(x) {
-      return updateItem(this.nodes, x, this.cmp);
-    };
-
-    Heap.prototype.clear = function() {
-      return this.nodes = [];
-    };
-
-    Heap.prototype.empty = function() {
-      return this.nodes.length === 0;
-    };
-
-    Heap.prototype.size = function() {
-      return this.nodes.length;
-    };
-
-    Heap.prototype.clone = function() {
-      var heap;
-      heap = new Heap();
-      heap.nodes = this.nodes.slice(0);
-      return heap;
-    };
-
-    Heap.prototype.toArray = function() {
-      return this.nodes.slice(0);
-    };
-
-    Heap.prototype.insert = Heap.prototype.push;
-
-    Heap.prototype.top = Heap.prototype.peek;
-
-    Heap.prototype.front = Heap.prototype.peek;
-
-    Heap.prototype.has = Heap.prototype.contains;
-
-    Heap.prototype.copy = Heap.prototype.clone;
-
-    return Heap;
-
-  })();
-
-  (function(root, factory) {
-    if (true) {
-      return !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
-				__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
-				(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
-				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
-    } else if (typeof exports === 'object') {
-      return module.exports = factory();
-    } else {
-      return root.Heap = factory();
-    }
-  })(this, function() {
-    return Heap;
-  });
-
-}).call(this);
-
-
-/***/ }),
-/* 13 */
-/***/ (function(module, exports, __webpack_require__) {
-
-/* WEBPACK VAR INJECTION */(function(global) {/**
- * lodash (Custom Build) <https://lodash.com/>
- * Build: `lodash modularize exports="npm" -o ./`
- * Copyright jQuery Foundation and other contributors <https://jquery.org/>
- * Released under MIT license <https://lodash.com/license>
- * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
- * Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- */
-
-/** Used as the `TypeError` message for "Functions" methods. */
-var FUNC_ERROR_TEXT = 'Expected a function';
-
-/** Used as references for various `Number` constants. */
-var NAN = 0 / 0;
-
-/** `Object#toString` result references. */
-var symbolTag = '[object Symbol]';
-
-/** Used to match leading and trailing whitespace. */
-var reTrim = /^\s+|\s+$/g;
-
-/** Used to detect bad signed hexadecimal string values. */
-var reIsBadHex = /^[-+]0x[0-9a-f]+$/i;
-
-/** Used to detect binary string values. */
-var reIsBinary = /^0b[01]+$/i;
-
-/** Used to detect octal string values. */
-var reIsOctal = /^0o[0-7]+$/i;
-
-/** Built-in method references without a dependency on `root`. */
-var freeParseInt = parseInt;
-
-/** Detect free variable `global` from Node.js. */
-var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
-
-/** Detect free variable `self`. */
-var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
-
-/** Used as a reference to the global object. */
-var root = freeGlobal || freeSelf || Function('return this')();
-
-/** Used for built-in method references. */
-var objectProto = Object.prototype;
-
-/**
- * Used to resolve the
- * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
- * of values.
- */
-var objectToString = objectProto.toString;
-
-/* Built-in method references for those with the same name as other `lodash` methods. */
-var nativeMax = Math.max,
-    nativeMin = Math.min;
-
-/**
- * Gets the timestamp of the number of milliseconds that have elapsed since
- * the Unix epoch (1 January 1970 00:00:00 UTC).
- *
- * @static
- * @memberOf _
- * @since 2.4.0
- * @category Date
- * @returns {number} Returns the timestamp.
- * @example
- *
- * _.defer(function(stamp) {
- *   console.log(_.now() - stamp);
- * }, _.now());
- * // => Logs the number of milliseconds it took for the deferred invocation.
- */
-var now = function() {
-  return root.Date.now();
-};
-
-/**
- * Creates a debounced function that delays invoking `func` until after `wait`
- * milliseconds have elapsed since the last time the debounced function was
- * invoked. The debounced function comes with a `cancel` method to cancel
- * delayed `func` invocations and a `flush` method to immediately invoke them.
- * Provide `options` to indicate whether `func` should be invoked on the
- * leading and/or trailing edge of the `wait` timeout. The `func` is invoked
- * with the last arguments provided to the debounced function. Subsequent
- * calls to the debounced function return the result of the last `func`
- * invocation.
- *
- * **Note:** If `leading` and `trailing` options are `true`, `func` is
- * invoked on the trailing edge of the timeout only if the debounced function
- * is invoked more than once during the `wait` timeout.
- *
- * If `wait` is `0` and `leading` is `false`, `func` invocation is deferred
- * until to the next tick, similar to `setTimeout` with a timeout of `0`.
- *
- * See [David Corbacho's article](https://css-tricks.com/debouncing-throttling-explained-examples/)
- * for details over the differences between `_.debounce` and `_.throttle`.
- *
- * @static
- * @memberOf _
- * @since 0.1.0
- * @category Function
- * @param {Function} func The function to debounce.
- * @param {number} [wait=0] The number of milliseconds to delay.
- * @param {Object} [options={}] The options object.
- * @param {boolean} [options.leading=false]
- *  Specify invoking on the leading edge of the timeout.
- * @param {number} [options.maxWait]
- *  The maximum time `func` is allowed to be delayed before it's invoked.
- * @param {boolean} [options.trailing=true]
- *  Specify invoking on the trailing edge of the timeout.
- * @returns {Function} Returns the new debounced function.
- * @example
- *
- * // Avoid costly calculations while the window size is in flux.
- * jQuery(window).on('resize', _.debounce(calculateLayout, 150));
- *
- * // Invoke `sendMail` when clicked, debouncing subsequent calls.
- * jQuery(element).on('click', _.debounce(sendMail, 300, {
- *   'leading': true,
- *   'trailing': false
- * }));
- *
- * // Ensure `batchLog` is invoked once after 1 second of debounced calls.
- * var debounced = _.debounce(batchLog, 250, { 'maxWait': 1000 });
- * var source = new EventSource('/stream');
- * jQuery(source).on('message', debounced);
- *
- * // Cancel the trailing debounced invocation.
- * jQuery(window).on('popstate', debounced.cancel);
- */
-function debounce(func, wait, options) {
-  var lastArgs,
-      lastThis,
-      maxWait,
-      result,
-      timerId,
-      lastCallTime,
-      lastInvokeTime = 0,
-      leading = false,
-      maxing = false,
-      trailing = true;
-
-  if (typeof func != 'function') {
-    throw new TypeError(FUNC_ERROR_TEXT);
-  }
-  wait = toNumber(wait) || 0;
-  if (isObject(options)) {
-    leading = !!options.leading;
-    maxing = 'maxWait' in options;
-    maxWait = maxing ? nativeMax(toNumber(options.maxWait) || 0, wait) : maxWait;
-    trailing = 'trailing' in options ? !!options.trailing : trailing;
-  }
-
-  function invokeFunc(time) {
-    var args = lastArgs,
-        thisArg = lastThis;
-
-    lastArgs = lastThis = undefined;
-    lastInvokeTime = time;
-    result = func.apply(thisArg, args);
-    return result;
-  }
-
-  function leadingEdge(time) {
-    // Reset any `maxWait` timer.
-    lastInvokeTime = time;
-    // Start the timer for the trailing edge.
-    timerId = setTimeout(timerExpired, wait);
-    // Invoke the leading edge.
-    return leading ? invokeFunc(time) : result;
-  }
-
-  function remainingWait(time) {
-    var timeSinceLastCall = time - lastCallTime,
-        timeSinceLastInvoke = time - lastInvokeTime,
-        result = wait - timeSinceLastCall;
-
-    return maxing ? nativeMin(result, maxWait - timeSinceLastInvoke) : result;
-  }
-
-  function shouldInvoke(time) {
-    var timeSinceLastCall = time - lastCallTime,
-        timeSinceLastInvoke = time - lastInvokeTime;
-
-    // Either this is the first call, activity has stopped and we're at the
-    // trailing edge, the system time has gone backwards and we're treating
-    // it as the trailing edge, or we've hit the `maxWait` limit.
-    return (lastCallTime === undefined || (timeSinceLastCall >= wait) ||
-      (timeSinceLastCall < 0) || (maxing && timeSinceLastInvoke >= maxWait));
-  }
-
-  function timerExpired() {
-    var time = now();
-    if (shouldInvoke(time)) {
-      return trailingEdge(time);
-    }
-    // Restart the timer.
-    timerId = setTimeout(timerExpired, remainingWait(time));
-  }
-
-  function trailingEdge(time) {
-    timerId = undefined;
-
-    // Only invoke if we have `lastArgs` which means `func` has been
-    // debounced at least once.
-    if (trailing && lastArgs) {
-      return invokeFunc(time);
-    }
-    lastArgs = lastThis = undefined;
-    return result;
-  }
-
-  function cancel() {
-    if (timerId !== undefined) {
-      clearTimeout(timerId);
-    }
-    lastInvokeTime = 0;
-    lastArgs = lastCallTime = lastThis = timerId = undefined;
-  }
-
-  function flush() {
-    return timerId === undefined ? result : trailingEdge(now());
-  }
-
-  function debounced() {
-    var time = now(),
-        isInvoking = shouldInvoke(time);
-
-    lastArgs = arguments;
-    lastThis = this;
-    lastCallTime = time;
-
-    if (isInvoking) {
-      if (timerId === undefined) {
-        return leadingEdge(lastCallTime);
-      }
-      if (maxing) {
-        // Handle invocations in a tight loop.
-        timerId = setTimeout(timerExpired, wait);
-        return invokeFunc(lastCallTime);
-      }
-    }
-    if (timerId === undefined) {
-      timerId = setTimeout(timerExpired, wait);
-    }
-    return result;
-  }
-  debounced.cancel = cancel;
-  debounced.flush = flush;
-  return debounced;
-}
-
-/**
- * Checks if `value` is the
- * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
- * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
- *
- * @static
- * @memberOf _
- * @since 0.1.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is an object, else `false`.
- * @example
- *
- * _.isObject({});
- * // => true
- *
- * _.isObject([1, 2, 3]);
- * // => true
- *
- * _.isObject(_.noop);
- * // => true
- *
- * _.isObject(null);
- * // => false
- */
-function isObject(value) {
-  var type = typeof value;
-  return !!value && (type == 'object' || type == 'function');
-}
-
-/**
- * Checks if `value` is object-like. A value is object-like if it's not `null`
- * and has a `typeof` result of "object".
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
- * @example
- *
- * _.isObjectLike({});
- * // => true
- *
- * _.isObjectLike([1, 2, 3]);
- * // => true
- *
- * _.isObjectLike(_.noop);
- * // => false
- *
- * _.isObjectLike(null);
- * // => false
- */
-function isObjectLike(value) {
-  return !!value && typeof value == 'object';
-}
-
-/**
- * Checks if `value` is classified as a `Symbol` primitive or object.
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
- * @example
- *
- * _.isSymbol(Symbol.iterator);
- * // => true
- *
- * _.isSymbol('abc');
- * // => false
- */
-function isSymbol(value) {
-  return typeof value == 'symbol' ||
-    (isObjectLike(value) && objectToString.call(value) == symbolTag);
-}
-
-/**
- * Converts `value` to a number.
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to process.
- * @returns {number} Returns the number.
- * @example
- *
- * _.toNumber(3.2);
- * // => 3.2
- *
- * _.toNumber(Number.MIN_VALUE);
- * // => 5e-324
- *
- * _.toNumber(Infinity);
- * // => Infinity
- *
- * _.toNumber('3.2');
- * // => 3.2
- */
-function toNumber(value) {
-  if (typeof value == 'number') {
-    return value;
-  }
-  if (isSymbol(value)) {
-    return NAN;
-  }
-  if (isObject(value)) {
-    var other = typeof value.valueOf == 'function' ? value.valueOf() : value;
-    value = isObject(other) ? (other + '') : other;
-  }
-  if (typeof value != 'string') {
-    return value === 0 ? value : +value;
-  }
-  value = value.replace(reTrim, '');
-  var isBinary = reIsBinary.test(value);
-  return (isBinary || reIsOctal.test(value))
-    ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
-    : (reIsBadHex.test(value) ? NAN : +value);
-}
-
-module.exports = debounce;
-
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
-
-/***/ }),
 /* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -48761,215 +40032,9 @@ module.exports = debounce;
       return slice.call(array, Math.max(array.length - n, 0));
     } else {
       return array[array.length - 1];
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
     }
   };
 
-<<<<<<< HEAD
-  // (js-obj "foo" 1 "bar" 2)
-  // -> {"foo": 1, "bar": 2}
-  define_libfunc("js-obj", 0, null, function(ar){
-    if(ar.length % 2 != 0){
-      throw new Error("js-obj: number of arguments must be even");
-    }
-
-    var obj = {};
-    for(i=0; i<ar.length/2; i++){
-      assert_string(ar[i*2]);
-      obj[ar[i*2]] = ar[i*2+1];
-    }
-    return obj;
-  });
-
-  BiwaScheme.js_closure = function(proc, intp){
-    var intp2 = new Interpreter(intp);
-    return function(/*args*/){
-      return intp2.invoke_closure(proc, _.toArray(arguments));
-    };
-  };
-  // (js-closure (lambda (event) ..))
-  // Returns a js function which executes the given procedure.
-  //
-  // Example
-  //   (add-handler! ($ "#btn") "click" (js-closure on-click))
-  define_libfunc("js-closure", 1, 1, function(ar, intp){
-    assert_closure(ar[0]);
-    return BiwaScheme.js_closure(ar[0], intp);
-  });
-
-  define_libfunc("js-null?", 1, 1, function(ar){
-    return ar[0] === null;
-  });
-
-  define_libfunc("js-undefined?", 1, 1, function(ar){
-    return ar[0] === undefined;
-  });
-
-  define_libfunc("js-function?", 1, 1, function(ar){
-    return _.isFunction(ar[0]);
-  });
-
-  define_libfunc("js-array-to-list", 1, 1, function(ar){
-    BiwaScheme.deprecate("js-array-to-list", "1.0", "js-array->list");
-    return BiwaScheme.array_to_list(ar[0]);
-  });
-
-  define_libfunc("js-array->list", 1, 1, function(ar){
-    return BiwaScheme.array_to_list(ar[0]);
-  });
-
-  define_libfunc("list-to-js-array", 1, 1, function(ar){
-    BiwaScheme.deprecate("list-to-js-array", "1.0", "list->js-array");
-    return ar[0].to_array();
-  });
-
-  define_libfunc("list->js-array", 1, 1, function(ar){
-    return ar[0].to_array();
-  });
-
-  BiwaScheme.alist_to_js_obj = function(alist) {
-    if (alist === nil) {
-      return {} ;
-    }
-    assert_list(alist);
-    var obj = {};
-    alist.foreach(function(item){
-      assert_string(item.car);
-      obj[item.car] = item.cdr;
-    });
-    return obj;
-  };
-  define_libfunc("alist-to-js-obj", 1, 1, function(ar) {
-    BiwaScheme.deprecate("alist-to-js-obj", "1.0", "alist->js-obj");
-    return BiwaScheme.alist_to_js_obj(ar[0]);
-  });
-
-  define_libfunc("alist->js-obj", 1, 1, function(ar) {
-    return BiwaScheme.alist_to_js_obj(ar[0]);
-  });
-
-  BiwaScheme.js_obj_to_alist = function(obj) {
-    if (obj === undefined) {
-      return BiwaScheme.nil;
-    }
-    var arr = [];
-    _.each(obj, function(val, key) {
-      arr.push(new Pair(key, val));
-    });
-    var alist = BiwaScheme.array_to_list(arr);
-    return alist;
-  };
-  define_libfunc("js-obj-to-alist", 1, 1, function(ar) {
-    BiwaScheme.deprecate("js-obj-to-alist", "1.0", "js-obj->alist");
-    return BiwaScheme.js_obj_to_alist(ar[0]);
-  });
-  define_libfunc("js-obj->alist", 1, 1, function(ar) {
-    return BiwaScheme.js_obj_to_alist(ar[0]);
-  });
-
-  //
-  // timer, sleep
-  //
-  define_libfunc("timer", 2, 2, function(ar, intp){
-    var proc = ar[0], sec = ar[1];
-    assert_closure(proc);
-    assert_real(sec);
-    var intp2 = new Interpreter(intp);
-    setTimeout(function(){ intp2.invoke_closure(proc); }, sec * 1000);
-    return BiwaScheme.undef;
-  });
-  define_libfunc("set-timer!", 2, 2, function(ar, intp){
-    var proc = ar[0], sec = ar[1];
-    assert_closure(proc);
-    assert_real(sec);
-    var intp2 = new Interpreter(intp);
-    return setInterval(function(){ intp2.invoke_closure(proc); }, sec * 1000);
-  });
-  define_libfunc("clear-timer!", 1, 1, function(ar){
-    var timer_id = ar[0];
-    clearInterval(timer_id);
-    return BiwaScheme.undef;
-  });
-  define_libfunc("sleep", 1, 1, function(ar){
-    var sec = ar[0];
-    assert_real(sec);
-    return new BiwaScheme.Pause(function(pause){
-      setTimeout(function(){ pause.resume(nil); }, sec * 1000);
-    });
-  });
-
-  //
-  // console
-  //
-  // (console-debug obj1 ...)
-  // (console-log obj1 ...)
-  // (console-info obj1 ...)
-  // (console-warn obj1 ...)
-  // (console-error obj1 ...)
-  //   Put objects to console, if window.console is defined.
-  //   Returns obj1.
-  //
-  // Example:
-  //     (some-func arg1 (console-debug arg2) arg3)
-  var define_console_func = function(name){
-    define_libfunc("console-"+name, 1, null, function(ar){
-      var con = window.console;
-      if(con){
-        var vals = _.map(ar, function(item){
-          return BiwaScheme.inspect(item, {fallback: item});
-        });
-
-        con[name].apply(con, vals);
-      }
-      return ar[0];
-    });
-  };
-  define_console_func("debug");
-  define_console_func("log");
-  define_console_func("info");
-  define_console_func("warn");
-  define_console_func("error");
-
-}
-
-if( typeof(BiwaScheme)!='object' ) BiwaScheme={}; with(BiwaScheme) {
-  define_libfunc("html-escape", 1, 1, function(ar){
-    assert_string(ar[0]);
-    return _.escape(ar[0]);
-  });
-  BiwaScheme.inspect_objs = function(objs){
-    return _.map(objs, BiwaScheme.inspect).join(", ");
-  };
-  define_libfunc("inspect", 1, null, function(ar){
-    return BiwaScheme.inspect_objs(ar);
-  });
-  define_libfunc("inspect!", 1, null, function(ar){
-    Console.puts(BiwaScheme.inspect_objs(ar));
-    return BiwaScheme.undef;
-  });
-
-  //
-  // json
-  //
-  // json->sexp
-  // Array -> list
-  // Object -> alist
-  // (number, boolean, string, 
-  //
-  BiwaScheme.json2sexp = function(json){
-    switch(true){
-    case _.isNumber(json) ||
-         _.isString(json) ||
-         json === true || json === false:
-      return json;
-    case _.isArray(json):
-      return array_to_list(_.map(json, json2sexp));
-    case typeof(json) == "object":
-      var ls = nil;
-      for(key in json){
-        ls = new Pair(new Pair(key, json2sexp(json[key])),
-               ls);
-=======
   // Returns everything but the first entry of the array. Aliased as `tail`.
   // Especially useful on the arguments object. Passing an **index** will return
   // the rest of the values in the array from that index onward. The **guard**
@@ -49377,298 +40442,8 @@ if( typeof(BiwaScheme)!='object' ) BiwaScheme={}; with(BiwaScheme) {
           if (hasOwnProperty.call(b, key) && !(size--)) break;
         }
         result = !size;
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
       }
-      return ls;
-    default:
-      throw new Error("json->sexp: detected invalid value for json: "+BiwaScheme.inspect(json));
     }
-<<<<<<< HEAD
-    throw new Bug("must not happen");
-  }
-  define_libfunc("json->sexp", 1, 1, function(ar){
-    return json2sexp(ar[0]);
-  })
-
-  // (vector-push! v item1 item2 ...)
-  define_libfunc("vector-push!", 2, null, function(ar){
-    assert_vector(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      ar[0].push(ar[i]);
-    }
-    return ar[0];
-  });
-
-  //
-  //from Gauche
-  //
-
-  // (identity obj)
-  // Returns obj.
-  define_libfunc("identity", 1, 1, function(ar){
-    return ar[0];
-  });
-
-  // (inc! i)
-  // = (begin (set! i (+ i 1)) i)
-  // Increments i (i.e., set i+1 to i).
-  define_syntax("inc!", function(x){
-    var target = x.cdr.car;
-    return List(Sym("begin"),
-                List(Sym("set!"),
-                     target, 
-                     List(Sym("+"), target, 1)),
-                target);
-  });
-  
-  // (dec! i)
-  // = (begin (set! i (- i 1)) i)
-  // Decrements i (i.e., set i-1 to i).
-  define_syntax("dec!", function(x){
-    var target = x.cdr.car;
-    return List(Sym("begin"),
-                List(Sym("set!"),
-                     target, 
-                     List(Sym("-"), target, 1)),
-                target);
-  });
-
-  // string
-  
-  define_libfunc("string-concat", 1, 1, function(ar){
-    assert_list(ar[0]);
-    return ar[0].to_array().join("");
-  })
-
-  define_libfunc("string-split", 2, 2, function(ar){
-    assert_string(ar[0]);
-    assert_string(ar[1]);
-    return array_to_list(ar[0].split(ar[1]));
-  })
-
-  define_libfunc("string-join", 1, 2, function(ar){
-    assert_list(ar[0]);
-    var delim = ""
-    if(ar[1]){
-      assert_string(ar[1]);
-      delim = ar[1];
-    }
-    return ar[0].to_array().join(delim);
-  })
-  
-  // lists
-
-  define_libfunc("intersperse", 2, 2, function(ar){
-    var item = ar[0], ls = ar[1];
-    assert_list(ls);
-
-    var ret = [];
-    _.each(ls.to_array().reverse(),function(x){
-      ret.push(x);
-      ret.push(item);
-    });
-    ret.pop();
-    return array_to_list(ret);
-  });
-
-  define_libfunc("map-with-index", 2, null, function(ar){
-    var proc = ar.shift(), lists = ar;
-    _.each(lists, assert_list);
-
-    var results = [], i = 0;
-    return Call.multi_foreach(lists, {
-      call: function(xs){ 
-        var args = _.map(xs, function(x){ return x.car });
-        args.unshift(i);
-        i++;
-        return new Call(proc, args);
-      },
-      result: function(res){ results.push(res); },
-      finish: function(){ return array_to_list(results); }
-    });
-  });
-
-  // loop
-
-  // (dotimes (variable limit result) body ...)
-  // Iterate with variable 0 to limit-1.
-  // ->
-  //    (do ((tlimit limit)
-  //         (variable 0 (+ variable 1)))
-  //        ((>= variable tlimit) result)
-  //      body ...)
-  define_syntax("dotimes", function(x){
-    var spec = x.cdr.car,
-        bodies = x.cdr.cdr;
-    var variable = spec.car,
-        limit = spec.cdr.car,
-        result = spec.cdr.cdr.car;
-    var tlimit = BiwaScheme.gensym();
-
-    var do_vars = deep_array_to_list([[tlimit, limit],
-                                      [variable, 0, [Sym("+"), variable, 1]]]);
-    var do_check = deep_array_to_list([[Sym(">="), variable, tlimit], result]);
-
-    return new Pair(Sym("do"),
-             new Pair(do_vars,
-               new Pair(do_check,
-                 bodies)));
-  });
-
-  // sorting (Obsolete: use list-sort, etc. instead of these.)
-
-  // utility function. takes a JS Array and a Scheme procedure,
-  // returns sorted array
-  var sort_with_comp = function(ary, proc, intp){
-    return ary.sort(function(a, b){
-        var intp2 = new BiwaScheme.Interpreter(intp);
-        return intp2.invoke_closure(proc, [a, b]);
-      });
-  };
-
-  define_libfunc("list-sort/comp", 1, 2, function(ar, intp){
-    assert_procedure(ar[0]);
-    assert_list(ar[1]);
-
-    return array_to_list(sort_with_comp(ar[1].to_array(), ar[0], intp));
-  });
-  define_libfunc("vector-sort/comp", 1, 2, function(ar, intp){
-    assert_procedure(ar[0]);
-    assert_vector(ar[1]);
-
-    return sort_with_comp(_.clone(ar[1]), ar[0], intp);
-  });
-  define_libfunc("vector-sort/comp!", 1, 2, function(ar, intp){
-    assert_procedure(ar[0]);
-    assert_vector(ar[1]);
-
-    sort_with_comp(ar[1], ar[0], intp);
-    return BiwaScheme.undef;
-  });
-  
-  // macros
-
-  //(define-macro (foo x y) body ...)
-  //(define-macro foo lambda)
-
-  var rearrange_args = function (expected, given) {
-    var args = [];
-    var dotpos = (new Compiler).find_dot_pos(expected);
-    if (dotpos == -1)
-      args = given;
-    else {
-      for (var i = 0; i < dotpos; i++) {
-        args[i] = given[i];
-      }
-      args[i] = array_to_list(given.slice(i));
-    }
-    return args;
-  }
-  define_syntax("define-macro", function(x){
-    var head = x.cdr.car;
-    var expected_args;
-    if(head instanceof Pair){
-      var name = head.car;
-      expected_args = head.cdr;
-      var body = x.cdr.cdr;
-      var lambda = new Pair(Sym("lambda"),
-                     new Pair(expected_args,
-                       body))
-    }
-    else{
-      var name = head;
-      var lambda = x.cdr.cdr.car;
-      expected_args = lambda.cdr.car;
-    }
-
-    //[close, n_frees, do_body, next]
-    var opc = Compiler.compile(lambda);
-    if(opc[1] != 0)
-      throw new Bug("you cannot use free variables in macro expander (or define-macro must be on toplevel)")
-    var cls = [opc[2]];
-
-    TopEnv[name.name] = new Syntax(name.name, function(sexp){
-      var given_args = sexp.to_array();
-
-      given_args.shift();
-      
-      var intp = new Interpreter();
-      var args = rearrange_args(expected_args, given_args);
-      var result = intp.invoke_closure(cls, args);
-      return result;
-    });
-
-    return BiwaScheme.undef;
-  })
-
-  var macroexpand_1 = function(x){
-    if(x instanceof Pair){
-      if(x.car instanceof Symbol && TopEnv[x.car.name] instanceof Syntax){
-        var transformer = TopEnv[x.car.name];
-        x = transformer.transform(x);
-      }
-      else
-        throw new Error("macroexpand-1: `" + to_write_ss(x) + "' is not a macro");
-    }
-    return x;
-  }
-  define_syntax("%macroexpand", function(x){
-    var expanded = BiwaScheme.Interpreter.expand(x.cdr.car);
-    return List(Sym("quote"), expanded);
-  });
-  define_syntax("%macroexpand-1", function(x){
-    var expanded = macroexpand_1(x.cdr.car);
-    return List(Sym("quote"), expanded);
-  });
-
-  define_libfunc("macroexpand", 1, 1, function(ar){
-    return BiwaScheme.Interpreter.expand(ar[0]);
-  });
-  define_libfunc("macroexpand-1", 1, 1, function(ar){
-    return macroexpand_1(ar[0]);
-  });
-
-  define_libfunc("gensym", 0, 0, function(ar){
-    return BiwaScheme.gensym();
-  });
-  
-  // i/o
-
-  define_libfunc("print", 1, null, function(ar){
-    _.map(ar, function(item){
-      Console.puts(to_display(item), true);
-    })
-    Console.puts(""); //newline
-    return BiwaScheme.undef;
-  })
-  define_libfunc("write-to-string", 1, 1, function(ar){
-    return to_write(ar[0]);
-  });
-  define_libfunc("read-from-string", 1, 1, function(ar){
-    assert_string(ar[0]);
-    return Interpreter.read(ar[0]);
-  });
-  define_libfunc("port-closed?", 1, 1, function(ar){
-    assert_port(ar[0]);
-    return !(ar[0].is_open);
-  });
-  //define_libfunc("with-input-from-port", 2, 2, function(ar){
-  //define_libfunc("with-error-to-port", 2, 2, function(ar){
-  define_libfunc("with-output-to-port", 2, 2, function(ar){
-    var port = ar[0], proc = ar[1];
-    assert_port(port);
-    assert_procedure(proc);
-
-    var original_port = BiwaScheme.Port.current_output;
-    BiwaScheme.Port.current_output = port
-
-    return new Call(proc, [port], function(ar){
-      port.close();
-      BiwaScheme.Port.current_output = original_port;
-
-      return ar[0];
-    });
-=======
     // Remove the first object from the stack of traversed objects.
     stack.pop();
     return result;
@@ -49871,1939 +40646,8 @@ if( typeof(BiwaScheme)!='object' ) BiwaScheme={}; with(BiwaScheme) {
       method.apply(this._wrapped, arguments);
       return result(this._wrapped, this._chain);
     };
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
-  });
-  
-  // syntax
-  
-  define_syntax("let1", function(x){
-    //(let1 vari expr body ...) 
-    //=> ((lambda (var) body ...) expr)
-    var vari = x.cdr.car; 
-    var expr = x.cdr.cdr.car;
-    var body = x.cdr.cdr.cdr;
-
-    return new Pair(new Pair(Sym("lambda"),
-                      new Pair(new Pair(vari, nil),
-                        body)),
-             new Pair(expr, nil));
-  })
-
-<<<<<<< HEAD
-  //
-  // Regular Expression
-  //
-  var assert_regexp = function(obj, fname){
-    if(!(obj instanceof RegExp))
-      throw new Error(fname + ": regexp required, but got " + to_write(obj));
-  }
-
-  //Function: string->regexp string &keyword case-fold 
-  define_libfunc("string->regexp", 1, 1, function(ar){
-    assert_string(ar[0], "string->regexp");
-    return new RegExp(ar[0]); //todo: case-fold
-  })
-  //Function: regexp? obj 
-  define_libfunc("regexp?", 1, 1, function(ar){
-    return (ar[0] instanceof RegExp);
-  })
-  //Function: regexp->string regexp 
-  define_libfunc("regexp->string", 1, 1, function(ar){
-    assert_regexp(ar[0], "regexp->string");
-    return ar[0].toString().slice(1, -1); //cut '/' 
-  })
-
-  define_libfunc("regexp-exec", 2, 2, function(ar){
-    var rexp = ar[0];
-    if(_.isString(ar[0])){
-      rexp = new RegExp(ar[0]);
-    }
-    assert_regexp(rexp, "regexp-exec");
-    assert_string(ar[1], "regexp-exec");
-    var ret = rexp.exec(ar[1])
-    return (ret === null) ? false : array_to_list(ret);
-  })
-
-//  //Function: rxmatch regexp string 
-//  define_libfunc("rxmatch", 1, 1, function(ar){
-//    assert_regexp(ar[0], "rxmatch");
-//    assert_string(ar[1], "rxmatch");
-//    return ar[0].match(ar[1]);
-//  });
-  //Function: rxmatch-start match &optional (i 0) 
-  //Function: rxmatch-end match &optional (i 0) 
-  //Function: rxmatch-substring match &optional (i 0) 
-  //Function: rxmatch-num-matches match   
-  //Function: rxmatch-after match &optional (i 0) 
-  //Function: rxmatch-before match &optional (i 0) 
-  //Generic application: regmatch &optional index 
-  //Generic application: regmatch 'before &optional index 
-  //Generic application: regmatch 'after &optional index 
-  //Function: regexp-replace regexp string substitution 
-  
-  // regexp-replace-all regexp string substitution 
-  define_libfunc("regexp-replace-all", 3, 3, function(ar){
-    var pat = ar[0];
-    if(_.isString(pat)){
-      var rexp = new RegExp(pat, "g")
-    }
-    else{
-      assert_regexp(pat);
-      var rexp = new RegExp(pat.source, "g")
-    }
-    assert_string(ar[1]);
-    assert_string(ar[2]);
-    return ar[1].replace(rexp, ar[2])
-  })
-  //Function: regexp-replace* string rx1 sub1 rx2 sub2 ... 
-  //Function: regexp-replace-all* string rx1 sub1 rx2 sub2 ... 
-  //Function: regexp-quote string 
-  //Macro: rxmatch-let match-expr (var ...) form ... 
-  //Macro: rxmatch-if match-expr (var ...) then-form else-form 
-  //Macro: rxmatch-cond clause ... 
-  //Macro: rxmatch-case string-expr clause ... 
-
-}
-
-
-//
-// Library functions only work on Node.js
-// see also: test/node_functions.js
-//
-
-(function(){
-  if(BiwaScheme.on_node){
-    var node = {
-      fs: __webpack_require__(0),
-      path: __webpack_require__(7),
-      process: process
-    };
-  }
-
-  // Defines library functions which only works on Node.
-  // - On Node: same as define_libfunc
-  // - On Browser: defines a stub libfunc which just raises Error
-  var define_node_libfunc = function(/*arguments*/){
-    var args = _.toArray(arguments);
-
-    if(BiwaScheme.on_node){
-      BiwaScheme.define_libfunc.apply(null, args);
-    }
-    else{
-      var func_name = args[0];
-      var func = function(ar){
-        throw new BiwaScheme.Error("the function '"+func_name+"' "+
-          "is not supported in the browser "+
-          "(works only on Node.js).");
-      };
-      args.pop();
-      args.push(func);
-      BiwaScheme.define_libfunc.apply(null, args);
-    }
-  };
-
-  //
-  // Chapter 9 File System
-  //
-
-  //(file-exists? filename)    procedure 
-  define_node_libfunc("file-exists?", 1, 1, function(ar){
-    BiwaScheme.assert_string(ar[0]);
-    return node.fs.existsSync(ar[0]);
   });
 
-  //(delete-file filename)    procedure 
-  define_node_libfunc("delete-file", 1, 1, function(ar){
-    BiwaScheme.assert_string(ar[0]);
-    node.fs.unlinkSync(ar[0]);
-    return BiwaScheme.undef;
-  });
-
-  //
-  // Chapter 10 Command-line access and exit values
-  //
-  
-  //(command-line)    procedure
-  define_node_libfunc("command-line", 0, 0, function(ar){
-    return BiwaScheme.List.apply(null, node.process.argv);
-  });
-
-  //(exit)    procedure 
-  //(exit obj)    procedure
-  define_node_libfunc("exit", 0, 1, function(ar){
-    var obj = ar[0];
-    var code = _.isUndefined(obj) ? 0 :
-               (obj === false)    ? 1 :
-               Number(obj);
-
-    node.process.exit(code);
-  });
-
-  //
-  // srfi-98 (get-environment-variable)
-  //
-
-  // (get-environment-variable name) -> string or #f
-  define_node_libfunc("get-environment-variable", 1, 1, function(ar){
-    BiwaScheme.assert_string(ar[0]);
-    var val = node.process.env[ar[0]];
-    return _.isUndefined(val) ? false : val;
-  });
-
-  // (get-environment-variables) -> alist of string (("key" . "value"))
-  define_node_libfunc("get-environment-variables", 0, 0, function(ar){
-    return BiwaScheme.js_obj_to_alist(node.process.env);
-  });
-
-})();
-//
-// srfi.js - SRFI libraries
-//
-// should be src/library/srfi/1.js, etc (in the future).
-//
-
-with(BiwaScheme) {
-  
-  //
-  // srfi-1 (list)
-  //
-  // (iota count start? step?)
-  define_libfunc("iota", 1, 3, function(ar){
-    var count = ar[0];
-    var start = ar[1] || 0;
-    var step = (ar[2]===undefined) ? 1 : ar[2];
-    assert_integer(count);
-    assert_number(start);
-    assert_number(step);
-
-    var a = [], n = start;
-    for(var i=0; i<count; i++){
-      a.push(n);
-      n += step;
-    }
-    return array_to_list(a);
-  });
-
-  var copy_pair = function(pair){
-    var car = BiwaScheme.isPair(pair.car) ? copy_pair(pair.car)
-                                          : pair.car;
-    var cdr = BiwaScheme.isPair(pair.cdr) ? copy_pair(pair.cdr)
-                                          : pair.cdr;
-    return new Pair(car, cdr);
-  };
-  // (list-copy list)
-  define_libfunc("list-copy", 1, 1, function(ar){
-    if(BiwaScheme.isPair(ar[0])){
-      return copy_pair(ar[0]);
-    }
-    else{
-      return BiwaScheme.nil;
-    }
-  });
-
-  //
-  // srfi-6 & Gauche (string port)
-  // 
-  define_libfunc("open-input-string", 1, 1, function(ar){
-    assert_string(ar[0]);
-    return new Port.StringInput(ar[0]);
-  })
-  define_libfunc("open-output-string", 0, 0, function(ar){
-    return new Port.StringOutput();
-  })
-  define_libfunc("get-output-string", 1, 1, function(ar){
-    assert_port(ar[0]);
-    if(!(ar[0] instanceof Port.StringOutput))
-      throw new Error("get-output-string: port must be made by 'open-output-string'");
-    return ar[0].output_string();
-  })
-
-  //
-  // srfi-8 (receive)
-  //
-
-  // (receive <formals> <expression> <body>...)
-  // -> (call-with-values (lambda () expression)
-  //                        (lambda formals body ...))
-  define_syntax("receive", function(x){
-    assert(BiwaScheme.isPair(x.cdr),
-           "missing formals", "receive");
-    var formals = x.cdr.car;
-    assert(BiwaScheme.isPair(x.cdr.cdr),
-           "missing expression", "receive");
-    var expression = x.cdr.cdr.car;
-    var body       = x.cdr.cdr.cdr;
-    
-    return deep_array_to_list([Sym("call-with-values"),
-      [Sym("lambda"), BiwaScheme.nil, expression],
-      new BiwaScheme.Pair(Sym("lambda"),
-        new BiwaScheme.Pair(formals, body))]);
-  });
-
-  // srfi-19 (time)
-  //
-//  // constants
-//time-duration
-//time-monotonic
-//time-process
-//time-tai
-//time-thread
-//time-utc
-  // Current time and clock resolution
-  // (current-date [tz-offset])
-  define_libfunc("current-date", 0, 1, function(ar){
-    //todo: tz-offset (ar[1])
-    return new Date();
-  })
-//
-//current-julian-day -> jdn
-//current-modified-julian-day -> mjdn
-//current-time [time-type] -> time
-//time-resolution [time-type] -> integer
-//  // Time object and accessors
-//make-time type nanosecond second -> time
-//time? object -> boolean
-//time-type time -> time-type
-//time-nanosecond time -> integer
-//time-second time -> integer
-//set-time-type! time time-type
-//set-time-nanosecond! time integer
-//set-time-second! time integer
-//copy-time time1 -> time2 
-//  // Time comparison procedures
-//time<=? time1 time2 -> boolean
-//time<? time1 time2 -> boolean
-//time=? time1 time2 -> boolean
-//time>=? time1 time2 -> boolean
-//time>? time1 time2 -> boolean
-//  // Time arithmetic procedures
-//time-difference time1 time2 -> time-duration
-//time-difference! time1 time2 -> time-duration
-//add-duration time1 time-duration -> time
-//add-duration! time1 time-duration -> time
-//subtract-duration time1 time-duration -> time
-//subtract-duration! time1 time-duration -> time
-  // Date object and accessors
-  // make-date
-  define_libfunc("date?", 1, 1, function(ar){
-    return (ar[0] instanceof Date);
-  })
-  define_libfunc("date-nanosecond", 1, 1, function(ar){
-    assert_date(ar[0]);
-    return ar[0].getMilliseconds() * 1000000;
-  })
-  define_libfunc("date-millisecond", 1, 1, function(ar){ // not srfi-19
-    assert_date(ar[0]);
-    return ar[0].getMilliseconds();
-  })
-  define_libfunc("date-second", 1, 1, function(ar){
-    assert_date(ar[0]);
-    return ar[0].getSeconds();
-  })
-  define_libfunc("date-minute", 1, 1, function(ar){
-    assert_date(ar[0]);
-    return ar[0].getMinutes();
-  })
-  define_libfunc("date-hour", 1, 1, function(ar){
-    assert_date(ar[0]);
-    return ar[0].getHours();
-  })
-  define_libfunc("date-day", 1, 1, function(ar){
-    assert_date(ar[0]);
-    return ar[0].getDate();
-  })
-  define_libfunc("date-month", 1, 1, function(ar){
-    assert_date(ar[0]);
-    return ar[0].getMonth() + 1; //Jan = 0 in javascript..
-  })
-  define_libfunc("date-year", 1, 1, function(ar){
-    assert_date(ar[0]);
-    return ar[0].getFullYear();
-  })
-  //date-zone-offset
-  //date-year-day
-  define_libfunc("date-week-day", 1, 1, function(ar){
-    assert_date(ar[0]);
-    return ar[0].getDay();
-  })
-  //date-week-number
-
-  // Time/Date/Julian Day/Modified Julian Day Converters
-  // (snipped)
-  
-  // Date to String/String to Date Converters
-  // TODO: support locale
-  //   * date_names
-  //   * ~f 5.2 sec
-  //   * ~p AM/PM
-  //   * ~X 2007/01/01
-  BiwaScheme.date_names = {
-    weekday: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-    full_weekday: ["Sunday", "Monday", "Tuesday", 
-      "Wednesday", "Thursday", "Friday", "Saturday"],
-    month: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-    full_month: ["January", "February", "March", "April",
-      "May", "June", "July", "August", "September", 
-      "Octorber", "November", "December"]
-  }
-
-  BiwaScheme.date2string = function(date, format){
-    var zeropad  = function(n){ return n<10 ? "0"+n : ""+n }; 
-    var spacepad = function(n){ return n<10 ? " "+n : ""+n }; 
-    
-    var getter = {
-      a: function(x){ return date_names.weekday[x.getDay()] },
-      A: function(x){ return date_names.full_weekday[x.getDay()] },
-      b: function(x){ return date_names.month[x.getMonth()] },
-      B: function(x){ return date_names.full_month[x.getMonth()] },
-      c: function(x){ return x.toString() },
-      d: function(x){ return zeropad(x.getDate()) },
-      D: function(x){ return getter.d(x) + getter.m(x) + getter.y(x); },
-      e: function(x){ return spacepad(x.getDate()) },
-      f: function(x){ return x.getSeconds() + x.getMilliseconds()/1000; },
-      h: function(x){ return date_names.month[x.getMonth()] },
-      H: function(x){ return zeropad(x.getHours()) },
-      I: function(x){ var h = x.getHours(); return zeropad(h<13 ? h : h-12) },
-      j: function(x){ throw new Bug("not implemented: day of year") },
-      k: function(x){ return spacepad(x.getHours()) },
-      l: function(x){ var h = x.getHours(); return spacepad(h<13 ? h : h-12) },
-      m: function(x){ return zeropad(x.getMonth()+1) },
-      M: function(x){ return zeropad(x.getMinutes()) },
-      n: function(x){ return "\n" },
-      N: function(x){ throw new Bug("not implemented: nanoseconds") },
-      p: function(x){ return x.getHours()<13 ? "AM" : "PM" },
-      r: function(x){ return getter.I(x) + ":" + getter.M(x) + ":" + getter.S(x) + " " + getter.p(x) },
-      s: function(x){ return Math.floor(x.getTime() / 1000) },
-      S: function(x){ return zeropad(x.getSeconds()) },
-      t: function(x){ return "\t" },
-      T: function(x){ return getter.H(x) + ":" + getter.M(x) + ":" + getter.S(x) },
-      U: function(x){ throw new Bug("not implemented: weeknum(0~, Sun)") },
-      V: function(x){ throw new Bug("not implemented: weeknum(1~, Sun?)") },
-      w: function(x){ return x.getDay() },
-      W: function(x){ throw new Bug("not implemented: weeknum(0~, Mon)") },
-      x: function(x){ throw new Bug("not implemented: weeknum(1~, Mon)") },
-      X: function(x){ return getter.Y(x) + "/" + getter.m(x) + "/" + getter.d(x) },
-      y: function(x){ return x.getFullYear() % 100 },
-      Y: function(x){ return x.getFullYear() },
-      z: function(x){ throw new Bug("not implemented: time-zone") },
-      Z: function(x){ throw new Bug("not implemented: symbol time zone") },
-      1: function(x){ throw new Bug("not implemented: ISO-8601 year-month-day format") },
-      2: function(x){ throw new Bug("not implemented: ISO-8601 hour-minute-second-timezone format") },
-      3: function(x){ throw new Bug("not implemented: ISO-8601 hour-minute-second format") },
-      4: function(x){ throw new Bug("not implemented: ISO-8601 year-month-day-hour-minute-second-timezone format") },
-      5: function(x){ throw new Bug("not implemented: ISO-8601 year-month-day-hour-minute-second format") }
-    }
-
-    return format.replace(/~([\w1-5~])/g, function(str, x){
-      var func = getter[x];
-      if(func)
-        return func(date);
-      else if(x == "~")
-        return "~";
-      else
-        return x;
-    })
-  }
-  
-  // date->string date template
-  define_libfunc("date->string", 1, 2, function(ar){
-    assert_date(ar[0]);
-
-    if(ar[1]){
-      assert_string(ar[1]);
-      return date2string(ar[0], ar[1]);
-    }
-    else
-      return ar[0].toString();
-  })
-  // string->date
-
-  // parse-date date
-  define_libfunc("parse-date", 1, 1, function(ar){ // not srfi-19
-    assert_string(ar[0]);
-    return new Date(Date.parse(ar[0]));
-  })
-
-  //
-  // srfi-27
-  //
-  define_libfunc("random-integer", 1, 1, function(ar){
-    var n = ar[0];
-    assert_integer(n);
-    if (n < 0)
-      throw new Error("random-integer: the argument must be >= 0");
-    else
-      return Math.floor(Math.random() * ar[0]);
-  });
-  define_libfunc("random-real", 0, 0, function(ar){
-    return Math.random();
-  });
-
-  //
-  // srfi-28 (format)
-  //
-
-  // (format format-str obj1 obj2 ...) -> string
-  // (format #f format-str ...) -> string
-  // (format #t format-str ...) -> output to current port 
-  // (format port format-str ...) -> output to the port 
-  //   ~a: display
-  //   ~s: write
-  //   ~%: newline
-  //   ~~: tilde
-  define_libfunc("format", 1, null, function(ar){
-    if (_.isString(ar[0])) {
-      var port = null, format_str = ar.shift();
-    }
-    else if (ar[0] === false) {
-      ar.shift();
-      var port = null, format_str = ar.shift();
-    }
-    else if (ar[0] === true) {
-      ar.shift();
-      var port = BiwaScheme.Port.current_output,
-          format_str = ar.shift();
-    }
-    else {
-      var port = ar.shift(), format_str = ar.shift();
-      assert_port(port);
-    }
-
-    var str = format_str.replace(/~[as]/g, function(matched){
-                 assert(ar.length > 0,
-                        "insufficient number of arguments", "format");
-                 if (matched == "~a")
-                   return BiwaScheme.to_display(ar.shift());
-                 else
-                   return BiwaScheme.to_write(ar.shift());
-              }).replace(/~%/, "\n")
-                .replace(/~~/, "~");
-    if (port) {
-      port.put_string(str);
-      return BiwaScheme.undef;
-    }
-    else {
-      return str;
-    }
-  });
-  
-  //
-  // srfi-38 (write/ss)
-  //
-  var user_write_ss = function(ar){
-    Console.puts(write_ss(ar[0]), true);
-    return BiwaScheme.undef;
-  }
-  define_libfunc("write/ss", 1, 2, user_write_ss);
-  define_libfunc("write-with-shared-structure", 1, 2, user_write_ss);
-  define_libfunc("write*", 1, 2, user_write_ss); //from Gauche(STklos)
-
-  //
-  // srfi-43 (vector library)
-  //
-  define_libfunc("vector-append", 2, null, function(ar){
-    var vec = [];
-    return vec.concat.apply(vec, ar);
-  });
-
-  // (vector-copy vector)
-  define_libfunc("vector-copy", 1, 1, function(ar){
-    assert_vector(ar[0]);
-    return _.clone(ar[0]);
-  });
-
-  //
-  // see src/library/node_functions.js for:
-  // - srfi-98 (get-environment-variable)
-  //
-}
-BiwaScheme.run = function(code, opts) {
-  opts = opts || {};
-  var intp = new BiwaScheme.Interpreter(function(e){
-    if(!opts["no_print"]) {
-      if(e.stack){
-        console.error(e.stack);
-      }
-      else{
-        console.error(e.toString ? e.toString() : e);
-      }
-    }
-
-    throw e;
-  });
-  return intp.evaluate(code);
-};
-
-BiwaScheme.run_file = function(filename, encoding/*optional*/) {
-  var enc = encoding || 'utf8';
-  var src = __webpack_require__(0).readFileSync(filename, enc);
-  return BiwaScheme.run(src);
-};
-
-// (load scm-path)
-BiwaScheme.define_libfunc("load", 1, 1, function(ar) {
-  var path = ar[0];
-  BiwaScheme.assert_string(path);
-
-  var fullpath;
-  if (path[0] == "/" || /^\w:/.test(path))
-    fullpath = path;
-  else
-    fullpath = process.cwd() + "/" + path;
-
-  var code = __webpack_require__(0).readFileSync(fullpath, "utf8");
-  return BiwaScheme.run(code);
-});
-
-// (js-load js-path)
-BiwaScheme.define_libfunc("js-load", 1, 1, function(ar) {
-  var path = ar[0];
-  BiwaScheme.assert_string(path);
-
-  var fullpath;
-  if (path[0] == "/" || /^\w:/.test(path))
-    fullpath = path;
-  else
-    fullpath = process.cwd() + "/" + path;
-
-  return !(function webpackMissingModule() { var e = new Error("Cannot find module \".\""); e.code = 'MODULE_NOT_FOUND'; throw e; }());
-});
-
-BiwaScheme.Port.current_error =
-BiwaScheme.Port.current_output = new BiwaScheme.Port.CustomOutput(
-  function (str) {
-    process.stdout.write(str)
-  }
-);
-
-var readline = __webpack_require__(8);
-BiwaScheme.Port.current_input = new BiwaScheme.Port.CustomInput(
-  function (callback) {
-    var rl = readline.createInterface({
-      input: process.stdin
-    });
-    rl.on('line', function (line) {
-      rl.close();
-      callback(line);
-    });
-    rl.setPrompt('', 0);
-    rl.prompt()
-  }
-);
-
-for(x in BiwaScheme){
-  exports[x] = BiwaScheme[x];
-}
-
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2)))
-
-/***/ }),
-/* 18 */
-/***/ (function(module, exports) {
-
-function webpackEmptyContext(req) {
-	throw new Error("Cannot find module '" + req + "'.");
-}
-webpackEmptyContext.keys = function() { return []; };
-webpackEmptyContext.resolve = webpackEmptyContext;
-module.exports = webpackEmptyContext;
-webpackEmptyContext.id = 18;
-
-/***/ }),
-/* 19 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-/* WEBPACK VAR INJECTION */(function(global) {/*!
- * The buffer module from node.js, for the browser.
- *
- * @author   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
- * @license  MIT
- */
-/* eslint-disable no-proto */
-
-
-
-var base64 = __webpack_require__(20)
-var ieee754 = __webpack_require__(21)
-var isArray = __webpack_require__(22)
-
-exports.Buffer = Buffer
-exports.SlowBuffer = SlowBuffer
-exports.INSPECT_MAX_BYTES = 50
-
-/**
- * If `Buffer.TYPED_ARRAY_SUPPORT`:
- *   === true    Use Uint8Array implementation (fastest)
- *   === false   Use Object implementation (most compatible, even IE6)
- *
- * Browsers that support typed arrays are IE 10+, Firefox 4+, Chrome 7+, Safari 5.1+,
- * Opera 11.6+, iOS 4.2+.
- *
- * Due to various browser bugs, sometimes the Object implementation will be used even
- * when the browser supports typed arrays.
- *
- * Note:
- *
- *   - Firefox 4-29 lacks support for adding new properties to `Uint8Array` instances,
- *     See: https://bugzilla.mozilla.org/show_bug.cgi?id=695438.
- *
- *   - Chrome 9-10 is missing the `TypedArray.prototype.subarray` function.
- *
- *   - IE10 has a broken `TypedArray.prototype.subarray` function which returns arrays of
- *     incorrect length in some situations.
-
- * We detect these buggy browsers and set `Buffer.TYPED_ARRAY_SUPPORT` to `false` so they
- * get the Object implementation, which is slower but behaves correctly.
- */
-Buffer.TYPED_ARRAY_SUPPORT = global.TYPED_ARRAY_SUPPORT !== undefined
-  ? global.TYPED_ARRAY_SUPPORT
-  : typedArraySupport()
-
-/*
- * Export kMaxLength after typed array support is determined.
- */
-exports.kMaxLength = kMaxLength()
-
-function typedArraySupport () {
-  try {
-    var arr = new Uint8Array(1)
-    arr.__proto__ = {__proto__: Uint8Array.prototype, foo: function () { return 42 }}
-    return arr.foo() === 42 && // typed array instances can be augmented
-        typeof arr.subarray === 'function' && // chrome 9-10 lack `subarray`
-        arr.subarray(1, 1).byteLength === 0 // ie10 has broken `subarray`
-  } catch (e) {
-    return false
-  }
-}
-
-function kMaxLength () {
-  return Buffer.TYPED_ARRAY_SUPPORT
-    ? 0x7fffffff
-    : 0x3fffffff
-}
-
-function createBuffer (that, length) {
-  if (kMaxLength() < length) {
-    throw new RangeError('Invalid typed array length')
-  }
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    // Return an augmented `Uint8Array` instance, for best performance
-    that = new Uint8Array(length)
-    that.__proto__ = Buffer.prototype
-  } else {
-    // Fallback: Return an object instance of the Buffer class
-    if (that === null) {
-      that = new Buffer(length)
-    }
-    that.length = length
-  }
-
-  return that
-}
-
-/**
- * The Buffer constructor returns instances of `Uint8Array` that have their
- * prototype changed to `Buffer.prototype`. Furthermore, `Buffer` is a subclass of
- * `Uint8Array`, so the returned instances will have all the node `Buffer` methods
- * and the `Uint8Array` methods. Square bracket notation works as expected -- it
- * returns a single octet.
- *
- * The `Uint8Array` prototype remains unmodified.
- */
-
-function Buffer (arg, encodingOrOffset, length) {
-  if (!Buffer.TYPED_ARRAY_SUPPORT && !(this instanceof Buffer)) {
-    return new Buffer(arg, encodingOrOffset, length)
-  }
-
-  // Common case.
-  if (typeof arg === 'number') {
-    if (typeof encodingOrOffset === 'string') {
-      throw new Error(
-        'If encoding is specified then the first argument must be a string'
-      )
-    }
-    return allocUnsafe(this, arg)
-  }
-  return from(this, arg, encodingOrOffset, length)
-}
-
-Buffer.poolSize = 8192 // not used by this implementation
-
-// TODO: Legacy, not needed anymore. Remove in next major version.
-Buffer._augment = function (arr) {
-  arr.__proto__ = Buffer.prototype
-  return arr
-}
-
-function from (that, value, encodingOrOffset, length) {
-  if (typeof value === 'number') {
-    throw new TypeError('"value" argument must not be a number')
-  }
-
-  if (typeof ArrayBuffer !== 'undefined' && value instanceof ArrayBuffer) {
-    return fromArrayBuffer(that, value, encodingOrOffset, length)
-  }
-
-  if (typeof value === 'string') {
-    return fromString(that, value, encodingOrOffset)
-  }
-
-  return fromObject(that, value)
-}
-
-/**
- * Functionally equivalent to Buffer(arg, encoding) but throws a TypeError
- * if value is a number.
- * Buffer.from(str[, encoding])
- * Buffer.from(array)
- * Buffer.from(buffer)
- * Buffer.from(arrayBuffer[, byteOffset[, length]])
- **/
-Buffer.from = function (value, encodingOrOffset, length) {
-  return from(null, value, encodingOrOffset, length)
-}
-
-if (Buffer.TYPED_ARRAY_SUPPORT) {
-  Buffer.prototype.__proto__ = Uint8Array.prototype
-  Buffer.__proto__ = Uint8Array
-  if (typeof Symbol !== 'undefined' && Symbol.species &&
-      Buffer[Symbol.species] === Buffer) {
-    // Fix subarray() in ES2016. See: https://github.com/feross/buffer/pull/97
-    Object.defineProperty(Buffer, Symbol.species, {
-      value: null,
-      configurable: true
-    })
-  }
-}
-
-function assertSize (size) {
-  if (typeof size !== 'number') {
-    throw new TypeError('"size" argument must be a number')
-  } else if (size < 0) {
-    throw new RangeError('"size" argument must not be negative')
-  }
-}
-
-function alloc (that, size, fill, encoding) {
-  assertSize(size)
-  if (size <= 0) {
-    return createBuffer(that, size)
-  }
-  if (fill !== undefined) {
-    // Only pay attention to encoding if it's a string. This
-    // prevents accidentally sending in a number that would
-    // be interpretted as a start offset.
-    return typeof encoding === 'string'
-      ? createBuffer(that, size).fill(fill, encoding)
-      : createBuffer(that, size).fill(fill)
-  }
-  return createBuffer(that, size)
-}
-
-/**
- * Creates a new filled Buffer instance.
- * alloc(size[, fill[, encoding]])
- **/
-Buffer.alloc = function (size, fill, encoding) {
-  return alloc(null, size, fill, encoding)
-}
-
-function allocUnsafe (that, size) {
-  assertSize(size)
-  that = createBuffer(that, size < 0 ? 0 : checked(size) | 0)
-  if (!Buffer.TYPED_ARRAY_SUPPORT) {
-    for (var i = 0; i < size; ++i) {
-      that[i] = 0
-    }
-  }
-  return that
-}
-
-/**
- * Equivalent to Buffer(num), by default creates a non-zero-filled Buffer instance.
- * */
-Buffer.allocUnsafe = function (size) {
-  return allocUnsafe(null, size)
-}
-/**
- * Equivalent to SlowBuffer(num), by default creates a non-zero-filled Buffer instance.
- */
-Buffer.allocUnsafeSlow = function (size) {
-  return allocUnsafe(null, size)
-}
-
-function fromString (that, string, encoding) {
-  if (typeof encoding !== 'string' || encoding === '') {
-    encoding = 'utf8'
-  }
-
-  if (!Buffer.isEncoding(encoding)) {
-    throw new TypeError('"encoding" must be a valid string encoding')
-  }
-
-  var length = byteLength(string, encoding) | 0
-  that = createBuffer(that, length)
-
-  var actual = that.write(string, encoding)
-
-  if (actual !== length) {
-    // Writing a hex string, for example, that contains invalid characters will
-    // cause everything after the first invalid character to be ignored. (e.g.
-    // 'abxxcd' will be treated as 'ab')
-    that = that.slice(0, actual)
-  }
-
-  return that
-}
-
-function fromArrayLike (that, array) {
-  var length = array.length < 0 ? 0 : checked(array.length) | 0
-  that = createBuffer(that, length)
-  for (var i = 0; i < length; i += 1) {
-    that[i] = array[i] & 255
-  }
-  return that
-}
-
-function fromArrayBuffer (that, array, byteOffset, length) {
-  array.byteLength // this throws if `array` is not a valid ArrayBuffer
-
-  if (byteOffset < 0 || array.byteLength < byteOffset) {
-    throw new RangeError('\'offset\' is out of bounds')
-  }
-
-  if (array.byteLength < byteOffset + (length || 0)) {
-    throw new RangeError('\'length\' is out of bounds')
-  }
-
-  if (byteOffset === undefined && length === undefined) {
-    array = new Uint8Array(array)
-  } else if (length === undefined) {
-    array = new Uint8Array(array, byteOffset)
-  } else {
-    array = new Uint8Array(array, byteOffset, length)
-  }
-
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    // Return an augmented `Uint8Array` instance, for best performance
-    that = array
-    that.__proto__ = Buffer.prototype
-  } else {
-    // Fallback: Return an object instance of the Buffer class
-    that = fromArrayLike(that, array)
-  }
-  return that
-}
-
-function fromObject (that, obj) {
-  if (Buffer.isBuffer(obj)) {
-    var len = checked(obj.length) | 0
-    that = createBuffer(that, len)
-
-    if (that.length === 0) {
-      return that
-    }
-
-    obj.copy(that, 0, 0, len)
-    return that
-  }
-
-  if (obj) {
-    if ((typeof ArrayBuffer !== 'undefined' &&
-        obj.buffer instanceof ArrayBuffer) || 'length' in obj) {
-      if (typeof obj.length !== 'number' || isnan(obj.length)) {
-        return createBuffer(that, 0)
-      }
-      return fromArrayLike(that, obj)
-    }
-
-    if (obj.type === 'Buffer' && isArray(obj.data)) {
-      return fromArrayLike(that, obj.data)
-    }
-  }
-
-  throw new TypeError('First argument must be a string, Buffer, ArrayBuffer, Array, or array-like object.')
-}
-
-function checked (length) {
-  // Note: cannot use `length < kMaxLength()` here because that fails when
-  // length is NaN (which is otherwise coerced to zero.)
-  if (length >= kMaxLength()) {
-    throw new RangeError('Attempt to allocate Buffer larger than maximum ' +
-                         'size: 0x' + kMaxLength().toString(16) + ' bytes')
-  }
-  return length | 0
-}
-
-function SlowBuffer (length) {
-  if (+length != length) { // eslint-disable-line eqeqeq
-    length = 0
-  }
-  return Buffer.alloc(+length)
-}
-
-Buffer.isBuffer = function isBuffer (b) {
-  return !!(b != null && b._isBuffer)
-}
-
-Buffer.compare = function compare (a, b) {
-  if (!Buffer.isBuffer(a) || !Buffer.isBuffer(b)) {
-    throw new TypeError('Arguments must be Buffers')
-  }
-
-  if (a === b) return 0
-
-  var x = a.length
-  var y = b.length
-
-  for (var i = 0, len = Math.min(x, y); i < len; ++i) {
-    if (a[i] !== b[i]) {
-      x = a[i]
-      y = b[i]
-      break
-    }
-  }
-
-  if (x < y) return -1
-  if (y < x) return 1
-  return 0
-}
-
-Buffer.isEncoding = function isEncoding (encoding) {
-  switch (String(encoding).toLowerCase()) {
-    case 'hex':
-    case 'utf8':
-    case 'utf-8':
-    case 'ascii':
-    case 'latin1':
-    case 'binary':
-    case 'base64':
-    case 'ucs2':
-    case 'ucs-2':
-    case 'utf16le':
-    case 'utf-16le':
-      return true
-    default:
-      return false
-  }
-}
-
-Buffer.concat = function concat (list, length) {
-  if (!isArray(list)) {
-    throw new TypeError('"list" argument must be an Array of Buffers')
-  }
-
-  if (list.length === 0) {
-    return Buffer.alloc(0)
-  }
-
-  var i
-  if (length === undefined) {
-    length = 0
-    for (i = 0; i < list.length; ++i) {
-      length += list[i].length
-    }
-  }
-
-  var buffer = Buffer.allocUnsafe(length)
-  var pos = 0
-  for (i = 0; i < list.length; ++i) {
-    var buf = list[i]
-    if (!Buffer.isBuffer(buf)) {
-      throw new TypeError('"list" argument must be an Array of Buffers')
-    }
-    buf.copy(buffer, pos)
-    pos += buf.length
-  }
-  return buffer
-}
-
-function byteLength (string, encoding) {
-  if (Buffer.isBuffer(string)) {
-    return string.length
-  }
-  if (typeof ArrayBuffer !== 'undefined' && typeof ArrayBuffer.isView === 'function' &&
-      (ArrayBuffer.isView(string) || string instanceof ArrayBuffer)) {
-    return string.byteLength
-  }
-  if (typeof string !== 'string') {
-    string = '' + string
-  }
-
-  var len = string.length
-  if (len === 0) return 0
-
-  // Use a for loop to avoid recursion
-  var loweredCase = false
-  for (;;) {
-    switch (encoding) {
-      case 'ascii':
-      case 'latin1':
-      case 'binary':
-        return len
-      case 'utf8':
-      case 'utf-8':
-      case undefined:
-        return utf8ToBytes(string).length
-      case 'ucs2':
-      case 'ucs-2':
-      case 'utf16le':
-      case 'utf-16le':
-        return len * 2
-      case 'hex':
-        return len >>> 1
-      case 'base64':
-        return base64ToBytes(string).length
-      default:
-        if (loweredCase) return utf8ToBytes(string).length // assume utf8
-        encoding = ('' + encoding).toLowerCase()
-        loweredCase = true
-    }
-  }
-}
-Buffer.byteLength = byteLength
-
-function slowToString (encoding, start, end) {
-  var loweredCase = false
-
-  // No need to verify that "this.length <= MAX_UINT32" since it's a read-only
-  // property of a typed array.
-
-  // This behaves neither like String nor Uint8Array in that we set start/end
-  // to their upper/lower bounds if the value passed is out of range.
-  // undefined is handled specially as per ECMA-262 6th Edition,
-  // Section 13.3.3.7 Runtime Semantics: KeyedBindingInitialization.
-  if (start === undefined || start < 0) {
-    start = 0
-  }
-  // Return early if start > this.length. Done here to prevent potential uint32
-  // coercion fail below.
-  if (start > this.length) {
-    return ''
-  }
-
-  if (end === undefined || end > this.length) {
-    end = this.length
-  }
-
-  if (end <= 0) {
-    return ''
-  }
-
-  // Force coersion to uint32. This will also coerce falsey/NaN values to 0.
-  end >>>= 0
-  start >>>= 0
-
-  if (end <= start) {
-    return ''
-  }
-
-  if (!encoding) encoding = 'utf8'
-
-  while (true) {
-    switch (encoding) {
-      case 'hex':
-        return hexSlice(this, start, end)
-
-      case 'utf8':
-      case 'utf-8':
-        return utf8Slice(this, start, end)
-
-      case 'ascii':
-        return asciiSlice(this, start, end)
-
-      case 'latin1':
-      case 'binary':
-        return latin1Slice(this, start, end)
-
-      case 'base64':
-        return base64Slice(this, start, end)
-
-      case 'ucs2':
-      case 'ucs-2':
-      case 'utf16le':
-      case 'utf-16le':
-        return utf16leSlice(this, start, end)
-
-      default:
-        if (loweredCase) throw new TypeError('Unknown encoding: ' + encoding)
-        encoding = (encoding + '').toLowerCase()
-        loweredCase = true
-    }
-  }
-}
-
-// The property is used by `Buffer.isBuffer` and `is-buffer` (in Safari 5-7) to detect
-// Buffer instances.
-Buffer.prototype._isBuffer = true
-
-function swap (b, n, m) {
-  var i = b[n]
-  b[n] = b[m]
-  b[m] = i
-}
-
-Buffer.prototype.swap16 = function swap16 () {
-  var len = this.length
-  if (len % 2 !== 0) {
-    throw new RangeError('Buffer size must be a multiple of 16-bits')
-  }
-  for (var i = 0; i < len; i += 2) {
-    swap(this, i, i + 1)
-  }
-  return this
-}
-
-Buffer.prototype.swap32 = function swap32 () {
-  var len = this.length
-  if (len % 4 !== 0) {
-    throw new RangeError('Buffer size must be a multiple of 32-bits')
-  }
-  for (var i = 0; i < len; i += 4) {
-    swap(this, i, i + 3)
-    swap(this, i + 1, i + 2)
-  }
-  return this
-}
-
-Buffer.prototype.swap64 = function swap64 () {
-  var len = this.length
-  if (len % 8 !== 0) {
-    throw new RangeError('Buffer size must be a multiple of 64-bits')
-  }
-  for (var i = 0; i < len; i += 8) {
-    swap(this, i, i + 7)
-    swap(this, i + 1, i + 6)
-    swap(this, i + 2, i + 5)
-    swap(this, i + 3, i + 4)
-  }
-  return this
-}
-
-Buffer.prototype.toString = function toString () {
-  var length = this.length | 0
-  if (length === 0) return ''
-  if (arguments.length === 0) return utf8Slice(this, 0, length)
-  return slowToString.apply(this, arguments)
-}
-
-Buffer.prototype.equals = function equals (b) {
-  if (!Buffer.isBuffer(b)) throw new TypeError('Argument must be a Buffer')
-  if (this === b) return true
-  return Buffer.compare(this, b) === 0
-}
-
-Buffer.prototype.inspect = function inspect () {
-  var str = ''
-  var max = exports.INSPECT_MAX_BYTES
-  if (this.length > 0) {
-    str = this.toString('hex', 0, max).match(/.{2}/g).join(' ')
-    if (this.length > max) str += ' ... '
-  }
-  return '<Buffer ' + str + '>'
-}
-
-Buffer.prototype.compare = function compare (target, start, end, thisStart, thisEnd) {
-  if (!Buffer.isBuffer(target)) {
-    throw new TypeError('Argument must be a Buffer')
-  }
-
-  if (start === undefined) {
-    start = 0
-  }
-  if (end === undefined) {
-    end = target ? target.length : 0
-  }
-  if (thisStart === undefined) {
-    thisStart = 0
-  }
-  if (thisEnd === undefined) {
-    thisEnd = this.length
-  }
-
-  if (start < 0 || end > target.length || thisStart < 0 || thisEnd > this.length) {
-    throw new RangeError('out of range index')
-  }
-
-  if (thisStart >= thisEnd && start >= end) {
-    return 0
-  }
-  if (thisStart >= thisEnd) {
-    return -1
-  }
-  if (start >= end) {
-    return 1
-  }
-
-  start >>>= 0
-  end >>>= 0
-  thisStart >>>= 0
-  thisEnd >>>= 0
-
-  if (this === target) return 0
-
-  var x = thisEnd - thisStart
-  var y = end - start
-  var len = Math.min(x, y)
-
-  var thisCopy = this.slice(thisStart, thisEnd)
-  var targetCopy = target.slice(start, end)
-
-  for (var i = 0; i < len; ++i) {
-    if (thisCopy[i] !== targetCopy[i]) {
-      x = thisCopy[i]
-      y = targetCopy[i]
-      break
-    }
-  }
-
-  if (x < y) return -1
-  if (y < x) return 1
-  return 0
-}
-
-// Finds either the first index of `val` in `buffer` at offset >= `byteOffset`,
-// OR the last index of `val` in `buffer` at offset <= `byteOffset`.
-//
-// Arguments:
-// - buffer - a Buffer to search
-// - val - a string, Buffer, or number
-// - byteOffset - an index into `buffer`; will be clamped to an int32
-// - encoding - an optional encoding, relevant is val is a string
-// - dir - true for indexOf, false for lastIndexOf
-function bidirectionalIndexOf (buffer, val, byteOffset, encoding, dir) {
-  // Empty buffer means no match
-  if (buffer.length === 0) return -1
-
-  // Normalize byteOffset
-  if (typeof byteOffset === 'string') {
-    encoding = byteOffset
-    byteOffset = 0
-  } else if (byteOffset > 0x7fffffff) {
-    byteOffset = 0x7fffffff
-  } else if (byteOffset < -0x80000000) {
-    byteOffset = -0x80000000
-  }
-  byteOffset = +byteOffset  // Coerce to Number.
-  if (isNaN(byteOffset)) {
-    // byteOffset: it it's undefined, null, NaN, "foo", etc, search whole buffer
-    byteOffset = dir ? 0 : (buffer.length - 1)
-  }
-
-  // Normalize byteOffset: negative offsets start from the end of the buffer
-  if (byteOffset < 0) byteOffset = buffer.length + byteOffset
-  if (byteOffset >= buffer.length) {
-    if (dir) return -1
-    else byteOffset = buffer.length - 1
-  } else if (byteOffset < 0) {
-    if (dir) byteOffset = 0
-    else return -1
-  }
-
-  // Normalize val
-  if (typeof val === 'string') {
-    val = Buffer.from(val, encoding)
-  }
-
-  // Finally, search either indexOf (if dir is true) or lastIndexOf
-  if (Buffer.isBuffer(val)) {
-    // Special case: looking for empty string/buffer always fails
-    if (val.length === 0) {
-      return -1
-    }
-    return arrayIndexOf(buffer, val, byteOffset, encoding, dir)
-  } else if (typeof val === 'number') {
-    val = val & 0xFF // Search for a byte value [0-255]
-    if (Buffer.TYPED_ARRAY_SUPPORT &&
-        typeof Uint8Array.prototype.indexOf === 'function') {
-      if (dir) {
-        return Uint8Array.prototype.indexOf.call(buffer, val, byteOffset)
-      } else {
-        return Uint8Array.prototype.lastIndexOf.call(buffer, val, byteOffset)
-      }
-    }
-    return arrayIndexOf(buffer, [ val ], byteOffset, encoding, dir)
-  }
-
-  throw new TypeError('val must be string, number or Buffer')
-}
-
-function arrayIndexOf (arr, val, byteOffset, encoding, dir) {
-  var indexSize = 1
-  var arrLength = arr.length
-  var valLength = val.length
-
-  if (encoding !== undefined) {
-    encoding = String(encoding).toLowerCase()
-    if (encoding === 'ucs2' || encoding === 'ucs-2' ||
-        encoding === 'utf16le' || encoding === 'utf-16le') {
-      if (arr.length < 2 || val.length < 2) {
-        return -1
-      }
-      indexSize = 2
-      arrLength /= 2
-      valLength /= 2
-      byteOffset /= 2
-    }
-  }
-
-  function read (buf, i) {
-    if (indexSize === 1) {
-      return buf[i]
-    } else {
-      return buf.readUInt16BE(i * indexSize)
-    }
-  }
-
-  var i
-  if (dir) {
-    var foundIndex = -1
-    for (i = byteOffset; i < arrLength; i++) {
-      if (read(arr, i) === read(val, foundIndex === -1 ? 0 : i - foundIndex)) {
-        if (foundIndex === -1) foundIndex = i
-        if (i - foundIndex + 1 === valLength) return foundIndex * indexSize
-      } else {
-        if (foundIndex !== -1) i -= i - foundIndex
-        foundIndex = -1
-      }
-    }
-  } else {
-    if (byteOffset + valLength > arrLength) byteOffset = arrLength - valLength
-    for (i = byteOffset; i >= 0; i--) {
-      var found = true
-      for (var j = 0; j < valLength; j++) {
-        if (read(arr, i + j) !== read(val, j)) {
-          found = false
-          break
-        }
-      }
-      if (found) return i
-    }
-  }
-
-  return -1
-}
-
-Buffer.prototype.includes = function includes (val, byteOffset, encoding) {
-  return this.indexOf(val, byteOffset, encoding) !== -1
-}
-
-Buffer.prototype.indexOf = function indexOf (val, byteOffset, encoding) {
-  return bidirectionalIndexOf(this, val, byteOffset, encoding, true)
-}
-
-Buffer.prototype.lastIndexOf = function lastIndexOf (val, byteOffset, encoding) {
-  return bidirectionalIndexOf(this, val, byteOffset, encoding, false)
-}
-
-function hexWrite (buf, string, offset, length) {
-  offset = Number(offset) || 0
-  var remaining = buf.length - offset
-  if (!length) {
-    length = remaining
-  } else {
-    length = Number(length)
-    if (length > remaining) {
-      length = remaining
-    }
-  }
-
-  // must be an even number of digits
-  var strLen = string.length
-  if (strLen % 2 !== 0) throw new TypeError('Invalid hex string')
-
-  if (length > strLen / 2) {
-    length = strLen / 2
-  }
-  for (var i = 0; i < length; ++i) {
-    var parsed = parseInt(string.substr(i * 2, 2), 16)
-    if (isNaN(parsed)) return i
-    buf[offset + i] = parsed
-  }
-  return i
-}
-
-function utf8Write (buf, string, offset, length) {
-  return blitBuffer(utf8ToBytes(string, buf.length - offset), buf, offset, length)
-}
-
-function asciiWrite (buf, string, offset, length) {
-  return blitBuffer(asciiToBytes(string), buf, offset, length)
-}
-
-function latin1Write (buf, string, offset, length) {
-  return asciiWrite(buf, string, offset, length)
-}
-
-function base64Write (buf, string, offset, length) {
-  return blitBuffer(base64ToBytes(string), buf, offset, length)
-}
-
-function ucs2Write (buf, string, offset, length) {
-  return blitBuffer(utf16leToBytes(string, buf.length - offset), buf, offset, length)
-}
-
-Buffer.prototype.write = function write (string, offset, length, encoding) {
-  // Buffer#write(string)
-  if (offset === undefined) {
-    encoding = 'utf8'
-    length = this.length
-    offset = 0
-  // Buffer#write(string, encoding)
-  } else if (length === undefined && typeof offset === 'string') {
-    encoding = offset
-    length = this.length
-    offset = 0
-  // Buffer#write(string, offset[, length][, encoding])
-  } else if (isFinite(offset)) {
-    offset = offset | 0
-    if (isFinite(length)) {
-      length = length | 0
-      if (encoding === undefined) encoding = 'utf8'
-    } else {
-      encoding = length
-      length = undefined
-    }
-  // legacy write(string, encoding, offset, length) - remove in v0.13
-  } else {
-    throw new Error(
-      'Buffer.write(string, encoding, offset[, length]) is no longer supported'
-    )
-  }
-
-  var remaining = this.length - offset
-  if (length === undefined || length > remaining) length = remaining
-
-  if ((string.length > 0 && (length < 0 || offset < 0)) || offset > this.length) {
-    throw new RangeError('Attempt to write outside buffer bounds')
-  }
-
-  if (!encoding) encoding = 'utf8'
-
-  var loweredCase = false
-  for (;;) {
-    switch (encoding) {
-      case 'hex':
-        return hexWrite(this, string, offset, length)
-
-      case 'utf8':
-      case 'utf-8':
-        return utf8Write(this, string, offset, length)
-
-      case 'ascii':
-        return asciiWrite(this, string, offset, length)
-
-      case 'latin1':
-      case 'binary':
-        return latin1Write(this, string, offset, length)
-
-      case 'base64':
-        // Warning: maxLength not taken into account in base64Write
-        return base64Write(this, string, offset, length)
-
-      case 'ucs2':
-      case 'ucs-2':
-      case 'utf16le':
-      case 'utf-16le':
-        return ucs2Write(this, string, offset, length)
-
-      default:
-        if (loweredCase) throw new TypeError('Unknown encoding: ' + encoding)
-        encoding = ('' + encoding).toLowerCase()
-        loweredCase = true
-    }
-  }
-}
-
-Buffer.prototype.toJSON = function toJSON () {
-  return {
-    type: 'Buffer',
-    data: Array.prototype.slice.call(this._arr || this, 0)
-  }
-}
-
-function base64Slice (buf, start, end) {
-  if (start === 0 && end === buf.length) {
-    return base64.fromByteArray(buf)
-  } else {
-    return base64.fromByteArray(buf.slice(start, end))
-  }
-}
-
-function utf8Slice (buf, start, end) {
-  end = Math.min(buf.length, end)
-  var res = []
-
-  var i = start
-  while (i < end) {
-    var firstByte = buf[i]
-    var codePoint = null
-    var bytesPerSequence = (firstByte > 0xEF) ? 4
-      : (firstByte > 0xDF) ? 3
-      : (firstByte > 0xBF) ? 2
-      : 1
-
-    if (i + bytesPerSequence <= end) {
-      var secondByte, thirdByte, fourthByte, tempCodePoint
-
-      switch (bytesPerSequence) {
-        case 1:
-          if (firstByte < 0x80) {
-            codePoint = firstByte
-          }
-          break
-        case 2:
-          secondByte = buf[i + 1]
-          if ((secondByte & 0xC0) === 0x80) {
-            tempCodePoint = (firstByte & 0x1F) << 0x6 | (secondByte & 0x3F)
-            if (tempCodePoint > 0x7F) {
-              codePoint = tempCodePoint
-            }
-          }
-          break
-        case 3:
-          secondByte = buf[i + 1]
-          thirdByte = buf[i + 2]
-          if ((secondByte & 0xC0) === 0x80 && (thirdByte & 0xC0) === 0x80) {
-            tempCodePoint = (firstByte & 0xF) << 0xC | (secondByte & 0x3F) << 0x6 | (thirdByte & 0x3F)
-            if (tempCodePoint > 0x7FF && (tempCodePoint < 0xD800 || tempCodePoint > 0xDFFF)) {
-              codePoint = tempCodePoint
-            }
-          }
-          break
-        case 4:
-          secondByte = buf[i + 1]
-          thirdByte = buf[i + 2]
-          fourthByte = buf[i + 3]
-          if ((secondByte & 0xC0) === 0x80 && (thirdByte & 0xC0) === 0x80 && (fourthByte & 0xC0) === 0x80) {
-            tempCodePoint = (firstByte & 0xF) << 0x12 | (secondByte & 0x3F) << 0xC | (thirdByte & 0x3F) << 0x6 | (fourthByte & 0x3F)
-            if (tempCodePoint > 0xFFFF && tempCodePoint < 0x110000) {
-              codePoint = tempCodePoint
-            }
-          }
-      }
-    }
-
-    if (codePoint === null) {
-      // we did not generate a valid codePoint so insert a
-      // replacement char (U+FFFD) and advance only 1 byte
-      codePoint = 0xFFFD
-      bytesPerSequence = 1
-    } else if (codePoint > 0xFFFF) {
-      // encode to utf16 (surrogate pair dance)
-      codePoint -= 0x10000
-      res.push(codePoint >>> 10 & 0x3FF | 0xD800)
-      codePoint = 0xDC00 | codePoint & 0x3FF
-    }
-
-    res.push(codePoint)
-    i += bytesPerSequence
-  }
-
-  return decodeCodePointsArray(res)
-}
-
-// Based on http://stackoverflow.com/a/22747272/680742, the browser with
-// the lowest limit is Chrome, with 0x10000 args.
-// We go 1 magnitude less, for safety
-var MAX_ARGUMENTS_LENGTH = 0x1000
-
-function decodeCodePointsArray (codePoints) {
-  var len = codePoints.length
-  if (len <= MAX_ARGUMENTS_LENGTH) {
-    return String.fromCharCode.apply(String, codePoints) // avoid extra slice()
-  }
-
-  // Decode in chunks to avoid "call stack size exceeded".
-  var res = ''
-  var i = 0
-  while (i < len) {
-    res += String.fromCharCode.apply(
-      String,
-      codePoints.slice(i, i += MAX_ARGUMENTS_LENGTH)
-    )
-  }
-  return res
-}
-
-function asciiSlice (buf, start, end) {
-  var ret = ''
-  end = Math.min(buf.length, end)
-
-  for (var i = start; i < end; ++i) {
-    ret += String.fromCharCode(buf[i] & 0x7F)
-  }
-  return ret
-}
-
-function latin1Slice (buf, start, end) {
-  var ret = ''
-  end = Math.min(buf.length, end)
-
-  for (var i = start; i < end; ++i) {
-    ret += String.fromCharCode(buf[i])
-  }
-  return ret
-}
-
-function hexSlice (buf, start, end) {
-  var len = buf.length
-
-  if (!start || start < 0) start = 0
-  if (!end || end < 0 || end > len) end = len
-
-  var out = ''
-  for (var i = start; i < end; ++i) {
-    out += toHex(buf[i])
-  }
-  return out
-}
-
-function utf16leSlice (buf, start, end) {
-  var bytes = buf.slice(start, end)
-  var res = ''
-  for (var i = 0; i < bytes.length; i += 2) {
-    res += String.fromCharCode(bytes[i] + bytes[i + 1] * 256)
-  }
-  return res
-}
-
-Buffer.prototype.slice = function slice (start, end) {
-  var len = this.length
-  start = ~~start
-  end = end === undefined ? len : ~~end
-
-  if (start < 0) {
-    start += len
-    if (start < 0) start = 0
-  } else if (start > len) {
-    start = len
-  }
-
-  if (end < 0) {
-    end += len
-    if (end < 0) end = 0
-  } else if (end > len) {
-    end = len
-  }
-
-  if (end < start) end = start
-
-  var newBuf
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    newBuf = this.subarray(start, end)
-    newBuf.__proto__ = Buffer.prototype
-  } else {
-    var sliceLen = end - start
-    newBuf = new Buffer(sliceLen, undefined)
-    for (var i = 0; i < sliceLen; ++i) {
-      newBuf[i] = this[i + start]
-    }
-  }
-
-  return newBuf
-}
-
-/*
- * Need to make sure that buffer isn't trying to write out of bounds.
- */
-function checkOffset (offset, ext, length) {
-  if ((offset % 1) !== 0 || offset < 0) throw new RangeError('offset is not uint')
-  if (offset + ext > length) throw new RangeError('Trying to access beyond buffer length')
-}
-
-Buffer.prototype.readUIntLE = function readUIntLE (offset, byteLength, noAssert) {
-  offset = offset | 0
-  byteLength = byteLength | 0
-  if (!noAssert) checkOffset(offset, byteLength, this.length)
-
-  var val = this[offset]
-  var mul = 1
-  var i = 0
-  while (++i < byteLength && (mul *= 0x100)) {
-    val += this[offset + i] * mul
-  }
-
-  return val
-}
-
-Buffer.prototype.readUIntBE = function readUIntBE (offset, byteLength, noAssert) {
-  offset = offset | 0
-  byteLength = byteLength | 0
-  if (!noAssert) {
-    checkOffset(offset, byteLength, this.length)
-  }
-
-  var val = this[offset + --byteLength]
-  var mul = 1
-  while (byteLength > 0 && (mul *= 0x100)) {
-    val += this[offset + --byteLength] * mul
-  }
-
-  return val
-}
-
-Buffer.prototype.readUInt8 = function readUInt8 (offset, noAssert) {
-  if (!noAssert) checkOffset(offset, 1, this.length)
-  return this[offset]
-}
-
-Buffer.prototype.readUInt16LE = function readUInt16LE (offset, noAssert) {
-  if (!noAssert) checkOffset(offset, 2, this.length)
-  return this[offset] | (this[offset + 1] << 8)
-}
-
-Buffer.prototype.readUInt16BE = function readUInt16BE (offset, noAssert) {
-  if (!noAssert) checkOffset(offset, 2, this.length)
-  return (this[offset] << 8) | this[offset + 1]
-}
-
-Buffer.prototype.readUInt32LE = function readUInt32LE (offset, noAssert) {
-  if (!noAssert) checkOffset(offset, 4, this.length)
-
-  return ((this[offset]) |
-      (this[offset + 1] << 8) |
-      (this[offset + 2] << 16)) +
-      (this[offset + 3] * 0x1000000)
-}
-
-Buffer.prototype.readUInt32BE = function readUInt32BE (offset, noAssert) {
-  if (!noAssert) checkOffset(offset, 4, this.length)
-
-  return (this[offset] * 0x1000000) +
-    ((this[offset + 1] << 16) |
-    (this[offset + 2] << 8) |
-    this[offset + 3])
-}
-
-Buffer.prototype.readIntLE = function readIntLE (offset, byteLength, noAssert) {
-  offset = offset | 0
-  byteLength = byteLength | 0
-  if (!noAssert) checkOffset(offset, byteLength, this.length)
-
-  var val = this[offset]
-  var mul = 1
-  var i = 0
-  while (++i < byteLength && (mul *= 0x100)) {
-    val += this[offset + i] * mul
-  }
-  mul *= 0x80
-
-  if (val >= mul) val -= Math.pow(2, 8 * byteLength)
-
-  return val
-}
-
-Buffer.prototype.readIntBE = function readIntBE (offset, byteLength, noAssert) {
-  offset = offset | 0
-  byteLength = byteLength | 0
-  if (!noAssert) checkOffset(offset, byteLength, this.length)
-
-  var i = byteLength
-  var mul = 1
-  var val = this[offset + --i]
-  while (i > 0 && (mul *= 0x100)) {
-    val += this[offset + --i] * mul
-  }
-  mul *= 0x80
-
-  if (val >= mul) val -= Math.pow(2, 8 * byteLength)
-
-  return val
-}
-
-Buffer.prototype.readInt8 = function readInt8 (offset, noAssert) {
-  if (!noAssert) checkOffset(offset, 1, this.length)
-  if (!(this[offset] & 0x80)) return (this[offset])
-  return ((0xff - this[offset] + 1) * -1)
-}
-
-Buffer.prototype.readInt16LE = function readInt16LE (offset, noAssert) {
-  if (!noAssert) checkOffset(offset, 2, this.length)
-  var val = this[offset] | (this[offset + 1] << 8)
-  return (val & 0x8000) ? val | 0xFFFF0000 : val
-}
-
-Buffer.prototype.readInt16BE = function readInt16BE (offset, noAssert) {
-  if (!noAssert) checkOffset(offset, 2, this.length)
-  var val = this[offset + 1] | (this[offset] << 8)
-  return (val & 0x8000) ? val | 0xFFFF0000 : val
-}
-
-Buffer.prototype.readInt32LE = function readInt32LE (offset, noAssert) {
-  if (!noAssert) checkOffset(offset, 4, this.length)
-
-  return (this[offset]) |
-    (this[offset + 1] << 8) |
-    (this[offset + 2] << 16) |
-    (this[offset + 3] << 24)
-}
-
-Buffer.prototype.readInt32BE = function readInt32BE (offset, noAssert) {
-  if (!noAssert) checkOffset(offset, 4, this.length)
-
-  return (this[offset] << 24) |
-    (this[offset + 1] << 16) |
-    (this[offset + 2] << 8) |
-    (this[offset + 3])
-}
-
-Buffer.prototype.readFloatLE = function readFloatLE (offset, noAssert) {
-  if (!noAssert) checkOffset(offset, 4, this.length)
-  return ieee754.read(this, offset, true, 23, 4)
-}
-
-Buffer.prototype.readFloatBE = function readFloatBE (offset, noAssert) {
-  if (!noAssert) checkOffset(offset, 4, this.length)
-  return ieee754.read(this, offset, false, 23, 4)
-}
-
-Buffer.prototype.readDoubleLE = function readDoubleLE (offset, noAssert) {
-  if (!noAssert) checkOffset(offset, 8, this.length)
-  return ieee754.read(this, offset, true, 52, 8)
-}
-
-Buffer.prototype.readDoubleBE = function readDoubleBE (offset, noAssert) {
-  if (!noAssert) checkOffset(offset, 8, this.length)
-  return ieee754.read(this, offset, false, 52, 8)
-}
-
-function checkInt (buf, value, offset, ext, max, min) {
-  if (!Buffer.isBuffer(buf)) throw new TypeError('"buffer" argument must be a Buffer instance')
-  if (value > max || value < min) throw new RangeError('"value" argument is out of bounds')
-  if (offset + ext > buf.length) throw new RangeError('Index out of range')
-}
-
-Buffer.prototype.writeUIntLE = function writeUIntLE (value, offset, byteLength, noAssert) {
-  value = +value
-  offset = offset | 0
-  byteLength = byteLength | 0
-  if (!noAssert) {
-    var maxBytes = Math.pow(2, 8 * byteLength) - 1
-    checkInt(this, value, offset, byteLength, maxBytes, 0)
-  }
-
-  var mul = 1
-  var i = 0
-  this[offset] = value & 0xFF
-  while (++i < byteLength && (mul *= 0x100)) {
-    this[offset + i] = (value / mul) & 0xFF
-  }
-
-  return offset + byteLength
-}
-
-Buffer.prototype.writeUIntBE = function writeUIntBE (value, offset, byteLength, noAssert) {
-  value = +value
-  offset = offset | 0
-  byteLength = byteLength | 0
-  if (!noAssert) {
-    var maxBytes = Math.pow(2, 8 * byteLength) - 1
-    checkInt(this, value, offset, byteLength, maxBytes, 0)
-=======
   // Add all accessor Array functions to the wrapper.
   each(['concat', 'join', 'slice'], function(name) {
     var method = ArrayProto[name];
@@ -53177,18 +42021,10 @@ Buffer.prototype.swap32 = function swap32 () {
   for (var i = 0; i < len; i += 4) {
     swap(this, i, i + 3)
     swap(this, i + 1, i + 2)
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
   }
   return this
 }
 
-<<<<<<< HEAD
-  var i = byteLength - 1
-  var mul = 1
-  this[offset + i] = value & 0xFF
-  while (--i >= 0 && (mul *= 0x100)) {
-    this[offset + i] = (value / mul) & 0xFF
-=======
 Buffer.prototype.swap64 = function swap64 () {
   var len = this.length
   if (len % 8 !== 0) {
@@ -53199,42 +42035,10 @@ Buffer.prototype.swap64 = function swap64 () {
     swap(this, i + 1, i + 6)
     swap(this, i + 2, i + 5)
     swap(this, i + 3, i + 4)
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
   }
   return this
 }
 
-<<<<<<< HEAD
-  return offset + byteLength
-}
-
-Buffer.prototype.writeUInt8 = function writeUInt8 (value, offset, noAssert) {
-  value = +value
-  offset = offset | 0
-  if (!noAssert) checkInt(this, value, offset, 1, 0xff, 0)
-  if (!Buffer.TYPED_ARRAY_SUPPORT) value = Math.floor(value)
-  this[offset] = (value & 0xff)
-  return offset + 1
-}
-
-function objectWriteUInt16 (buf, value, offset, littleEndian) {
-  if (value < 0) value = 0xffff + value + 1
-  for (var i = 0, j = Math.min(buf.length - offset, 2); i < j; ++i) {
-    buf[offset + i] = (value & (0xff << (8 * (littleEndian ? i : 1 - i)))) >>>
-      (littleEndian ? i : 1 - i) * 8
-  }
-}
-
-Buffer.prototype.writeUInt16LE = function writeUInt16LE (value, offset, noAssert) {
-  value = +value
-  offset = offset | 0
-  if (!noAssert) checkInt(this, value, offset, 2, 0xffff, 0)
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset] = (value & 0xff)
-    this[offset + 1] = (value >>> 8)
-  } else {
-    objectWriteUInt16(this, value, offset, true)
-=======
 Buffer.prototype.toString = function toString () {
   var length = this.length | 0
   if (length === 0) return ''
@@ -53261,79 +42065,8 @@ Buffer.prototype.inspect = function inspect () {
 Buffer.prototype.compare = function compare (target, start, end, thisStart, thisEnd) {
   if (!Buffer.isBuffer(target)) {
     throw new TypeError('Argument must be a Buffer')
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
-  }
-  return offset + 2
-}
-
-<<<<<<< HEAD
-Buffer.prototype.writeUInt16BE = function writeUInt16BE (value, offset, noAssert) {
-  value = +value
-  offset = offset | 0
-  if (!noAssert) checkInt(this, value, offset, 2, 0xffff, 0)
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset] = (value >>> 8)
-    this[offset + 1] = (value & 0xff)
-  } else {
-    objectWriteUInt16(this, value, offset, false)
-  }
-  return offset + 2
-}
-
-function objectWriteUInt32 (buf, value, offset, littleEndian) {
-  if (value < 0) value = 0xffffffff + value + 1
-  for (var i = 0, j = Math.min(buf.length - offset, 4); i < j; ++i) {
-    buf[offset + i] = (value >>> (littleEndian ? i : 3 - i) * 8) & 0xff
-  }
-}
-
-Buffer.prototype.writeUInt32LE = function writeUInt32LE (value, offset, noAssert) {
-  value = +value
-  offset = offset | 0
-  if (!noAssert) checkInt(this, value, offset, 4, 0xffffffff, 0)
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset + 3] = (value >>> 24)
-    this[offset + 2] = (value >>> 16)
-    this[offset + 1] = (value >>> 8)
-    this[offset] = (value & 0xff)
-  } else {
-    objectWriteUInt32(this, value, offset, true)
-  }
-  return offset + 4
-}
-
-Buffer.prototype.writeUInt32BE = function writeUInt32BE (value, offset, noAssert) {
-  value = +value
-  offset = offset | 0
-  if (!noAssert) checkInt(this, value, offset, 4, 0xffffffff, 0)
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset] = (value >>> 24)
-    this[offset + 1] = (value >>> 16)
-    this[offset + 2] = (value >>> 8)
-    this[offset + 3] = (value & 0xff)
-  } else {
-    objectWriteUInt32(this, value, offset, false)
-  }
-  return offset + 4
-}
-
-Buffer.prototype.writeIntLE = function writeIntLE (value, offset, byteLength, noAssert) {
-  value = +value
-  offset = offset | 0
-  if (!noAssert) {
-    var limit = Math.pow(2, 8 * byteLength - 1)
-
-    checkInt(this, value, offset, byteLength, limit - 1, -limit)
   }
 
-  var i = 0
-  var mul = 1
-  var sub = 0
-  this[offset] = value & 0xFF
-  while (++i < byteLength && (mul *= 0x100)) {
-    if (value < 0 && sub === 0 && this[offset + i - 1] !== 0) {
-      sub = 1
-=======
   if (start === undefined) {
     start = 0
   }
@@ -53380,158 +42113,9 @@ Buffer.prototype.writeIntLE = function writeIntLE (value, offset, byteLength, no
       x = thisCopy[i]
       y = targetCopy[i]
       break
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
     }
-    this[offset + i] = ((value / mul) >> 0) - sub & 0xFF
   }
 
-<<<<<<< HEAD
-  return offset + byteLength
-}
-
-Buffer.prototype.writeIntBE = function writeIntBE (value, offset, byteLength, noAssert) {
-  value = +value
-  offset = offset | 0
-  if (!noAssert) {
-    var limit = Math.pow(2, 8 * byteLength - 1)
-
-    checkInt(this, value, offset, byteLength, limit - 1, -limit)
-  }
-
-  var i = byteLength - 1
-  var mul = 1
-  var sub = 0
-  this[offset + i] = value & 0xFF
-  while (--i >= 0 && (mul *= 0x100)) {
-    if (value < 0 && sub === 0 && this[offset + i + 1] !== 0) {
-      sub = 1
-    }
-    this[offset + i] = ((value / mul) >> 0) - sub & 0xFF
-  }
-
-  return offset + byteLength
-}
-
-Buffer.prototype.writeInt8 = function writeInt8 (value, offset, noAssert) {
-  value = +value
-  offset = offset | 0
-  if (!noAssert) checkInt(this, value, offset, 1, 0x7f, -0x80)
-  if (!Buffer.TYPED_ARRAY_SUPPORT) value = Math.floor(value)
-  if (value < 0) value = 0xff + value + 1
-  this[offset] = (value & 0xff)
-  return offset + 1
-}
-
-Buffer.prototype.writeInt16LE = function writeInt16LE (value, offset, noAssert) {
-  value = +value
-  offset = offset | 0
-  if (!noAssert) checkInt(this, value, offset, 2, 0x7fff, -0x8000)
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset] = (value & 0xff)
-    this[offset + 1] = (value >>> 8)
-  } else {
-    objectWriteUInt16(this, value, offset, true)
-  }
-  return offset + 2
-}
-
-Buffer.prototype.writeInt16BE = function writeInt16BE (value, offset, noAssert) {
-  value = +value
-  offset = offset | 0
-  if (!noAssert) checkInt(this, value, offset, 2, 0x7fff, -0x8000)
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset] = (value >>> 8)
-    this[offset + 1] = (value & 0xff)
-  } else {
-    objectWriteUInt16(this, value, offset, false)
-  }
-  return offset + 2
-}
-
-Buffer.prototype.writeInt32LE = function writeInt32LE (value, offset, noAssert) {
-  value = +value
-  offset = offset | 0
-  if (!noAssert) checkInt(this, value, offset, 4, 0x7fffffff, -0x80000000)
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset] = (value & 0xff)
-    this[offset + 1] = (value >>> 8)
-    this[offset + 2] = (value >>> 16)
-    this[offset + 3] = (value >>> 24)
-  } else {
-    objectWriteUInt32(this, value, offset, true)
-  }
-  return offset + 4
-}
-
-Buffer.prototype.writeInt32BE = function writeInt32BE (value, offset, noAssert) {
-  value = +value
-  offset = offset | 0
-  if (!noAssert) checkInt(this, value, offset, 4, 0x7fffffff, -0x80000000)
-  if (value < 0) value = 0xffffffff + value + 1
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset] = (value >>> 24)
-    this[offset + 1] = (value >>> 16)
-    this[offset + 2] = (value >>> 8)
-    this[offset + 3] = (value & 0xff)
-  } else {
-    objectWriteUInt32(this, value, offset, false)
-  }
-  return offset + 4
-}
-
-function checkIEEE754 (buf, value, offset, ext, max, min) {
-  if (offset + ext > buf.length) throw new RangeError('Index out of range')
-  if (offset < 0) throw new RangeError('Index out of range')
-}
-
-function writeFloat (buf, value, offset, littleEndian, noAssert) {
-  if (!noAssert) {
-    checkIEEE754(buf, value, offset, 4, 3.4028234663852886e+38, -3.4028234663852886e+38)
-  }
-  ieee754.write(buf, value, offset, littleEndian, 23, 4)
-  return offset + 4
-}
-
-Buffer.prototype.writeFloatLE = function writeFloatLE (value, offset, noAssert) {
-  return writeFloat(this, value, offset, true, noAssert)
-}
-
-Buffer.prototype.writeFloatBE = function writeFloatBE (value, offset, noAssert) {
-  return writeFloat(this, value, offset, false, noAssert)
-}
-
-function writeDouble (buf, value, offset, littleEndian, noAssert) {
-  if (!noAssert) {
-    checkIEEE754(buf, value, offset, 8, 1.7976931348623157E+308, -1.7976931348623157E+308)
-  }
-  ieee754.write(buf, value, offset, littleEndian, 52, 8)
-  return offset + 8
-}
-
-Buffer.prototype.writeDoubleLE = function writeDoubleLE (value, offset, noAssert) {
-  return writeDouble(this, value, offset, true, noAssert)
-}
-
-Buffer.prototype.writeDoubleBE = function writeDoubleBE (value, offset, noAssert) {
-  return writeDouble(this, value, offset, false, noAssert)
-}
-
-// copy(targetBuffer, targetStart=0, sourceStart=0, sourceEnd=buffer.length)
-Buffer.prototype.copy = function copy (target, targetStart, start, end) {
-  if (!start) start = 0
-  if (!end && end !== 0) end = this.length
-  if (targetStart >= target.length) targetStart = target.length
-  if (!targetStart) targetStart = 0
-  if (end > 0 && end < start) end = start
-
-  // Copy 0 bytes; we're done
-  if (end === start) return 0
-  if (target.length === 0 || this.length === 0) return 0
-
-  // Fatal error conditions
-  if (targetStart < 0) {
-    throw new RangeError('targetStart out of bounds')
-=======
   if (x < y) return -1
   if (y < x) return 1
   return 0
@@ -53598,119 +42182,8 @@ function bidirectionalIndexOf (buffer, val, byteOffset, encoding, dir) {
       }
     }
     return arrayIndexOf(buffer, [ val ], byteOffset, encoding, dir)
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
-  }
-  if (start < 0 || start >= this.length) throw new RangeError('sourceStart out of bounds')
-  if (end < 0) throw new RangeError('sourceEnd out of bounds')
-
-<<<<<<< HEAD
-  // Are we oob?
-  if (end > this.length) end = this.length
-  if (target.length - targetStart < end - start) {
-    end = target.length - targetStart + start
   }
 
-  var len = end - start
-  var i
-
-  if (this === target && start < targetStart && targetStart < end) {
-    // descending copy from end
-    for (i = len - 1; i >= 0; --i) {
-      target[i + targetStart] = this[i + start]
-    }
-  } else if (len < 1000 || !Buffer.TYPED_ARRAY_SUPPORT) {
-    // ascending copy from start
-    for (i = 0; i < len; ++i) {
-      target[i + targetStart] = this[i + start]
-    }
-  } else {
-    Uint8Array.prototype.set.call(
-      target,
-      this.subarray(start, start + len),
-      targetStart
-    )
-  }
-
-  return len
-}
-
-// Usage:
-//    buffer.fill(number[, offset[, end]])
-//    buffer.fill(buffer[, offset[, end]])
-//    buffer.fill(string[, offset[, end]][, encoding])
-Buffer.prototype.fill = function fill (val, start, end, encoding) {
-  // Handle string cases:
-  if (typeof val === 'string') {
-    if (typeof start === 'string') {
-      encoding = start
-      start = 0
-      end = this.length
-    } else if (typeof end === 'string') {
-      encoding = end
-      end = this.length
-    }
-    if (val.length === 1) {
-      var code = val.charCodeAt(0)
-      if (code < 256) {
-        val = code
-      }
-    }
-    if (encoding !== undefined && typeof encoding !== 'string') {
-      throw new TypeError('encoding must be a string')
-    }
-    if (typeof encoding === 'string' && !Buffer.isEncoding(encoding)) {
-      throw new TypeError('Unknown encoding: ' + encoding)
-    }
-  } else if (typeof val === 'number') {
-    val = val & 255
-  }
-
-  // Invalid ranges are not set to a default, so can range check early.
-  if (start < 0 || this.length < start || this.length < end) {
-    throw new RangeError('Out of range index')
-  }
-
-  if (end <= start) {
-    return this
-  }
-
-  start = start >>> 0
-  end = end === undefined ? this.length : end >>> 0
-
-  if (!val) val = 0
-
-  var i
-  if (typeof val === 'number') {
-    for (i = start; i < end; ++i) {
-      this[i] = val
-    }
-  } else {
-    var bytes = Buffer.isBuffer(val)
-      ? val
-      : utf8ToBytes(new Buffer(val, encoding).toString())
-    var len = bytes.length
-    for (i = 0; i < end - start; ++i) {
-      this[i + start] = bytes[i % len]
-    }
-  }
-
-  return this
-}
-
-// HELPER FUNCTIONS
-// ================
-
-var INVALID_BASE64_RE = /[^+\/0-9A-Za-z-_]/g
-
-function base64clean (str) {
-  // Node strips out invalid characters like \n and \t from the string, base64-js does not
-  str = stringtrim(str).replace(INVALID_BASE64_RE, '')
-  // Node converts strings with length < 2 to ''
-  if (str.length < 2) return ''
-  // Node allows for non-padded base64 strings (missing trailing ===), base64-js does not
-  while (str.length % 4 !== 0) {
-    str = str + '='
-=======
   throw new TypeError('val must be string, number or Buffer')
 }
 
@@ -53792,66 +42265,8 @@ function hexWrite (buf, string, offset, length) {
     if (length > remaining) {
       length = remaining
     }
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
   }
-  return str
-}
 
-<<<<<<< HEAD
-function stringtrim (str) {
-  if (str.trim) return str.trim()
-  return str.replace(/^\s+|\s+$/g, '')
-}
-
-function toHex (n) {
-  if (n < 16) return '0' + n.toString(16)
-  return n.toString(16)
-}
-
-function utf8ToBytes (string, units) {
-  units = units || Infinity
-  var codePoint
-  var length = string.length
-  var leadSurrogate = null
-  var bytes = []
-
-  for (var i = 0; i < length; ++i) {
-    codePoint = string.charCodeAt(i)
-
-    // is surrogate component
-    if (codePoint > 0xD7FF && codePoint < 0xE000) {
-      // last char was a lead
-      if (!leadSurrogate) {
-        // no lead yet
-        if (codePoint > 0xDBFF) {
-          // unexpected trail
-          if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD)
-          continue
-        } else if (i + 1 === length) {
-          // unpaired lead
-          if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD)
-          continue
-        }
-
-        // valid lead
-        leadSurrogate = codePoint
-
-        continue
-      }
-
-      // 2 leads in a row
-      if (codePoint < 0xDC00) {
-        if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD)
-        leadSurrogate = codePoint
-        continue
-      }
-
-      // valid surrogate pair
-      codePoint = (leadSurrogate - 0xD800 << 10 | codePoint - 0xDC00) + 0x10000
-    } else if (leadSurrogate) {
-      // valid bmp char, but last char was a lead
-      if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD)
-=======
   // must be an even number of digits
   var strLen = string.length
   if (strLen % 2 !== 0) throw new TypeError('Invalid hex string')
@@ -53907,7 +42322,6 @@ Buffer.prototype.write = function write (string, offset, length, encoding) {
     } else {
       encoding = length
       length = undefined
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
     }
   // legacy write(string, encoding, offset, length) - remove in v0.13
   } else {
@@ -53916,294 +42330,6 @@ Buffer.prototype.write = function write (string, offset, length, encoding) {
     )
   }
 
-<<<<<<< HEAD
-    leadSurrogate = null
-
-    // encode utf8
-    if (codePoint < 0x80) {
-      if ((units -= 1) < 0) break
-      bytes.push(codePoint)
-    } else if (codePoint < 0x800) {
-      if ((units -= 2) < 0) break
-      bytes.push(
-        codePoint >> 0x6 | 0xC0,
-        codePoint & 0x3F | 0x80
-      )
-    } else if (codePoint < 0x10000) {
-      if ((units -= 3) < 0) break
-      bytes.push(
-        codePoint >> 0xC | 0xE0,
-        codePoint >> 0x6 & 0x3F | 0x80,
-        codePoint & 0x3F | 0x80
-      )
-    } else if (codePoint < 0x110000) {
-      if ((units -= 4) < 0) break
-      bytes.push(
-        codePoint >> 0x12 | 0xF0,
-        codePoint >> 0xC & 0x3F | 0x80,
-        codePoint >> 0x6 & 0x3F | 0x80,
-        codePoint & 0x3F | 0x80
-      )
-    } else {
-      throw new Error('Invalid code point')
-    }
-  }
-
-  return bytes
-}
-
-function asciiToBytes (str) {
-  var byteArray = []
-  for (var i = 0; i < str.length; ++i) {
-    // Node's code seems to be doing this and not & 0x7F..
-    byteArray.push(str.charCodeAt(i) & 0xFF)
-  }
-  return byteArray
-}
-
-function utf16leToBytes (str, units) {
-  var c, hi, lo
-  var byteArray = []
-  for (var i = 0; i < str.length; ++i) {
-    if ((units -= 2) < 0) break
-
-    c = str.charCodeAt(i)
-    hi = c >> 8
-    lo = c % 256
-    byteArray.push(lo)
-    byteArray.push(hi)
-  }
-
-  return byteArray
-}
-
-function base64ToBytes (str) {
-  return base64.toByteArray(base64clean(str))
-}
-
-function blitBuffer (src, dst, offset, length) {
-  for (var i = 0; i < length; ++i) {
-    if ((i + offset >= dst.length) || (i >= src.length)) break
-    dst[i + offset] = src[i]
-  }
-  return i
-}
-
-function isnan (val) {
-  return val !== val // eslint-disable-line no-self-compare
-}
-
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1)))
-
-/***/ }),
-/* 20 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-exports.byteLength = byteLength
-exports.toByteArray = toByteArray
-exports.fromByteArray = fromByteArray
-
-var lookup = []
-var revLookup = []
-var Arr = typeof Uint8Array !== 'undefined' ? Uint8Array : Array
-
-var code = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-for (var i = 0, len = code.length; i < len; ++i) {
-  lookup[i] = code[i]
-  revLookup[code.charCodeAt(i)] = i
-}
-
-revLookup['-'.charCodeAt(0)] = 62
-revLookup['_'.charCodeAt(0)] = 63
-
-function placeHoldersCount (b64) {
-  var len = b64.length
-  if (len % 4 > 0) {
-    throw new Error('Invalid string. Length must be a multiple of 4')
-  }
-
-  // the number of equal signs (place holders)
-  // if there are two placeholders, than the two characters before it
-  // represent one byte
-  // if there is only one, then the three characters before it represent 2 bytes
-  // this is just a cheap hack to not do indexOf twice
-  return b64[len - 2] === '=' ? 2 : b64[len - 1] === '=' ? 1 : 0
-}
-
-function byteLength (b64) {
-  // base64 is 4/3 + up to two characters of the original data
-  return (b64.length * 3 / 4) - placeHoldersCount(b64)
-}
-
-function toByteArray (b64) {
-  var i, l, tmp, placeHolders, arr
-  var len = b64.length
-  placeHolders = placeHoldersCount(b64)
-
-  arr = new Arr((len * 3 / 4) - placeHolders)
-
-  // if there are placeholders, only get up to the last complete 4 chars
-  l = placeHolders > 0 ? len - 4 : len
-
-  var L = 0
-
-  for (i = 0; i < l; i += 4) {
-    tmp = (revLookup[b64.charCodeAt(i)] << 18) | (revLookup[b64.charCodeAt(i + 1)] << 12) | (revLookup[b64.charCodeAt(i + 2)] << 6) | revLookup[b64.charCodeAt(i + 3)]
-    arr[L++] = (tmp >> 16) & 0xFF
-    arr[L++] = (tmp >> 8) & 0xFF
-    arr[L++] = tmp & 0xFF
-  }
-
-  if (placeHolders === 2) {
-    tmp = (revLookup[b64.charCodeAt(i)] << 2) | (revLookup[b64.charCodeAt(i + 1)] >> 4)
-    arr[L++] = tmp & 0xFF
-  } else if (placeHolders === 1) {
-    tmp = (revLookup[b64.charCodeAt(i)] << 10) | (revLookup[b64.charCodeAt(i + 1)] << 4) | (revLookup[b64.charCodeAt(i + 2)] >> 2)
-    arr[L++] = (tmp >> 8) & 0xFF
-    arr[L++] = tmp & 0xFF
-  }
-
-  return arr
-}
-
-function tripletToBase64 (num) {
-  return lookup[num >> 18 & 0x3F] + lookup[num >> 12 & 0x3F] + lookup[num >> 6 & 0x3F] + lookup[num & 0x3F]
-}
-
-function encodeChunk (uint8, start, end) {
-  var tmp
-  var output = []
-  for (var i = start; i < end; i += 3) {
-    tmp = (uint8[i] << 16) + (uint8[i + 1] << 8) + (uint8[i + 2])
-    output.push(tripletToBase64(tmp))
-  }
-  return output.join('')
-}
-
-function fromByteArray (uint8) {
-  var tmp
-  var len = uint8.length
-  var extraBytes = len % 3 // if we have 1 byte left, pad 2 bytes
-  var output = ''
-  var parts = []
-  var maxChunkLength = 16383 // must be multiple of 3
-
-  // go through the array every three bytes, we'll deal with trailing stuff later
-  for (var i = 0, len2 = len - extraBytes; i < len2; i += maxChunkLength) {
-    parts.push(encodeChunk(uint8, i, (i + maxChunkLength) > len2 ? len2 : (i + maxChunkLength)))
-  }
-
-  // pad the end with zeros, but make sure to not forget the extra bytes
-  if (extraBytes === 1) {
-    tmp = uint8[len - 1]
-    output += lookup[tmp >> 2]
-    output += lookup[(tmp << 4) & 0x3F]
-    output += '=='
-  } else if (extraBytes === 2) {
-    tmp = (uint8[len - 2] << 8) + (uint8[len - 1])
-    output += lookup[tmp >> 10]
-    output += lookup[(tmp >> 4) & 0x3F]
-    output += lookup[(tmp << 2) & 0x3F]
-    output += '='
-  }
-
-  parts.push(output)
-
-  return parts.join('')
-}
-
-
-/***/ }),
-/* 21 */
-/***/ (function(module, exports) {
-
-exports.read = function (buffer, offset, isLE, mLen, nBytes) {
-  var e, m
-  var eLen = nBytes * 8 - mLen - 1
-  var eMax = (1 << eLen) - 1
-  var eBias = eMax >> 1
-  var nBits = -7
-  var i = isLE ? (nBytes - 1) : 0
-  var d = isLE ? -1 : 1
-  var s = buffer[offset + i]
-
-  i += d
-
-  e = s & ((1 << (-nBits)) - 1)
-  s >>= (-nBits)
-  nBits += eLen
-  for (; nBits > 0; e = e * 256 + buffer[offset + i], i += d, nBits -= 8) {}
-
-  m = e & ((1 << (-nBits)) - 1)
-  e >>= (-nBits)
-  nBits += mLen
-  for (; nBits > 0; m = m * 256 + buffer[offset + i], i += d, nBits -= 8) {}
-
-  if (e === 0) {
-    e = 1 - eBias
-  } else if (e === eMax) {
-    return m ? NaN : ((s ? -1 : 1) * Infinity)
-  } else {
-    m = m + Math.pow(2, mLen)
-    e = e - eBias
-  }
-  return (s ? -1 : 1) * m * Math.pow(2, e - mLen)
-}
-
-exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
-  var e, m, c
-  var eLen = nBytes * 8 - mLen - 1
-  var eMax = (1 << eLen) - 1
-  var eBias = eMax >> 1
-  var rt = (mLen === 23 ? Math.pow(2, -24) - Math.pow(2, -77) : 0)
-  var i = isLE ? 0 : (nBytes - 1)
-  var d = isLE ? 1 : -1
-  var s = value < 0 || (value === 0 && 1 / value < 0) ? 1 : 0
-
-  value = Math.abs(value)
-
-  if (isNaN(value) || value === Infinity) {
-    m = isNaN(value) ? 1 : 0
-    e = eMax
-  } else {
-    e = Math.floor(Math.log(value) / Math.LN2)
-    if (value * (c = Math.pow(2, -e)) < 1) {
-      e--
-      c *= 2
-    }
-    if (e + eBias >= 1) {
-      value += rt / c
-    } else {
-      value += rt * Math.pow(2, 1 - eBias)
-    }
-    if (value * c >= 2) {
-      e++
-      c /= 2
-    }
-
-    if (e + eBias >= eMax) {
-      m = 0
-      e = eMax
-    } else if (e + eBias >= 1) {
-      m = (value * c - 1) * Math.pow(2, mLen)
-      e = e + eBias
-    } else {
-      m = value * Math.pow(2, eBias - 1) * Math.pow(2, mLen)
-      e = 0
-    }
-  }
-
-  for (; mLen >= 8; buffer[offset + i] = m & 0xff, i += d, m /= 256, mLen -= 8) {}
-
-  e = (e << mLen) | m
-  eLen += mLen
-  for (; eLen > 0; buffer[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8) {}
-
-  buffer[offset + i - d] |= s * 128
-=======
   var remaining = this.length - offset
   if (length === undefined || length > remaining) length = remaining
 
@@ -54357,96 +42483,12 @@ function decodeCodePointsArray (codePoints) {
     )
   }
   return res
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 }
 
 function asciiSlice (buf, start, end) {
   var ret = ''
   end = Math.min(buf.length, end)
 
-<<<<<<< HEAD
-/***/ }),
-/* 22 */
-/***/ (function(module, exports) {
-
-var toString = {}.toString;
-
-module.exports = Array.isArray || function (arr) {
-  return toString.call(arr) == '[object Array]';
-};
-
-
-/***/ }),
-/* 23 */
-/***/ (function(module, exports) {
-
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-function EventEmitter() {
-  this._events = this._events || {};
-  this._maxListeners = this._maxListeners || undefined;
-}
-module.exports = EventEmitter;
-
-// Backwards-compat with node 0.10.x
-EventEmitter.EventEmitter = EventEmitter;
-
-EventEmitter.prototype._events = undefined;
-EventEmitter.prototype._maxListeners = undefined;
-
-// By default EventEmitters will print a warning if more than 10 listeners are
-// added to it. This is a useful default which helps finding memory leaks.
-EventEmitter.defaultMaxListeners = 10;
-
-// Obviously not all Emitters should be limited to 10. This function allows
-// that to be increased. Set to zero for unlimited.
-EventEmitter.prototype.setMaxListeners = function(n) {
-  if (!isNumber(n) || n < 0 || isNaN(n))
-    throw TypeError('n must be a positive number');
-  this._maxListeners = n;
-  return this;
-};
-
-EventEmitter.prototype.emit = function(type) {
-  var er, handler, len, args, i, listeners;
-
-  if (!this._events)
-    this._events = {};
-
-  // If there is no 'error' event listener then throw.
-  if (type === 'error') {
-    if (!this._events.error ||
-        (isObject(this._events.error) && !this._events.error.length)) {
-      er = arguments[1];
-      if (er instanceof Error) {
-        throw er; // Unhandled 'error' event
-      } else {
-        // At least give some kind of context to the user
-        var err = new Error('Uncaught, unspecified "error" event. (' + er + ')');
-        err.context = er;
-        throw err;
-      }
-    }
-=======
   for (var i = start; i < end; ++i) {
     ret += String.fromCharCode(buf[i] & 0x7F)
   }
@@ -54459,363 +42501,10 @@ function latin1Slice (buf, start, end) {
 
   for (var i = start; i < end; ++i) {
     ret += String.fromCharCode(buf[i])
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
   }
   return ret
 }
 
-<<<<<<< HEAD
-  handler = this._events[type];
-
-  if (isUndefined(handler))
-    return false;
-
-  if (isFunction(handler)) {
-    switch (arguments.length) {
-      // fast cases
-      case 1:
-        handler.call(this);
-        break;
-      case 2:
-        handler.call(this, arguments[1]);
-        break;
-      case 3:
-        handler.call(this, arguments[1], arguments[2]);
-        break;
-      // slower
-      default:
-        args = Array.prototype.slice.call(arguments, 1);
-        handler.apply(this, args);
-    }
-  } else if (isObject(handler)) {
-    args = Array.prototype.slice.call(arguments, 1);
-    listeners = handler.slice();
-    len = listeners.length;
-    for (i = 0; i < len; i++)
-      listeners[i].apply(this, args);
-  }
-
-  return true;
-};
-
-EventEmitter.prototype.addListener = function(type, listener) {
-  var m;
-
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  if (!this._events)
-    this._events = {};
-
-  // To avoid recursion in the case that type === "newListener"! Before
-  // adding it to the listeners, first emit "newListener".
-  if (this._events.newListener)
-    this.emit('newListener', type,
-              isFunction(listener.listener) ?
-              listener.listener : listener);
-
-  if (!this._events[type])
-    // Optimize the case of one listener. Don't need the extra array object.
-    this._events[type] = listener;
-  else if (isObject(this._events[type]))
-    // If we've already got an array, just append.
-    this._events[type].push(listener);
-  else
-    // Adding the second element, need to change to array.
-    this._events[type] = [this._events[type], listener];
-
-  // Check for listener leak
-  if (isObject(this._events[type]) && !this._events[type].warned) {
-    if (!isUndefined(this._maxListeners)) {
-      m = this._maxListeners;
-    } else {
-      m = EventEmitter.defaultMaxListeners;
-    }
-
-    if (m && m > 0 && this._events[type].length > m) {
-      this._events[type].warned = true;
-      console.error('(node) warning: possible EventEmitter memory ' +
-                    'leak detected. %d listeners added. ' +
-                    'Use emitter.setMaxListeners() to increase limit.',
-                    this._events[type].length);
-      if (typeof console.trace === 'function') {
-        // not supported in IE 10
-        console.trace();
-      }
-    }
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.on = EventEmitter.prototype.addListener;
-
-EventEmitter.prototype.once = function(type, listener) {
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  var fired = false;
-
-  function g() {
-    this.removeListener(type, g);
-
-    if (!fired) {
-      fired = true;
-      listener.apply(this, arguments);
-    }
-  }
-
-  g.listener = listener;
-  this.on(type, g);
-
-  return this;
-};
-
-// emits a 'removeListener' event iff the listener was removed
-EventEmitter.prototype.removeListener = function(type, listener) {
-  var list, position, length, i;
-
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  if (!this._events || !this._events[type])
-    return this;
-
-  list = this._events[type];
-  length = list.length;
-  position = -1;
-
-  if (list === listener ||
-      (isFunction(list.listener) && list.listener === listener)) {
-    delete this._events[type];
-    if (this._events.removeListener)
-      this.emit('removeListener', type, listener);
-
-  } else if (isObject(list)) {
-    for (i = length; i-- > 0;) {
-      if (list[i] === listener ||
-          (list[i].listener && list[i].listener === listener)) {
-        position = i;
-        break;
-      }
-    }
-
-    if (position < 0)
-      return this;
-
-    if (list.length === 1) {
-      list.length = 0;
-      delete this._events[type];
-    } else {
-      list.splice(position, 1);
-    }
-
-    if (this._events.removeListener)
-      this.emit('removeListener', type, listener);
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.removeAllListeners = function(type) {
-  var key, listeners;
-
-  if (!this._events)
-    return this;
-
-  // not listening for removeListener, no need to emit
-  if (!this._events.removeListener) {
-    if (arguments.length === 0)
-      this._events = {};
-    else if (this._events[type])
-      delete this._events[type];
-    return this;
-  }
-
-  // emit removeListener for all listeners on all events
-  if (arguments.length === 0) {
-    for (key in this._events) {
-      if (key === 'removeListener') continue;
-      this.removeAllListeners(key);
-    }
-    this.removeAllListeners('removeListener');
-    this._events = {};
-    return this;
-  }
-
-  listeners = this._events[type];
-
-  if (isFunction(listeners)) {
-    this.removeListener(type, listeners);
-  } else if (listeners) {
-    // LIFO order
-    while (listeners.length)
-      this.removeListener(type, listeners[listeners.length - 1]);
-  }
-  delete this._events[type];
-
-  return this;
-};
-
-EventEmitter.prototype.listeners = function(type) {
-  var ret;
-  if (!this._events || !this._events[type])
-    ret = [];
-  else if (isFunction(this._events[type]))
-    ret = [this._events[type]];
-  else
-    ret = this._events[type].slice();
-  return ret;
-};
-
-EventEmitter.prototype.listenerCount = function(type) {
-  if (this._events) {
-    var evlistener = this._events[type];
-
-    if (isFunction(evlistener))
-      return 1;
-    else if (evlistener)
-      return evlistener.length;
-  }
-  return 0;
-};
-
-EventEmitter.listenerCount = function(emitter, type) {
-  return emitter.listenerCount(type);
-};
-
-function isFunction(arg) {
-  return typeof arg === 'function';
-}
-
-function isNumber(arg) {
-  return typeof arg === 'number';
-}
-
-function isObject(arg) {
-  return typeof arg === 'object' && arg !== null;
-}
-
-function isUndefined(arg) {
-  return arg === void 0;
-}
-
-
-/***/ }),
-/* 24 */
-/***/ (function(module, exports, __webpack_require__) {
-
-/* WEBPACK VAR INJECTION */(function(global, process) {// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-var formatRegExp = /%[sdj%]/g;
-exports.format = function(f) {
-  if (!isString(f)) {
-    var objects = [];
-    for (var i = 0; i < arguments.length; i++) {
-      objects.push(inspect(arguments[i]));
-    }
-    return objects.join(' ');
-  }
-
-  var i = 1;
-  var args = arguments;
-  var len = args.length;
-  var str = String(f).replace(formatRegExp, function(x) {
-    if (x === '%%') return '%';
-    if (i >= len) return x;
-    switch (x) {
-      case '%s': return String(args[i++]);
-      case '%d': return Number(args[i++]);
-      case '%j':
-        try {
-          return JSON.stringify(args[i++]);
-        } catch (_) {
-          return '[Circular]';
-        }
-      default:
-        return x;
-    }
-  });
-  for (var x = args[i]; i < len; x = args[++i]) {
-    if (isNull(x) || !isObject(x)) {
-      str += ' ' + x;
-    } else {
-      str += ' ' + inspect(x);
-    }
-  }
-  return str;
-};
-
-
-// Mark that a method should not be used.
-// Returns a modified function which warns once by default.
-// If --no-deprecation is set, then it is a no-op.
-exports.deprecate = function(fn, msg) {
-  // Allow for deprecating things in the process of starting up.
-  if (isUndefined(global.process)) {
-    return function() {
-      return exports.deprecate(fn, msg).apply(this, arguments);
-    };
-  }
-
-  if (process.noDeprecation === true) {
-    return fn;
-  }
-
-  var warned = false;
-  function deprecated() {
-    if (!warned) {
-      if (process.throwDeprecation) {
-        throw new Error(msg);
-      } else if (process.traceDeprecation) {
-        console.trace(msg);
-      } else {
-        console.error(msg);
-      }
-      warned = true;
-    }
-    return fn.apply(this, arguments);
-  }
-
-  return deprecated;
-};
-
-
-var debugs = {};
-var debugEnviron;
-exports.debuglog = function(set) {
-  if (isUndefined(debugEnviron))
-    debugEnviron = process.env.NODE_DEBUG || '';
-  set = set.toUpperCase();
-  if (!debugs[set]) {
-    if (new RegExp('\\b' + set + '\\b', 'i').test(debugEnviron)) {
-      var pid = process.pid;
-      debugs[set] = function() {
-        var msg = exports.format.apply(exports, arguments);
-        console.error('%s %d: %s', set, pid, msg);
-      };
-    } else {
-      debugs[set] = function() {};
-=======
 function hexSlice (buf, start, end) {
   var len = buf.length
 
@@ -54868,7 +42557,6 @@ Buffer.prototype.slice = function slice (start, end) {
     newBuf = new Buffer(sliceLen, undefined)
     for (var i = 0; i < sliceLen; ++i) {
       newBuf[i] = this[i + start]
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
     }
   }
 
@@ -55309,15 +42997,8 @@ Buffer.prototype.writeDoubleLE = function writeDoubleLE (value, offset, noAssert
   return writeDouble(this, value, offset, true, noAssert)
 }
 
-<<<<<<< HEAD
-exports.isBuffer = __webpack_require__(25);
-
-function objectToString(o) {
-  return Object.prototype.toString.call(o);
-=======
 Buffer.prototype.writeDoubleBE = function writeDoubleBE (value, offset, noAssert) {
   return writeDouble(this, value, offset, false, noAssert)
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 }
 
 // copy(targetBuffer, targetStart=0, sourceStart=0, sourceEnd=buffer.length)
@@ -55409,25 +43090,8 @@ Buffer.prototype.fill = function fill (val, start, end, encoding) {
     return this
   }
 
-<<<<<<< HEAD
-/**
- * Inherit the prototype methods from one constructor into another.
- *
- * The Function.prototype.inherits from lang.js rewritten as a standalone
- * function (not on Function.prototype). NOTE: If this file is to be loaded
- * during bootstrapping this function needs to be rewritten using some native
- * functions as prototype setup using normal JavaScript does not work as
- * expected during bootstrapping (see mirror.js in r114903).
- *
- * @param {function} ctor Constructor function which needs to inherit the
- *     prototype.
- * @param {function} superCtor Constructor function to inherit prototype from.
- */
-exports.inherits = __webpack_require__(26);
-=======
   start = start >>> 0
   end = end === undefined ? this.length : end >>> 0
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 
   if (!val) val = 0
 
@@ -55449,18 +43113,10 @@ exports.inherits = __webpack_require__(26);
   return this
 }
 
-<<<<<<< HEAD
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1), __webpack_require__(2)))
-
-/***/ }),
-/* 25 */
-/***/ (function(module, exports) {
-=======
 // HELPER FUNCTIONS
 // ================
 
 var INVALID_BASE64_RE = /[^+\/0-9A-Za-z-_]/g
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 
 function base64clean (str) {
   // Node strips out invalid characters like \n and \t from the string, base64-js does not
@@ -55474,38 +43130,9 @@ function base64clean (str) {
   return str
 }
 
-<<<<<<< HEAD
-/***/ }),
-/* 26 */
-/***/ (function(module, exports) {
-
-if (typeof Object.create === 'function') {
-  // implementation from standard node.js 'util' module
-  module.exports = function inherits(ctor, superCtor) {
-    ctor.super_ = superCtor
-    ctor.prototype = Object.create(superCtor.prototype, {
-      constructor: {
-        value: ctor,
-        enumerable: false,
-        writable: true,
-        configurable: true
-      }
-    });
-  };
-} else {
-  // old school shim for old browsers
-  module.exports = function inherits(ctor, superCtor) {
-    ctor.super_ = superCtor
-    var TempCtor = function () {}
-    TempCtor.prototype = superCtor.prototype
-    ctor.prototype = new TempCtor()
-    ctor.prototype.constructor = ctor
-  }
-=======
 function stringtrim (str) {
   if (str.trim) return str.trim()
   return str.replace(/^\s+|\s+$/g, '')
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 }
 
 function toHex (n) {
@@ -55513,18 +43140,12 @@ function toHex (n) {
   return n.toString(16)
 }
 
-<<<<<<< HEAD
-/***/ }),
-/* 27 */
-/***/ (function(module, exports) {
-=======
 function utf8ToBytes (string, units) {
   units = units || Infinity
   var codePoint
   var length = string.length
   var leadSurrogate = null
   var bytes = []
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 
   for (var i = 0; i < length; ++i) {
     codePoint = string.charCodeAt(i)
@@ -55759,16 +43380,8 @@ function fromByteArray (uint8) {
 
   parts.push(output)
 
-<<<<<<< HEAD
-module.exports = newRemove;
-
-/***/ }),
-/* 28 */
-/***/ (function(module, exports, __webpack_require__) {
-=======
   return parts.join('')
 }
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 
 
 /***/ }),
@@ -56299,12 +43912,6 @@ exports.debuglog = function(set) {
   return debugs[set];
 };
 
-<<<<<<< HEAD
-/***/ }),
-/* 29 */
-/***/ (function(module, exports, __webpack_require__) {
-=======
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 
 /**
  * Echos the value of a value. Trys to print the value out
@@ -57034,11 +44641,7 @@ newRemove = function newRemove(notifyRenderer) {
 module.exports = newRemove;
 
 /***/ }),
-<<<<<<< HEAD
-/* 30 */
-=======
 /* 28 */
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 /***/ (function(module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_RESULT__;;(function () {
@@ -57047,14 +44650,9 @@ var __WEBPACK_AMD_DEFINE_RESULT__;;(function () {
 // registers the extension on a cytoscape lib ref
     var register = function (cytoscape) {
 
-<<<<<<< HEAD
-var colorScale = __webpack_require__(31);
-var lerp = __webpack_require__(32)
-=======
         if (!cytoscape) {
             return;
         } // can't register if cytoscape unspecified
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 
         var cy;
         var actions = {};
@@ -57134,63 +44732,6 @@ var lerp = __webpack_require__(32)
             undoStack = [];
             redoStack = [];
         }
-<<<<<<< HEAD
-    }
-
-    //add 1 step as last value
-    colors.push(cmap[cmap.length - 1].rgb.concat(alpha[1]))
-
-    if (format === 'hex') colors = colors.map( rgb2hex );
-    else if (format === 'rgbaString') colors = colors.map( rgbaStr );
-    else if (format === 'float') colors = colors.map( rgb2float );
-
-    return colors;
-};
-
-function rgb2float (rgba) {
-    return [
-        rgba[0] / 255,
-        rgba[1] / 255,
-        rgba[2] / 255,
-        rgba[3]
-    ]
-}
-
-function rgb2hex (rgba) {
-    var dig, hex = '#';
-    for (var i = 0; i < 3; ++i) {
-        dig = rgba[i];
-        dig = dig.toString(16);
-        hex += ('00' + dig).substr( dig.length );
-    }
-    return hex;
-}
-
-function rgbaStr (rgba) {
-    return 'rgba(' + rgba.join(',') + ')';
-}
-
-
-/***/ }),
-/* 31 */
-/***/ (function(module, exports) {
-
-module.exports={
-	"jet":[{"index":0,"rgb":[0,0,131]},{"index":0.125,"rgb":[0,60,170]},{"index":0.375,"rgb":[5,255,255]},{"index":0.625,"rgb":[255,255,0]},{"index":0.875,"rgb":[250,0,0]},{"index":1,"rgb":[128,0,0]}],
-
-	"hsv":[{"index":0,"rgb":[255,0,0]},{"index":0.169,"rgb":[253,255,2]},{"index":0.173,"rgb":[247,255,2]},{"index":0.337,"rgb":[0,252,4]},{"index":0.341,"rgb":[0,252,10]},{"index":0.506,"rgb":[1,249,255]},{"index":0.671,"rgb":[2,0,253]},{"index":0.675,"rgb":[8,0,253]},{"index":0.839,"rgb":[255,0,251]},{"index":0.843,"rgb":[255,0,245]},{"index":1,"rgb":[255,0,6]}],
-
-	"hot":[{"index":0,"rgb":[0,0,0]},{"index":0.3,"rgb":[230,0,0]},{"index":0.6,"rgb":[255,210,0]},{"index":1,"rgb":[255,255,255]}],
-
-	"cool":[{"index":0,"rgb":[0,255,255]},{"index":1,"rgb":[255,0,255]}],
-
-	"spring":[{"index":0,"rgb":[255,0,255]},{"index":1,"rgb":[255,255,0]}],
-
-	"summer":[{"index":0,"rgb":[0,128,102]},{"index":1,"rgb":[255,255,102]}],
-
-	"autumn":[{"index":0,"rgb":[255,0,0]},{"index":1,"rgb":[255,255,0]}],
-=======
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 
         // Undo last action
         _instance.undo = function () {
@@ -57383,14 +44924,8 @@ module.exports={
                 return true;
             });
 
-<<<<<<< HEAD
-/***/ }),
-/* 32 */
-/***/ (function(module, exports) {
-=======
             return roots;
         }
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 
         function moveNodes(positionDiff, nodes, notCalcTopMostNodes) {
             var topMostNodes = notCalcTopMostNodes?nodes:getTopMostNodes(nodes);
@@ -57407,15 +44942,9 @@ module.exports={
             }
         }
 
-<<<<<<< HEAD
-/***/ }),
-/* 33 */
-/***/ (function(module, exports, __webpack_require__) {
-=======
         function getEles(_eles) {
             return (typeof _eles === "string") ? cy.$(_eles) : _eles;
         }
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 
         function restoreEles(_eles) {
             return getEles(_eles).restore();
@@ -57689,17 +45218,6 @@ module.exports={
 
 
 /***/ }),
-<<<<<<< HEAD
-/* 34 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-__webpack_require__(35);
-
-var utils = _interopRequireWildcard(__webpack_require__(9));
-=======
 /* 29 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -57726,7 +45244,6 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*global define:false */
  * @url craig.is/killing/mice
  */
 (function(window, document, undefined) {
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 
     // Check if mousetrap is used inside browser, if not, return
     if (!window) {
@@ -57826,12 +45343,6 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*global define:false */
         '|': '\\'
     };
 
-<<<<<<< HEAD
-  this.reset = function () {
-    stage.removeAllChildren();
-    stage.update();
-  };
-=======
     /**
      * this is a list of special strings you can use to map
      * to modifier keys when you specify your keyboard shortcuts
@@ -57846,7 +45357,6 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*global define:false */
         'plus': '+',
         'mod': /Mac|iPod|iPhone|iPad/.test(navigator.platform) ? 'meta' : 'ctrl'
     };
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 
     /**
      * variable to store the flipped version of _MAP from above
@@ -57878,33 +45388,6 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*global define:false */
         _MAP[i + 96] = i.toString();
     }
 
-<<<<<<< HEAD
-  this.load = function (json) {
-    if (json) {
-      var pos = function pos(ele) {
-        return {
-          position: {
-            x: ele.x / 2,
-            y: ele.y / 2
-          }
-        };
-      };
-
-      json.forEach(function (element) {
-        if (element.type === "Text") {
-          addText(pos(element), element.text);
-        } else {
-          thisThing.startDrawing();
-          element.points.forEach(function (ele) {
-            addPoint(pos(ele));
-          });
-          thisThing.stopDrawing();
-        }
-      });
-    }
-  };
-}
-=======
     /**
      * cross browser add event method
      *
@@ -57918,7 +45401,6 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*global define:false */
             object.addEventListener(type, callback, false);
             return;
         }
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 
         object.attachEvent('on' + type, callback);
     }
@@ -57968,7 +45450,1398 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/*global define:false */
         return String.fromCharCode(e.which).toLowerCase();
     }
 
-<<<<<<< HEAD
+    /**
+     * checks if two arrays are equal
+     *
+     * @param {Array} modifiers1
+     * @param {Array} modifiers2
+     * @returns {boolean}
+     */
+    function _modifiersMatch(modifiers1, modifiers2) {
+        return modifiers1.sort().join(',') === modifiers2.sort().join(',');
+    }
+
+    /**
+     * takes a key event and figures out what the modifiers are
+     *
+     * @param {Event} e
+     * @returns {Array}
+     */
+    function _eventModifiers(e) {
+        var modifiers = [];
+
+        if (e.shiftKey) {
+            modifiers.push('shift');
+        }
+
+        if (e.altKey) {
+            modifiers.push('alt');
+        }
+
+        if (e.ctrlKey) {
+            modifiers.push('ctrl');
+        }
+
+        if (e.metaKey) {
+            modifiers.push('meta');
+        }
+
+        return modifiers;
+    }
+
+    /**
+     * prevents default for this event
+     *
+     * @param {Event} e
+     * @returns void
+     */
+    function _preventDefault(e) {
+        if (e.preventDefault) {
+            e.preventDefault();
+            return;
+        }
+
+        e.returnValue = false;
+    }
+
+    /**
+     * stops propogation for this event
+     *
+     * @param {Event} e
+     * @returns void
+     */
+    function _stopPropagation(e) {
+        if (e.stopPropagation) {
+            e.stopPropagation();
+            return;
+        }
+
+        e.cancelBubble = true;
+    }
+
+    /**
+     * determines if the keycode specified is a modifier key or not
+     *
+     * @param {string} key
+     * @returns {boolean}
+     */
+    function _isModifier(key) {
+        return key == 'shift' || key == 'ctrl' || key == 'alt' || key == 'meta';
+    }
+
+    /**
+     * reverses the map lookup so that we can look for specific keys
+     * to see what can and can't use keypress
+     *
+     * @return {Object}
+     */
+    function _getReverseMap() {
+        if (!_REVERSE_MAP) {
+            _REVERSE_MAP = {};
+            for (var key in _MAP) {
+
+                // pull out the numeric keypad from here cause keypress should
+                // be able to detect the keys from the character
+                if (key > 95 && key < 112) {
+                    continue;
+                }
+
+                if (_MAP.hasOwnProperty(key)) {
+                    _REVERSE_MAP[_MAP[key]] = key;
+                }
+            }
+        }
+        return _REVERSE_MAP;
+    }
+
+    /**
+     * picks the best action based on the key combination
+     *
+     * @param {string} key - character for key
+     * @param {Array} modifiers
+     * @param {string=} action passed in
+     */
+    function _pickBestAction(key, modifiers, action) {
+
+        // if no action was picked in we should try to pick the one
+        // that we think would work best for this key
+        if (!action) {
+            action = _getReverseMap()[key] ? 'keydown' : 'keypress';
+        }
+
+        // modifier keys don't work as expected with keypress,
+        // switch to keydown
+        if (action == 'keypress' && modifiers.length) {
+            action = 'keydown';
+        }
+
+        return action;
+    }
+
+    /**
+     * Converts from a string key combination to an array
+     *
+     * @param  {string} combination like "command+shift+l"
+     * @return {Array}
+     */
+    function _keysFromString(combination) {
+        if (combination === '+') {
+            return ['+'];
+        }
+
+        combination = combination.replace(/\+{2}/g, '+plus');
+        return combination.split('+');
+    }
+
+    /**
+     * Gets info for a specific key combination
+     *
+     * @param  {string} combination key combination ("command+s" or "a" or "*")
+     * @param  {string=} action
+     * @returns {Object}
+     */
+    function _getKeyInfo(combination, action) {
+        var keys;
+        var key;
+        var i;
+        var modifiers = [];
+
+        // take the keys from this pattern and figure out what the actual
+        // pattern is all about
+        keys = _keysFromString(combination);
+
+        for (i = 0; i < keys.length; ++i) {
+            key = keys[i];
+
+            // normalize key names
+            if (_SPECIAL_ALIASES[key]) {
+                key = _SPECIAL_ALIASES[key];
+            }
+
+            // if this is not a keypress event then we should
+            // be smart about using shift keys
+            // this will only work for US keyboards however
+            if (action && action != 'keypress' && _SHIFT_MAP[key]) {
+                key = _SHIFT_MAP[key];
+                modifiers.push('shift');
+            }
+
+            // if this key is a modifier then add it to the list of modifiers
+            if (_isModifier(key)) {
+                modifiers.push(key);
+            }
+        }
+
+        // depending on what the key combination is
+        // we will try to pick the best event for it
+        action = _pickBestAction(key, modifiers, action);
+
+        return {
+            key: key,
+            modifiers: modifiers,
+            action: action
+        };
+    }
+
+    function _belongsTo(element, ancestor) {
+        if (element === null || element === document) {
+            return false;
+        }
+
+        if (element === ancestor) {
+            return true;
+        }
+
+        return _belongsTo(element.parentNode, ancestor);
+    }
+
+    function Mousetrap(targetElement) {
+        var self = this;
+
+        targetElement = targetElement || document;
+
+        if (!(self instanceof Mousetrap)) {
+            return new Mousetrap(targetElement);
+        }
+
+        /**
+         * element to attach key events to
+         *
+         * @type {Element}
+         */
+        self.target = targetElement;
+
+        /**
+         * a list of all the callbacks setup via Mousetrap.bind()
+         *
+         * @type {Object}
+         */
+        self._callbacks = {};
+
+        /**
+         * direct map of string combinations to callbacks used for trigger()
+         *
+         * @type {Object}
+         */
+        self._directMap = {};
+
+        /**
+         * keeps track of what level each sequence is at since multiple
+         * sequences can start out with the same sequence
+         *
+         * @type {Object}
+         */
+        var _sequenceLevels = {};
+
+        /**
+         * variable to store the setTimeout call
+         *
+         * @type {null|number}
+         */
+        var _resetTimer;
+
+        /**
+         * temporary state where we will ignore the next keyup
+         *
+         * @type {boolean|string}
+         */
+        var _ignoreNextKeyup = false;
+
+        /**
+         * temporary state where we will ignore the next keypress
+         *
+         * @type {boolean}
+         */
+        var _ignoreNextKeypress = false;
+
+        /**
+         * are we currently inside of a sequence?
+         * type of action ("keyup" or "keydown" or "keypress") or false
+         *
+         * @type {boolean|string}
+         */
+        var _nextExpectedAction = false;
+
+        /**
+         * resets all sequence counters except for the ones passed in
+         *
+         * @param {Object} doNotReset
+         * @returns void
+         */
+        function _resetSequences(doNotReset) {
+            doNotReset = doNotReset || {};
+
+            var activeSequences = false,
+                key;
+
+            for (key in _sequenceLevels) {
+                if (doNotReset[key]) {
+                    activeSequences = true;
+                    continue;
+                }
+                _sequenceLevels[key] = 0;
+            }
+
+            if (!activeSequences) {
+                _nextExpectedAction = false;
+            }
+        }
+
+        /**
+         * finds all callbacks that match based on the keycode, modifiers,
+         * and action
+         *
+         * @param {string} character
+         * @param {Array} modifiers
+         * @param {Event|Object} e
+         * @param {string=} sequenceName - name of the sequence we are looking for
+         * @param {string=} combination
+         * @param {number=} level
+         * @returns {Array}
+         */
+        function _getMatches(character, modifiers, e, sequenceName, combination, level) {
+            var i;
+            var callback;
+            var matches = [];
+            var action = e.type;
+
+            // if there are no events related to this keycode
+            if (!self._callbacks[character]) {
+                return [];
+            }
+
+            // if a modifier key is coming up on its own we should allow it
+            if (action == 'keyup' && _isModifier(character)) {
+                modifiers = [character];
+            }
+
+            // loop through all callbacks for the key that was pressed
+            // and see if any of them match
+            for (i = 0; i < self._callbacks[character].length; ++i) {
+                callback = self._callbacks[character][i];
+
+                // if a sequence name is not specified, but this is a sequence at
+                // the wrong level then move onto the next match
+                if (!sequenceName && callback.seq && _sequenceLevels[callback.seq] != callback.level) {
+                    continue;
+                }
+
+                // if the action we are looking for doesn't match the action we got
+                // then we should keep going
+                if (action != callback.action) {
+                    continue;
+                }
+
+                // if this is a keypress event and the meta key and control key
+                // are not pressed that means that we need to only look at the
+                // character, otherwise check the modifiers as well
+                //
+                // chrome will not fire a keypress if meta or control is down
+                // safari will fire a keypress if meta or meta+shift is down
+                // firefox will fire a keypress if meta or control is down
+                if ((action == 'keypress' && !e.metaKey && !e.ctrlKey) || _modifiersMatch(modifiers, callback.modifiers)) {
+
+                    // when you bind a combination or sequence a second time it
+                    // should overwrite the first one.  if a sequenceName or
+                    // combination is specified in this call it does just that
+                    //
+                    // @todo make deleting its own method?
+                    var deleteCombo = !sequenceName && callback.combo == combination;
+                    var deleteSequence = sequenceName && callback.seq == sequenceName && callback.level == level;
+                    if (deleteCombo || deleteSequence) {
+                        self._callbacks[character].splice(i, 1);
+                    }
+
+                    matches.push(callback);
+                }
+            }
+
+            return matches;
+        }
+
+        /**
+         * actually calls the callback function
+         *
+         * if your callback function returns false this will use the jquery
+         * convention - prevent default and stop propogation on the event
+         *
+         * @param {Function} callback
+         * @param {Event} e
+         * @returns void
+         */
+        function _fireCallback(callback, e, combo, sequence) {
+
+            // if this event should not happen stop here
+            if (self.stopCallback(e, e.target || e.srcElement, combo, sequence)) {
+                return;
+            }
+
+            if (callback(e, combo) === false) {
+                _preventDefault(e);
+                _stopPropagation(e);
+            }
+        }
+
+        /**
+         * handles a character key event
+         *
+         * @param {string} character
+         * @param {Array} modifiers
+         * @param {Event} e
+         * @returns void
+         */
+        self._handleKey = function(character, modifiers, e) {
+            var callbacks = _getMatches(character, modifiers, e);
+            var i;
+            var doNotReset = {};
+            var maxLevel = 0;
+            var processedSequenceCallback = false;
+
+            // Calculate the maxLevel for sequences so we can only execute the longest callback sequence
+            for (i = 0; i < callbacks.length; ++i) {
+                if (callbacks[i].seq) {
+                    maxLevel = Math.max(maxLevel, callbacks[i].level);
+                }
+            }
+
+            // loop through matching callbacks for this key event
+            for (i = 0; i < callbacks.length; ++i) {
+
+                // fire for all sequence callbacks
+                // this is because if for example you have multiple sequences
+                // bound such as "g i" and "g t" they both need to fire the
+                // callback for matching g cause otherwise you can only ever
+                // match the first one
+                if (callbacks[i].seq) {
+
+                    // only fire callbacks for the maxLevel to prevent
+                    // subsequences from also firing
+                    //
+                    // for example 'a option b' should not cause 'option b' to fire
+                    // even though 'option b' is part of the other sequence
+                    //
+                    // any sequences that do not match here will be discarded
+                    // below by the _resetSequences call
+                    if (callbacks[i].level != maxLevel) {
+                        continue;
+                    }
+
+                    processedSequenceCallback = true;
+
+                    // keep a list of which sequences were matches for later
+                    doNotReset[callbacks[i].seq] = 1;
+                    _fireCallback(callbacks[i].callback, e, callbacks[i].combo, callbacks[i].seq);
+                    continue;
+                }
+
+                // if there were no sequence matches but we are still here
+                // that means this is a regular match so we should fire that
+                if (!processedSequenceCallback) {
+                    _fireCallback(callbacks[i].callback, e, callbacks[i].combo);
+                }
+            }
+
+            // if the key you pressed matches the type of sequence without
+            // being a modifier (ie "keyup" or "keypress") then we should
+            // reset all sequences that were not matched by this event
+            //
+            // this is so, for example, if you have the sequence "h a t" and you
+            // type "h e a r t" it does not match.  in this case the "e" will
+            // cause the sequence to reset
+            //
+            // modifier keys are ignored because you can have a sequence
+            // that contains modifiers such as "enter ctrl+space" and in most
+            // cases the modifier key will be pressed before the next key
+            //
+            // also if you have a sequence such as "ctrl+b a" then pressing the
+            // "b" key will trigger a "keypress" and a "keydown"
+            //
+            // the "keydown" is expected when there is a modifier, but the
+            // "keypress" ends up matching the _nextExpectedAction since it occurs
+            // after and that causes the sequence to reset
+            //
+            // we ignore keypresses in a sequence that directly follow a keydown
+            // for the same character
+            var ignoreThisKeypress = e.type == 'keypress' && _ignoreNextKeypress;
+            if (e.type == _nextExpectedAction && !_isModifier(character) && !ignoreThisKeypress) {
+                _resetSequences(doNotReset);
+            }
+
+            _ignoreNextKeypress = processedSequenceCallback && e.type == 'keydown';
+        };
+
+        /**
+         * handles a keydown event
+         *
+         * @param {Event} e
+         * @returns void
+         */
+        function _handleKeyEvent(e) {
+
+            // normalize e.which for key events
+            // @see http://stackoverflow.com/questions/4285627/javascript-keycode-vs-charcode-utter-confusion
+            if (typeof e.which !== 'number') {
+                e.which = e.keyCode;
+            }
+
+            var character = _characterFromEvent(e);
+
+            // no character found then stop
+            if (!character) {
+                return;
+            }
+
+            // need to use === for the character check because the character can be 0
+            if (e.type == 'keyup' && _ignoreNextKeyup === character) {
+                _ignoreNextKeyup = false;
+                return;
+            }
+
+            self.handleKey(character, _eventModifiers(e), e);
+        }
+
+        /**
+         * called to set a 1 second timeout on the specified sequence
+         *
+         * this is so after each key press in the sequence you have 1 second
+         * to press the next key before you have to start over
+         *
+         * @returns void
+         */
+        function _resetSequenceTimer() {
+            clearTimeout(_resetTimer);
+            _resetTimer = setTimeout(_resetSequences, 1000);
+        }
+
+        /**
+         * binds a key sequence to an event
+         *
+         * @param {string} combo - combo specified in bind call
+         * @param {Array} keys
+         * @param {Function} callback
+         * @param {string=} action
+         * @returns void
+         */
+        function _bindSequence(combo, keys, callback, action) {
+
+            // start off by adding a sequence level record for this combination
+            // and setting the level to 0
+            _sequenceLevels[combo] = 0;
+
+            /**
+             * callback to increase the sequence level for this sequence and reset
+             * all other sequences that were active
+             *
+             * @param {string} nextAction
+             * @returns {Function}
+             */
+            function _increaseSequence(nextAction) {
+                return function() {
+                    _nextExpectedAction = nextAction;
+                    ++_sequenceLevels[combo];
+                    _resetSequenceTimer();
+                };
+            }
+
+            /**
+             * wraps the specified callback inside of another function in order
+             * to reset all sequence counters as soon as this sequence is done
+             *
+             * @param {Event} e
+             * @returns void
+             */
+            function _callbackAndReset(e) {
+                _fireCallback(callback, e, combo);
+
+                // we should ignore the next key up if the action is key down
+                // or keypress.  this is so if you finish a sequence and
+                // release the key the final key will not trigger a keyup
+                if (action !== 'keyup') {
+                    _ignoreNextKeyup = _characterFromEvent(e);
+                }
+
+                // weird race condition if a sequence ends with the key
+                // another sequence begins with
+                setTimeout(_resetSequences, 10);
+            }
+
+            // loop through keys one at a time and bind the appropriate callback
+            // function.  for any key leading up to the final one it should
+            // increase the sequence. after the final, it should reset all sequences
+            //
+            // if an action is specified in the original bind call then that will
+            // be used throughout.  otherwise we will pass the action that the
+            // next key in the sequence should match.  this allows a sequence
+            // to mix and match keypress and keydown events depending on which
+            // ones are better suited to the key provided
+            for (var i = 0; i < keys.length; ++i) {
+                var isFinal = i + 1 === keys.length;
+                var wrappedCallback = isFinal ? _callbackAndReset : _increaseSequence(action || _getKeyInfo(keys[i + 1]).action);
+                _bindSingle(keys[i], wrappedCallback, action, combo, i);
+            }
+        }
+
+        /**
+         * binds a single keyboard combination
+         *
+         * @param {string} combination
+         * @param {Function} callback
+         * @param {string=} action
+         * @param {string=} sequenceName - name of sequence if part of sequence
+         * @param {number=} level - what part of the sequence the command is
+         * @returns void
+         */
+        function _bindSingle(combination, callback, action, sequenceName, level) {
+
+            // store a direct mapped reference for use with Mousetrap.trigger
+            self._directMap[combination + ':' + action] = callback;
+
+            // make sure multiple spaces in a row become a single space
+            combination = combination.replace(/\s+/g, ' ');
+
+            var sequence = combination.split(' ');
+            var info;
+
+            // if this pattern is a sequence of keys then run through this method
+            // to reprocess each pattern one key at a time
+            if (sequence.length > 1) {
+                _bindSequence(combination, sequence, callback, action);
+                return;
+            }
+
+            info = _getKeyInfo(combination, action);
+
+            // make sure to initialize array if this is the first time
+            // a callback is added for this key
+            self._callbacks[info.key] = self._callbacks[info.key] || [];
+
+            // remove an existing match if there is one
+            _getMatches(info.key, info.modifiers, {type: info.action}, sequenceName, combination, level);
+
+            // add this call back to the array
+            // if it is a sequence put it at the beginning
+            // if not put it at the end
+            //
+            // this is important because the way these are processed expects
+            // the sequence ones to come first
+            self._callbacks[info.key][sequenceName ? 'unshift' : 'push']({
+                callback: callback,
+                modifiers: info.modifiers,
+                action: info.action,
+                seq: sequenceName,
+                level: level,
+                combo: combination
+            });
+        }
+
+        /**
+         * binds multiple combinations to the same callback
+         *
+         * @param {Array} combinations
+         * @param {Function} callback
+         * @param {string|undefined} action
+         * @returns void
+         */
+        self._bindMultiple = function(combinations, callback, action) {
+            for (var i = 0; i < combinations.length; ++i) {
+                _bindSingle(combinations[i], callback, action);
+            }
+        };
+
+        // start!
+        _addEvent(targetElement, 'keypress', _handleKeyEvent);
+        _addEvent(targetElement, 'keydown', _handleKeyEvent);
+        _addEvent(targetElement, 'keyup', _handleKeyEvent);
+    }
+
+    /**
+     * binds an event to mousetrap
+     *
+     * can be a single key, a combination of keys separated with +,
+     * an array of keys, or a sequence of keys separated by spaces
+     *
+     * be sure to list the modifier keys first to make sure that the
+     * correct key ends up getting bound (the last key in the pattern)
+     *
+     * @param {string|Array} keys
+     * @param {Function} callback
+     * @param {string=} action - 'keypress', 'keydown', or 'keyup'
+     * @returns void
+     */
+    Mousetrap.prototype.bind = function(keys, callback, action) {
+        var self = this;
+        keys = keys instanceof Array ? keys : [keys];
+        self._bindMultiple.call(self, keys, callback, action);
+        return self;
+    };
+
+    /**
+     * unbinds an event to mousetrap
+     *
+     * the unbinding sets the callback function of the specified key combo
+     * to an empty function and deletes the corresponding key in the
+     * _directMap dict.
+     *
+     * TODO: actually remove this from the _callbacks dictionary instead
+     * of binding an empty function
+     *
+     * the keycombo+action has to be exactly the same as
+     * it was defined in the bind method
+     *
+     * @param {string|Array} keys
+     * @param {string} action
+     * @returns void
+     */
+    Mousetrap.prototype.unbind = function(keys, action) {
+        var self = this;
+        return self.bind.call(self, keys, function() {}, action);
+    };
+
+    /**
+     * triggers an event that has already been bound
+     *
+     * @param {string} keys
+     * @param {string=} action
+     * @returns void
+     */
+    Mousetrap.prototype.trigger = function(keys, action) {
+        var self = this;
+        if (self._directMap[keys + ':' + action]) {
+            self._directMap[keys + ':' + action]({}, keys);
+        }
+        return self;
+    };
+
+    /**
+     * resets the library back to its initial state.  this is useful
+     * if you want to clear out the current keyboard shortcuts and bind
+     * new ones - for example if you switch to another page
+     *
+     * @returns void
+     */
+    Mousetrap.prototype.reset = function() {
+        var self = this;
+        self._callbacks = {};
+        self._directMap = {};
+        return self;
+    };
+
+    /**
+     * should we stop this event before firing off callbacks
+     *
+     * @param {Event} e
+     * @param {Element} element
+     * @return {boolean}
+     */
+    Mousetrap.prototype.stopCallback = function(e, element) {
+        var self = this;
+
+        // if the element has the class "mousetrap" then no need to stop
+        if ((' ' + element.className + ' ').indexOf(' mousetrap ') > -1) {
+            return false;
+        }
+
+        if (_belongsTo(element, self.target)) {
+            return false;
+        }
+
+        // stop for input, select, and textarea
+        return element.tagName == 'INPUT' || element.tagName == 'SELECT' || element.tagName == 'TEXTAREA' || element.isContentEditable;
+    };
+
+    /**
+     * exposes _handleKey publicly so it can be overwritten by extensions
+     */
+    Mousetrap.prototype.handleKey = function() {
+        var self = this;
+        return self._handleKey.apply(self, arguments);
+    };
+
+    /**
+     * allow custom key mappings
+     */
+    Mousetrap.addKeycodes = function(object) {
+        for (var key in object) {
+            if (object.hasOwnProperty(key)) {
+                _MAP[key] = object[key];
+            }
+        }
+        _REVERSE_MAP = null;
+    };
+
+    /**
+     * Init the global mousetrap functions
+     *
+     * This method is needed to allow the global mousetrap functions to work
+     * now that mousetrap is a constructor function.
+     */
+    Mousetrap.init = function() {
+        var documentMousetrap = Mousetrap(document);
+        for (var method in documentMousetrap) {
+            if (method.charAt(0) !== '_') {
+                Mousetrap[method] = (function(method) {
+                    return function() {
+                        return documentMousetrap[method].apply(documentMousetrap, arguments);
+                    };
+                } (method));
+            }
+        }
+    };
+
+    Mousetrap.init();
+
+    // expose mousetrap to the global object
+    window.Mousetrap = Mousetrap;
+
+    // expose as a common js module
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = Mousetrap;
+    }
+
+    // expose mousetrap as an AMD module
+    if (true) {
+        !(__WEBPACK_AMD_DEFINE_RESULT__ = (function() {
+            return Mousetrap;
+        }).call(exports, __webpack_require__, exports, module),
+				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+    }
+}) (typeof window !== 'undefined' ? window : null, typeof  window !== 'undefined' ? document : null);
+
+
+/***/ }),
+/* 30 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+/*
+ * Ben Postlethwaite
+ * January 2013
+ * License MIT
+ */
+
+
+var colorScale = __webpack_require__(31);
+var lerp = __webpack_require__(32)
+
+module.exports = createColormap;
+
+function createColormap (spec) {
+    /*
+     * Default Options
+     */
+    var indicies, rgba, fromrgba, torgba,
+        nsteps, cmap, colormap, format,
+        nshades, colors, alpha, index, i,
+        r = [],
+        g = [],
+        b = [],
+        a = [];
+
+    if ( !spec ) spec = {};
+
+    nshades = (spec.nshades || 72) - 1;
+    format = spec.format || 'hex';
+
+    colormap = spec.colormap;
+    if (!colormap) colormap = 'jet';
+
+    if (typeof colormap === 'string') {
+        colormap = colormap.toLowerCase();
+
+        if (!colorScale[colormap]) {
+            throw Error(colormap + ' not a supported colorscale');
+        }
+
+        cmap = colorScale[colormap];
+
+    } else if (Array.isArray(colormap)) {
+        cmap = colormap.slice();
+
+    } else {
+        throw Error('unsupported colormap option', colormap);
+    }
+
+    if (cmap.length > nshades) {
+        throw new Error(
+            colormap+' map requires nshades to be at least size '+cmap.length
+        );
+    }
+
+    if (!Array.isArray(spec.alpha)) {
+
+        if (typeof spec.alpha === 'number') {
+            alpha = [spec.alpha, spec.alpha];
+
+        } else {
+            alpha = [1, 1];
+        }
+
+    } else if (spec.alpha.length !== 2) {
+        alpha = [1, 1];
+
+    } else {
+        alpha = spec.alpha.slice();
+    }
+
+    // map index points from 0..1 to 0..n-1
+    indicies = cmap.map(function(c) {
+        return Math.round(c.index * nshades);
+    });
+
+    // Add alpha channel to the map
+    alpha[0] = Math.min(Math.max(alpha[0], 0), 1);
+    alpha[1] = Math.min(Math.max(alpha[1], 0), 1);
+
+    var steps = cmap.map(function(c, i) {
+        var index = cmap[i].index
+
+        var rgba = cmap[i].rgb.slice();
+
+        // if user supplies their own map use it
+        if (rgba.length === 4 && rgba[3] >= 0 && rgba[3] <= 1) {
+            return rgba
+        }
+        rgba[3] = alpha[0] + (alpha[1] - alpha[0])*index;
+
+        return rgba
+    })
+
+
+    /*
+     * map increasing linear values between indicies to
+     * linear steps in colorvalues
+     */
+    var colors = []
+    for (i = 0; i < indicies.length-1; ++i) {
+        nsteps = indicies[i+1] - indicies[i];
+        fromrgba = steps[i];
+        torgba = steps[i+1];
+
+        for (var j = 0; j < nsteps; j++) {
+            var amt = j / nsteps
+            colors.push([
+                Math.round(lerp(fromrgba[0], torgba[0], amt)),
+                Math.round(lerp(fromrgba[1], torgba[1], amt)),
+                Math.round(lerp(fromrgba[2], torgba[2], amt)),
+                lerp(fromrgba[3], torgba[3], amt)
+            ])
+        }
+    }
+
+    //add 1 step as last value
+    colors.push(cmap[cmap.length - 1].rgb.concat(alpha[1]))
+
+    if (format === 'hex') colors = colors.map( rgb2hex );
+    else if (format === 'rgbaString') colors = colors.map( rgbaStr );
+    else if (format === 'float') colors = colors.map( rgb2float );
+
+    return colors;
+};
+
+function rgb2float (rgba) {
+    return [
+        rgba[0] / 255,
+        rgba[1] / 255,
+        rgba[2] / 255,
+        rgba[3]
+    ]
+}
+
+function rgb2hex (rgba) {
+    var dig, hex = '#';
+    for (var i = 0; i < 3; ++i) {
+        dig = rgba[i];
+        dig = dig.toString(16);
+        hex += ('00' + dig).substr( dig.length );
+    }
+    return hex;
+}
+
+function rgbaStr (rgba) {
+    return 'rgba(' + rgba.join(',') + ')';
+}
+
+
+/***/ }),
+/* 31 */
+/***/ (function(module, exports) {
+
+module.exports={
+	"jet":[{"index":0,"rgb":[0,0,131]},{"index":0.125,"rgb":[0,60,170]},{"index":0.375,"rgb":[5,255,255]},{"index":0.625,"rgb":[255,255,0]},{"index":0.875,"rgb":[250,0,0]},{"index":1,"rgb":[128,0,0]}],
+
+	"hsv":[{"index":0,"rgb":[255,0,0]},{"index":0.169,"rgb":[253,255,2]},{"index":0.173,"rgb":[247,255,2]},{"index":0.337,"rgb":[0,252,4]},{"index":0.341,"rgb":[0,252,10]},{"index":0.506,"rgb":[1,249,255]},{"index":0.671,"rgb":[2,0,253]},{"index":0.675,"rgb":[8,0,253]},{"index":0.839,"rgb":[255,0,251]},{"index":0.843,"rgb":[255,0,245]},{"index":1,"rgb":[255,0,6]}],
+
+	"hot":[{"index":0,"rgb":[0,0,0]},{"index":0.3,"rgb":[230,0,0]},{"index":0.6,"rgb":[255,210,0]},{"index":1,"rgb":[255,255,255]}],
+
+	"cool":[{"index":0,"rgb":[0,255,255]},{"index":1,"rgb":[255,0,255]}],
+
+	"spring":[{"index":0,"rgb":[255,0,255]},{"index":1,"rgb":[255,255,0]}],
+
+	"summer":[{"index":0,"rgb":[0,128,102]},{"index":1,"rgb":[255,255,102]}],
+
+	"autumn":[{"index":0,"rgb":[255,0,0]},{"index":1,"rgb":[255,255,0]}],
+
+	"winter":[{"index":0,"rgb":[0,0,255]},{"index":1,"rgb":[0,255,128]}],
+
+	"bone":[{"index":0,"rgb":[0,0,0]},{"index":0.376,"rgb":[84,84,116]},{"index":0.753,"rgb":[169,200,200]},{"index":1,"rgb":[255,255,255]}],
+
+	"copper":[{"index":0,"rgb":[0,0,0]},{"index":0.804,"rgb":[255,160,102]},{"index":1,"rgb":[255,199,127]}],
+
+	"greys":[{"index":0,"rgb":[0,0,0]},{"index":1,"rgb":[255,255,255]}],
+
+	"yignbu":[{"index":0,"rgb":[8,29,88]},{"index":0.125,"rgb":[37,52,148]},{"index":0.25,"rgb":[34,94,168]},{"index":0.375,"rgb":[29,145,192]},{"index":0.5,"rgb":[65,182,196]},{"index":0.625,"rgb":[127,205,187]},{"index":0.75,"rgb":[199,233,180]},{"index":0.875,"rgb":[237,248,217]},{"index":1,"rgb":[255,255,217]}],
+
+	"greens":[{"index":0,"rgb":[0,68,27]},{"index":0.125,"rgb":[0,109,44]},{"index":0.25,"rgb":[35,139,69]},{"index":0.375,"rgb":[65,171,93]},{"index":0.5,"rgb":[116,196,118]},{"index":0.625,"rgb":[161,217,155]},{"index":0.75,"rgb":[199,233,192]},{"index":0.875,"rgb":[229,245,224]},{"index":1,"rgb":[247,252,245]}],
+
+	"yiorrd":[{"index":0,"rgb":[128,0,38]},{"index":0.125,"rgb":[189,0,38]},{"index":0.25,"rgb":[227,26,28]},{"index":0.375,"rgb":[252,78,42]},{"index":0.5,"rgb":[253,141,60]},{"index":0.625,"rgb":[254,178,76]},{"index":0.75,"rgb":[254,217,118]},{"index":0.875,"rgb":[255,237,160]},{"index":1,"rgb":[255,255,204]}],
+
+	"bluered":[{"index":0,"rgb":[0,0,255]},{"index":1,"rgb":[255,0,0]}],
+
+	"rdbu":[{"index":0,"rgb":[5,10,172]},{"index":0.35,"rgb":[106,137,247]},{"index":0.5,"rgb":[190,190,190]},{"index":0.6,"rgb":[220,170,132]},{"index":0.7,"rgb":[230,145,90]},{"index":1,"rgb":[178,10,28]}],
+
+	"picnic":[{"index":0,"rgb":[0,0,255]},{"index":0.1,"rgb":[51,153,255]},{"index":0.2,"rgb":[102,204,255]},{"index":0.3,"rgb":[153,204,255]},{"index":0.4,"rgb":[204,204,255]},{"index":0.5,"rgb":[255,255,255]},{"index":0.6,"rgb":[255,204,255]},{"index":0.7,"rgb":[255,153,255]},{"index":0.8,"rgb":[255,102,204]},{"index":0.9,"rgb":[255,102,102]},{"index":1,"rgb":[255,0,0]}],
+
+	"rainbow":[{"index":0,"rgb":[150,0,90]},{"index":0.125,"rgb":[0,0,200]},{"index":0.25,"rgb":[0,25,255]},{"index":0.375,"rgb":[0,152,255]},{"index":0.5,"rgb":[44,255,150]},{"index":0.625,"rgb":[151,255,0]},{"index":0.75,"rgb":[255,234,0]},{"index":0.875,"rgb":[255,111,0]},{"index":1,"rgb":[255,0,0]}],
+
+	"portland":[{"index":0,"rgb":[12,51,131]},{"index":0.25,"rgb":[10,136,186]},{"index":0.5,"rgb":[242,211,56]},{"index":0.75,"rgb":[242,143,56]},{"index":1,"rgb":[217,30,30]}],
+
+	"blackbody":[{"index":0,"rgb":[0,0,0]},{"index":0.2,"rgb":[230,0,0]},{"index":0.4,"rgb":[230,210,0]},{"index":0.7,"rgb":[255,255,255]},{"index":1,"rgb":[160,200,255]}],
+
+	"earth":[{"index":0,"rgb":[0,0,130]},{"index":0.1,"rgb":[0,180,180]},{"index":0.2,"rgb":[40,210,40]},{"index":0.4,"rgb":[230,230,50]},{"index":0.6,"rgb":[120,70,20]},{"index":1,"rgb":[255,255,255]}],
+
+	"electric":[{"index":0,"rgb":[0,0,0]},{"index":0.15,"rgb":[30,0,100]},{"index":0.4,"rgb":[120,0,100]},{"index":0.6,"rgb":[160,90,0]},{"index":0.8,"rgb":[230,200,0]},{"index":1,"rgb":[255,250,220]}],
+
+	"alpha": [{"index":0, "rgb": [255,255,255,0]},{"index":1, "rgb": [255,255,255,1]}],
+
+	"viridis": [{"index":0,"rgb":[68,1,84]},{"index":0.13,"rgb":[71,44,122]},{"index":0.25,"rgb":[59,81,139]},{"index":0.38,"rgb":[44,113,142]},{"index":0.5,"rgb":[33,144,141]},{"index":0.63,"rgb":[39,173,129]},{"index":0.75,"rgb":[92,200,99]},{"index":0.88,"rgb":[170,220,50]},{"index":1,"rgb":[253,231,37]}],
+
+	"inferno": [{"index":0,"rgb":[0,0,4]},{"index":0.13,"rgb":[31,12,72]},{"index":0.25,"rgb":[85,15,109]},{"index":0.38,"rgb":[136,34,106]},{"index":0.5,"rgb":[186,54,85]},{"index":0.63,"rgb":[227,89,51]},{"index":0.75,"rgb":[249,140,10]},{"index":0.88,"rgb":[249,201,50]},{"index":1,"rgb":[252,255,164]}],
+
+	"magma": [{"index":0,"rgb":[0,0,4]},{"index":0.13,"rgb":[28,16,68]},{"index":0.25,"rgb":[79,18,123]},{"index":0.38,"rgb":[129,37,129]},{"index":0.5,"rgb":[181,54,122]},{"index":0.63,"rgb":[229,80,100]},{"index":0.75,"rgb":[251,135,97]},{"index":0.88,"rgb":[254,194,135]},{"index":1,"rgb":[252,253,191]}],
+
+	"plasma": [{"index":0,"rgb":[13,8,135]},{"index":0.13,"rgb":[75,3,161]},{"index":0.25,"rgb":[125,3,168]},{"index":0.38,"rgb":[168,34,150]},{"index":0.5,"rgb":[203,70,121]},{"index":0.63,"rgb":[229,107,93]},{"index":0.75,"rgb":[248,148,65]},{"index":0.88,"rgb":[253,195,40]},{"index":1,"rgb":[240,249,33]}],
+
+	"warm": [{"index":0,"rgb":[125,0,179]},{"index":0.13,"rgb":[172,0,187]},{"index":0.25,"rgb":[219,0,170]},{"index":0.38,"rgb":[255,0,130]},{"index":0.5,"rgb":[255,63,74]},{"index":0.63,"rgb":[255,123,0]},{"index":0.75,"rgb":[234,176,0]},{"index":0.88,"rgb":[190,228,0]},{"index":1,"rgb":[147,255,0]}],
+
+	"cool": [{"index":0,"rgb":[125,0,179]},{"index":0.13,"rgb":[116,0,218]},{"index":0.25,"rgb":[98,74,237]},{"index":0.38,"rgb":[68,146,231]},{"index":0.5,"rgb":[0,204,197]},{"index":0.63,"rgb":[0,247,146]},{"index":0.75,"rgb":[0,255,88]},{"index":0.88,"rgb":[40,255,8]},{"index":1,"rgb":[147,255,0]}],
+
+	"rainbow-soft": [{"index":0,"rgb":[125,0,179]},{"index":0.1,"rgb":[199,0,180]},{"index":0.2,"rgb":[255,0,121]},{"index":0.3,"rgb":[255,108,0]},{"index":0.4,"rgb":[222,194,0]},{"index":0.5,"rgb":[150,255,0]},{"index":0.6,"rgb":[0,255,55]},{"index":0.7,"rgb":[0,246,150]},{"index":0.8,"rgb":[50,167,222]},{"index":0.9,"rgb":[103,51,235]},{"index":1,"rgb":[124,0,186]}],
+
+	"bathymetry": [{"index":0,"rgb":[40,26,44]},{"index":0.13,"rgb":[59,49,90]},{"index":0.25,"rgb":[64,76,139]},{"index":0.38,"rgb":[63,110,151]},{"index":0.5,"rgb":[72,142,158]},{"index":0.63,"rgb":[85,174,163]},{"index":0.75,"rgb":[120,206,163]},{"index":0.88,"rgb":[187,230,172]},{"index":1,"rgb":[253,254,204]}],
+
+	"cdom": [{"index":0,"rgb":[47,15,62]},{"index":0.13,"rgb":[87,23,86]},{"index":0.25,"rgb":[130,28,99]},{"index":0.38,"rgb":[171,41,96]},{"index":0.5,"rgb":[206,67,86]},{"index":0.63,"rgb":[230,106,84]},{"index":0.75,"rgb":[242,149,103]},{"index":0.88,"rgb":[249,193,135]},{"index":1,"rgb":[254,237,176]}],
+
+	"chlorophyll": [{"index":0,"rgb":[18,36,20]},{"index":0.13,"rgb":[25,63,41]},{"index":0.25,"rgb":[24,91,59]},{"index":0.38,"rgb":[13,119,72]},{"index":0.5,"rgb":[18,148,80]},{"index":0.63,"rgb":[80,173,89]},{"index":0.75,"rgb":[132,196,122]},{"index":0.88,"rgb":[175,221,162]},{"index":1,"rgb":[215,249,208]}],
+
+	"density": [{"index":0,"rgb":[54,14,36]},{"index":0.13,"rgb":[89,23,80]},{"index":0.25,"rgb":[110,45,132]},{"index":0.38,"rgb":[120,77,178]},{"index":0.5,"rgb":[120,113,213]},{"index":0.63,"rgb":[115,151,228]},{"index":0.75,"rgb":[134,185,227]},{"index":0.88,"rgb":[177,214,227]},{"index":1,"rgb":[230,241,241]}],
+
+	"freesurface-blue": [{"index":0,"rgb":[30,4,110]},{"index":0.13,"rgb":[47,14,176]},{"index":0.25,"rgb":[41,45,236]},{"index":0.38,"rgb":[25,99,212]},{"index":0.5,"rgb":[68,131,200]},{"index":0.63,"rgb":[114,156,197]},{"index":0.75,"rgb":[157,181,203]},{"index":0.88,"rgb":[200,208,216]},{"index":1,"rgb":[241,237,236]}],
+
+	"freesurface-red": [{"index":0,"rgb":[60,9,18]},{"index":0.13,"rgb":[100,17,27]},{"index":0.25,"rgb":[142,20,29]},{"index":0.38,"rgb":[177,43,27]},{"index":0.5,"rgb":[192,87,63]},{"index":0.63,"rgb":[205,125,105]},{"index":0.75,"rgb":[216,162,148]},{"index":0.88,"rgb":[227,199,193]},{"index":1,"rgb":[241,237,236]}],
+
+	"oxygen": [{"index":0,"rgb":[64,5,5]},{"index":0.13,"rgb":[106,6,15]},{"index":0.25,"rgb":[144,26,7]},{"index":0.38,"rgb":[168,64,3]},{"index":0.5,"rgb":[188,100,4]},{"index":0.63,"rgb":[206,136,11]},{"index":0.75,"rgb":[220,174,25]},{"index":0.88,"rgb":[231,215,44]},{"index":1,"rgb":[248,254,105]}],
+
+	"par": [{"index":0,"rgb":[51,20,24]},{"index":0.13,"rgb":[90,32,35]},{"index":0.25,"rgb":[129,44,34]},{"index":0.38,"rgb":[159,68,25]},{"index":0.5,"rgb":[182,99,19]},{"index":0.63,"rgb":[199,134,22]},{"index":0.75,"rgb":[212,171,35]},{"index":0.88,"rgb":[221,210,54]},{"index":1,"rgb":[225,253,75]}],
+
+	"phase": [{"index":0,"rgb":[145,105,18]},{"index":0.13,"rgb":[184,71,38]},{"index":0.25,"rgb":[186,58,115]},{"index":0.38,"rgb":[160,71,185]},{"index":0.5,"rgb":[110,97,218]},{"index":0.63,"rgb":[50,123,164]},{"index":0.75,"rgb":[31,131,110]},{"index":0.88,"rgb":[77,129,34]},{"index":1,"rgb":[145,105,18]}],
+
+	"salinity": [{"index":0,"rgb":[42,24,108]},{"index":0.13,"rgb":[33,50,162]},{"index":0.25,"rgb":[15,90,145]},{"index":0.38,"rgb":[40,118,137]},{"index":0.5,"rgb":[59,146,135]},{"index":0.63,"rgb":[79,175,126]},{"index":0.75,"rgb":[120,203,104]},{"index":0.88,"rgb":[193,221,100]},{"index":1,"rgb":[253,239,154]}],
+
+	"temperature": [{"index":0,"rgb":[4,35,51]},{"index":0.13,"rgb":[23,51,122]},{"index":0.25,"rgb":[85,59,157]},{"index":0.38,"rgb":[129,79,143]},{"index":0.5,"rgb":[175,95,130]},{"index":0.63,"rgb":[222,112,101]},{"index":0.75,"rgb":[249,146,66]},{"index":0.88,"rgb":[249,196,65]},{"index":1,"rgb":[232,250,91]}],
+
+	"turbidity": [{"index":0,"rgb":[34,31,27]},{"index":0.13,"rgb":[65,50,41]},{"index":0.25,"rgb":[98,69,52]},{"index":0.38,"rgb":[131,89,57]},{"index":0.5,"rgb":[161,112,59]},{"index":0.63,"rgb":[185,140,66]},{"index":0.75,"rgb":[202,174,88]},{"index":0.88,"rgb":[216,209,126]},{"index":1,"rgb":[233,246,171]}],
+
+	"velocity-blue": [{"index":0,"rgb":[17,32,64]},{"index":0.13,"rgb":[35,52,116]},{"index":0.25,"rgb":[29,81,156]},{"index":0.38,"rgb":[31,113,162]},{"index":0.5,"rgb":[50,144,169]},{"index":0.63,"rgb":[87,173,176]},{"index":0.75,"rgb":[149,196,189]},{"index":0.88,"rgb":[203,221,211]},{"index":1,"rgb":[254,251,230]}],
+
+	"velocity-green": [{"index":0,"rgb":[23,35,19]},{"index":0.13,"rgb":[24,64,38]},{"index":0.25,"rgb":[11,95,45]},{"index":0.38,"rgb":[39,123,35]},{"index":0.5,"rgb":[95,146,12]},{"index":0.63,"rgb":[152,165,18]},{"index":0.75,"rgb":[201,186,69]},{"index":0.88,"rgb":[233,216,137]},{"index":1,"rgb":[255,253,205]}],
+
+	"cubehelix": [{"index":0,"rgb":[0,0,0]},{"index":0.07,"rgb":[22,5,59]},{"index":0.13,"rgb":[60,4,105]},{"index":0.2,"rgb":[109,1,135]},{"index":0.27,"rgb":[161,0,147]},{"index":0.33,"rgb":[210,2,142]},{"index":0.4,"rgb":[251,11,123]},{"index":0.47,"rgb":[255,29,97]},{"index":0.53,"rgb":[255,54,69]},{"index":0.6,"rgb":[255,85,46]},{"index":0.67,"rgb":[255,120,34]},{"index":0.73,"rgb":[255,157,37]},{"index":0.8,"rgb":[241,191,57]},{"index":0.87,"rgb":[224,220,93]},{"index":0.93,"rgb":[218,241,142]},{"index":1,"rgb":[227,253,198]}]
+};
+
+
+/***/ }),
+/* 32 */
+/***/ (function(module, exports) {
+
+function lerp(v0, v1, t) {
+    return v0*(1-t)+v1*t
+}
+module.exports = lerp
+
+/***/ }),
+/* 33 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+var __WEBPACK_AMD_DEFINE_RESULT__;
+
+(function () {
+	// registers the extension on a cytoscape lib ref
+	var register = function register(cytoscape) {
+		if (!cytoscape) {
+			return;
+		}
+
+		var cyCanvas = function cyCanvas(args) {
+			var cy = this;
+			var container = cy.container();
+
+			var canvas = document.createElement("canvas");
+
+			container.appendChild(canvas);
+
+			var defaults = {
+				zIndex: 1,
+				pixelRatio: "auto"
+			};
+
+			var options = Object.assign({}, defaults, args);
+
+			if (options.pixelRatio === "auto") {
+				options.pixelRatio = window.devicePixelRatio || 1;
+			}
+
+			function resize() {
+				var width = container.offsetWidth;
+				var height = container.offsetHeight;
+
+				var canvasWidth = width * options.pixelRatio;
+				var canvasHeight = height * options.pixelRatio;
+
+				canvas.width = canvasWidth;
+				canvas.height = canvasHeight;
+
+				canvas.style.width = width + "px";
+				canvas.style.height = height + "px";
+
+				cy.trigger("cyCanvas.resize");
+			}
+
+			cy.on("resize", function () {
+				resize();
+			});
+
+			canvas.setAttribute("style", "position:absolute; top:0; left:0; z-index:" + options.zIndex + ";");
+
+			resize();
+
+			return {
+				/**
+     * @return {Canvas} The generated canvas
+     */
+				getCanvas: function getCanvas() {
+					return canvas;
+				},
+
+				/**
+     * Helper: Clear the canvas
+     * @param {CanvasRenderingContext2D} ctx
+     */
+				clear: function clear(ctx) {
+					var width = cy.width();
+					var height = cy.height();
+					ctx.save();
+					ctx.setTransform(1, 0, 0, 1, 0, 0);
+					ctx.clearRect(0, 0, width * options.pixelRatio, height * options.pixelRatio);
+					ctx.restore();
+				},
+
+				/**
+     * Helper: Reset the context transform to an identity matrix
+     * @param {CanvasRenderingContext2D} ctx
+     */
+				resetTransform: function resetTransform(ctx) {
+					ctx.setTransform(1, 0, 0, 1, 0, 0);
+				},
+
+				/**
+     * Helper: Set the context transform to match Cystoscape's zoom & pan
+     * @param {CanvasRenderingContext2D} ctx
+     */
+				setTransform: function setTransform(ctx) {
+					var pan = cy.pan();
+					var zoom = cy.zoom();
+					ctx.setTransform(1, 0, 0, 1, 0, 0);
+					ctx.translate(pan.x * options.pixelRatio, pan.y * options.pixelRatio);
+					ctx.scale(zoom * options.pixelRatio, zoom * options.pixelRatio);
+				}
+			};
+		};
+
+		cytoscape("core", "cyCanvas", cyCanvas);
+	};
+
+	if (typeof module !== "undefined" && module.exports) {
+		// expose as a commonjs module
+		module.exports = function (cytoscape) {
+			register(cytoscape);
+		};
+	}
+
+	if (true) {
+		// expose as an amd/requirejs module
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = (function () {
+			return register;
+		}).call(exports, __webpack_require__, exports, module),
+				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}
+
+	if (typeof cytoscape !== "undefined") {
+		// expose to global cytoscape (i.e. window.cytoscape)
+		register(cytoscape);
+	}
+})();
+
+
+/***/ }),
+/* 34 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+__webpack_require__(35);
+
+var utils = _interopRequireWildcard(__webpack_require__(5));
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = Object.defineProperty && Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : {}; if (desc.get || desc.set) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } } newObj.default = obj; return newObj; } }
+
+var cy;
+var stage;
+var currentShape;
+var thisThing;
+var oldX, oldY;
+var haveAddedText = false;
+
+function CommentsCanvas(cyObj) {
+  /* ******************\
+  || CANVAS BULLSHIT ||
+  ********************/
+  thisThing = this;
+  cy = cyObj;
+  var layer = cy.cyCanvas({
+    zIndex: 100,
+    pixelRatio: 'auto'
+  });
+  var canvas = layer.getCanvas();
+  canvas.setAttribute('id', 'commentsCanvas');
+  stage = new createjs.Stage(canvas);
+  cy.on('render cyCanvas.resize', function (evt) {
+    var pan = cy.pan();
+    var zoom = cy.zoom();
+    stage.x = 2 * pan.x;
+    stage.y = 2 * pan.y;
+    stage.scaleX = zoom;
+    stage.scaleY = zoom;
+    stage.update();
+  });
+
+  this.serialize = function () {
+    /*console.log(JSON.stringify(stage.children.map(function (shape) {
+      return toBase64(shape)
+    })))*/
+    console.log(stage.children);
+    console.log(stage.children.map(serialize));
+    return stage.children.map(serialize);
+  };
+
+  this.reset = function () {
+    stage.removeAllChildren();
+    stage.update();
+  };
+
+  this.enableDrawingMode = function () {
+    this.drawingMode = true;
+    cy.userPanningEnabled(false);
+    cy.boxSelectionEnabled(false);
+    cy.on('mousedown', this.startDrawing);
+    cy.on('mouseup', this.stopDrawing);
+    cy.on('tap', addText);
+    haveAddedText = false;
+  };
+
+  this.disableDrawingMode = function () {
+    this.drawingMode = false;
+    cy.userPanningEnabled(true);
+    cy.boxSelectionEnabled(true);
+    cy.off('mousedown', this.startDrawing);
+    cy.off('mouseup', this.stopDrawing);
+    cy.off('tap', addText);
+    haveAddedText = false;
+  };
+
+  this.startDrawing = function (evt) {
+    currentShape = new createjs.Shape();
+    var g = currentShape.graphics;
+    addPointListeners(currentShape);
+    g.setStrokeStyle(50, 'round', 'round');
+    g.beginStroke(createjs.Graphics.getRGB(0, 0, 0));
+    stage.addChild(currentShape);
+    cy.on('mousemove', addPoint, false);
+  };
+
+  this.stopDrawing = function () {
+    cy.off('mousemove', addPoint, false);
+  };
+
+  this.load = function (json) {
+    if (json) {
+      var pos = function pos(ele) {
+        return {
+          position: {
+            x: ele.x / 2,
+            y: ele.y / 2
+          }
+        };
+      };
+
+      json.forEach(function (element) {
+        if (element.type === "Text") {
+          addText(pos(element), element.text);
+        } else {
+          thisThing.startDrawing();
+          element.points.forEach(function (ele) {
+            addPoint(pos(ele));
+          });
+          thisThing.stopDrawing();
+        }
+      });
+    }
+  };
+}
+
+var addText = function addText(evt) {
+  var inpText = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+
+  if (inpText === null) {
+    inpText = utils.getText();
+  }
+
+  if (inpText !== null) {
+    haveAddedText = true;
+    var text = new createjs.Text(inpText, '20px Arial', 'black');
+    text.x = 2 * evt.position.x;
+    text.y = 2 * evt.position.y;
+    addTextListeners(text);
+    stage.addChild(text);
+    stage.update();
+  }
+};
+
+var addPoint = function addPoint(evt) {
+  if (!haveAddedText) {
+    var x = 2 * evt.position.x;
+    var y = 2 * evt.position.y;
+    currentShape.graphics.lineTo(x, y);
+    stage.update();
+  }
+};
+
+var addPointListeners = function addPointListeners(obj) {
+  var move = function move(evt) {
+    obj.x = 2 * evt.position.x;
+    obj.y = 2 * evt.position.y;
+    stage.update();
+  };
+
+  var commentDelete = function commentDelete(evt) {
+    if (evt.keyCode === 8
+    /* backspace */
+    ) {
+        stage.removeChild(obj);
+      }
+  };
+
+  obj.on('mousedown', function (evt) {
+    currentShape = obj;
+    cy.userPanningEnabled(false);
+    cy.boxSelectionEnabled(false);
+    cy.on('mousemove', move);
+    document.addEventListener('keydown', commentDelete);
+  });
+  obj.on('pressup', function (evt) {
+    cy.userPanningEnabled(true);
+    cy.boxSelectionEnabled(true);
+    cy.off('mousemove', move);
+    document.removeEventListener('keydown', commentDelete);
+  });
+};
+
+var addTextListeners = function addTextListeners(obj) {
+  var move = function move(evt) {
+    obj.x = 2 * evt.position.x;
+    obj.y = 2 * evt.position.y;
+    stage.update();
+  };
+
+  var commentDelete = function commentDelete(evt) {
+    if (evt.keyCode === 8
+    /* backspace */
+    ) {
+        stage.removeChild(obj);
+      }
+  };
+
   obj.on('mousedown', function (evt) {
     currentShape = obj;
     cy.userPanningEnabled(false);
@@ -64374,1441 +53247,6 @@ window.createjs = window.createjs||{};
 	 * @event mousedown
 	 * @since 0.6.0
 	 */
-=======
-    /**
-     * checks if two arrays are equal
-     *
-     * @param {Array} modifiers1
-     * @param {Array} modifiers2
-     * @returns {boolean}
-     */
-    function _modifiersMatch(modifiers1, modifiers2) {
-        return modifiers1.sort().join(',') === modifiers2.sort().join(',');
-    }
-
-    /**
-     * takes a key event and figures out what the modifiers are
-     *
-     * @param {Event} e
-     * @returns {Array}
-     */
-    function _eventModifiers(e) {
-        var modifiers = [];
-
-        if (e.shiftKey) {
-            modifiers.push('shift');
-        }
-
-        if (e.altKey) {
-            modifiers.push('alt');
-        }
-
-        if (e.ctrlKey) {
-            modifiers.push('ctrl');
-        }
-
-        if (e.metaKey) {
-            modifiers.push('meta');
-        }
-
-        return modifiers;
-    }
-
-    /**
-     * prevents default for this event
-     *
-     * @param {Event} e
-     * @returns void
-     */
-    function _preventDefault(e) {
-        if (e.preventDefault) {
-            e.preventDefault();
-            return;
-        }
-
-        e.returnValue = false;
-    }
-
-    /**
-     * stops propogation for this event
-     *
-     * @param {Event} e
-     * @returns void
-     */
-    function _stopPropagation(e) {
-        if (e.stopPropagation) {
-            e.stopPropagation();
-            return;
-        }
-
-        e.cancelBubble = true;
-    }
-
-    /**
-     * determines if the keycode specified is a modifier key or not
-     *
-     * @param {string} key
-     * @returns {boolean}
-     */
-    function _isModifier(key) {
-        return key == 'shift' || key == 'ctrl' || key == 'alt' || key == 'meta';
-    }
-
-    /**
-     * reverses the map lookup so that we can look for specific keys
-     * to see what can and can't use keypress
-     *
-     * @return {Object}
-     */
-    function _getReverseMap() {
-        if (!_REVERSE_MAP) {
-            _REVERSE_MAP = {};
-            for (var key in _MAP) {
-
-                // pull out the numeric keypad from here cause keypress should
-                // be able to detect the keys from the character
-                if (key > 95 && key < 112) {
-                    continue;
-                }
-
-                if (_MAP.hasOwnProperty(key)) {
-                    _REVERSE_MAP[_MAP[key]] = key;
-                }
-            }
-        }
-        return _REVERSE_MAP;
-    }
-
-    /**
-     * picks the best action based on the key combination
-     *
-     * @param {string} key - character for key
-     * @param {Array} modifiers
-     * @param {string=} action passed in
-     */
-    function _pickBestAction(key, modifiers, action) {
-
-        // if no action was picked in we should try to pick the one
-        // that we think would work best for this key
-        if (!action) {
-            action = _getReverseMap()[key] ? 'keydown' : 'keypress';
-        }
-
-        // modifier keys don't work as expected with keypress,
-        // switch to keydown
-        if (action == 'keypress' && modifiers.length) {
-            action = 'keydown';
-        }
-
-        return action;
-    }
-
-    /**
-     * Converts from a string key combination to an array
-     *
-     * @param  {string} combination like "command+shift+l"
-     * @return {Array}
-     */
-    function _keysFromString(combination) {
-        if (combination === '+') {
-            return ['+'];
-        }
-
-        combination = combination.replace(/\+{2}/g, '+plus');
-        return combination.split('+');
-    }
-
-    /**
-     * Gets info for a specific key combination
-     *
-     * @param  {string} combination key combination ("command+s" or "a" or "*")
-     * @param  {string=} action
-     * @returns {Object}
-     */
-    function _getKeyInfo(combination, action) {
-        var keys;
-        var key;
-        var i;
-        var modifiers = [];
-
-        // take the keys from this pattern and figure out what the actual
-        // pattern is all about
-        keys = _keysFromString(combination);
-
-        for (i = 0; i < keys.length; ++i) {
-            key = keys[i];
-
-            // normalize key names
-            if (_SPECIAL_ALIASES[key]) {
-                key = _SPECIAL_ALIASES[key];
-            }
-
-            // if this is not a keypress event then we should
-            // be smart about using shift keys
-            // this will only work for US keyboards however
-            if (action && action != 'keypress' && _SHIFT_MAP[key]) {
-                key = _SHIFT_MAP[key];
-                modifiers.push('shift');
-            }
-
-            // if this key is a modifier then add it to the list of modifiers
-            if (_isModifier(key)) {
-                modifiers.push(key);
-            }
-        }
-
-        // depending on what the key combination is
-        // we will try to pick the best event for it
-        action = _pickBestAction(key, modifiers, action);
-
-        return {
-            key: key,
-            modifiers: modifiers,
-            action: action
-        };
-    }
-
-    function _belongsTo(element, ancestor) {
-        if (element === null || element === document) {
-            return false;
-        }
-
-        if (element === ancestor) {
-            return true;
-        }
-
-        return _belongsTo(element.parentNode, ancestor);
-    }
-
-    function Mousetrap(targetElement) {
-        var self = this;
-
-        targetElement = targetElement || document;
-
-        if (!(self instanceof Mousetrap)) {
-            return new Mousetrap(targetElement);
-        }
-
-        /**
-         * element to attach key events to
-         *
-         * @type {Element}
-         */
-        self.target = targetElement;
-
-        /**
-         * a list of all the callbacks setup via Mousetrap.bind()
-         *
-         * @type {Object}
-         */
-        self._callbacks = {};
-
-        /**
-         * direct map of string combinations to callbacks used for trigger()
-         *
-         * @type {Object}
-         */
-        self._directMap = {};
-
-        /**
-         * keeps track of what level each sequence is at since multiple
-         * sequences can start out with the same sequence
-         *
-         * @type {Object}
-         */
-        var _sequenceLevels = {};
-
-        /**
-         * variable to store the setTimeout call
-         *
-         * @type {null|number}
-         */
-        var _resetTimer;
-
-        /**
-         * temporary state where we will ignore the next keyup
-         *
-         * @type {boolean|string}
-         */
-        var _ignoreNextKeyup = false;
-
-        /**
-         * temporary state where we will ignore the next keypress
-         *
-         * @type {boolean}
-         */
-        var _ignoreNextKeypress = false;
-
-        /**
-         * are we currently inside of a sequence?
-         * type of action ("keyup" or "keydown" or "keypress") or false
-         *
-         * @type {boolean|string}
-         */
-        var _nextExpectedAction = false;
-
-        /**
-         * resets all sequence counters except for the ones passed in
-         *
-         * @param {Object} doNotReset
-         * @returns void
-         */
-        function _resetSequences(doNotReset) {
-            doNotReset = doNotReset || {};
-
-            var activeSequences = false,
-                key;
-
-            for (key in _sequenceLevels) {
-                if (doNotReset[key]) {
-                    activeSequences = true;
-                    continue;
-                }
-                _sequenceLevels[key] = 0;
-            }
-
-            if (!activeSequences) {
-                _nextExpectedAction = false;
-            }
-        }
-
-        /**
-         * finds all callbacks that match based on the keycode, modifiers,
-         * and action
-         *
-         * @param {string} character
-         * @param {Array} modifiers
-         * @param {Event|Object} e
-         * @param {string=} sequenceName - name of the sequence we are looking for
-         * @param {string=} combination
-         * @param {number=} level
-         * @returns {Array}
-         */
-        function _getMatches(character, modifiers, e, sequenceName, combination, level) {
-            var i;
-            var callback;
-            var matches = [];
-            var action = e.type;
-
-            // if there are no events related to this keycode
-            if (!self._callbacks[character]) {
-                return [];
-            }
-
-            // if a modifier key is coming up on its own we should allow it
-            if (action == 'keyup' && _isModifier(character)) {
-                modifiers = [character];
-            }
-
-            // loop through all callbacks for the key that was pressed
-            // and see if any of them match
-            for (i = 0; i < self._callbacks[character].length; ++i) {
-                callback = self._callbacks[character][i];
-
-                // if a sequence name is not specified, but this is a sequence at
-                // the wrong level then move onto the next match
-                if (!sequenceName && callback.seq && _sequenceLevels[callback.seq] != callback.level) {
-                    continue;
-                }
-
-                // if the action we are looking for doesn't match the action we got
-                // then we should keep going
-                if (action != callback.action) {
-                    continue;
-                }
-
-                // if this is a keypress event and the meta key and control key
-                // are not pressed that means that we need to only look at the
-                // character, otherwise check the modifiers as well
-                //
-                // chrome will not fire a keypress if meta or control is down
-                // safari will fire a keypress if meta or meta+shift is down
-                // firefox will fire a keypress if meta or control is down
-                if ((action == 'keypress' && !e.metaKey && !e.ctrlKey) || _modifiersMatch(modifiers, callback.modifiers)) {
-
-                    // when you bind a combination or sequence a second time it
-                    // should overwrite the first one.  if a sequenceName or
-                    // combination is specified in this call it does just that
-                    //
-                    // @todo make deleting its own method?
-                    var deleteCombo = !sequenceName && callback.combo == combination;
-                    var deleteSequence = sequenceName && callback.seq == sequenceName && callback.level == level;
-                    if (deleteCombo || deleteSequence) {
-                        self._callbacks[character].splice(i, 1);
-                    }
-
-                    matches.push(callback);
-                }
-            }
-
-            return matches;
-        }
-
-        /**
-         * actually calls the callback function
-         *
-         * if your callback function returns false this will use the jquery
-         * convention - prevent default and stop propogation on the event
-         *
-         * @param {Function} callback
-         * @param {Event} e
-         * @returns void
-         */
-        function _fireCallback(callback, e, combo, sequence) {
-
-            // if this event should not happen stop here
-            if (self.stopCallback(e, e.target || e.srcElement, combo, sequence)) {
-                return;
-            }
-
-            if (callback(e, combo) === false) {
-                _preventDefault(e);
-                _stopPropagation(e);
-            }
-        }
-
-        /**
-         * handles a character key event
-         *
-         * @param {string} character
-         * @param {Array} modifiers
-         * @param {Event} e
-         * @returns void
-         */
-        self._handleKey = function(character, modifiers, e) {
-            var callbacks = _getMatches(character, modifiers, e);
-            var i;
-            var doNotReset = {};
-            var maxLevel = 0;
-            var processedSequenceCallback = false;
-
-            // Calculate the maxLevel for sequences so we can only execute the longest callback sequence
-            for (i = 0; i < callbacks.length; ++i) {
-                if (callbacks[i].seq) {
-                    maxLevel = Math.max(maxLevel, callbacks[i].level);
-                }
-            }
-
-            // loop through matching callbacks for this key event
-            for (i = 0; i < callbacks.length; ++i) {
-
-                // fire for all sequence callbacks
-                // this is because if for example you have multiple sequences
-                // bound such as "g i" and "g t" they both need to fire the
-                // callback for matching g cause otherwise you can only ever
-                // match the first one
-                if (callbacks[i].seq) {
-
-                    // only fire callbacks for the maxLevel to prevent
-                    // subsequences from also firing
-                    //
-                    // for example 'a option b' should not cause 'option b' to fire
-                    // even though 'option b' is part of the other sequence
-                    //
-                    // any sequences that do not match here will be discarded
-                    // below by the _resetSequences call
-                    if (callbacks[i].level != maxLevel) {
-                        continue;
-                    }
-
-                    processedSequenceCallback = true;
-
-                    // keep a list of which sequences were matches for later
-                    doNotReset[callbacks[i].seq] = 1;
-                    _fireCallback(callbacks[i].callback, e, callbacks[i].combo, callbacks[i].seq);
-                    continue;
-                }
-
-                // if there were no sequence matches but we are still here
-                // that means this is a regular match so we should fire that
-                if (!processedSequenceCallback) {
-                    _fireCallback(callbacks[i].callback, e, callbacks[i].combo);
-                }
-            }
-
-            // if the key you pressed matches the type of sequence without
-            // being a modifier (ie "keyup" or "keypress") then we should
-            // reset all sequences that were not matched by this event
-            //
-            // this is so, for example, if you have the sequence "h a t" and you
-            // type "h e a r t" it does not match.  in this case the "e" will
-            // cause the sequence to reset
-            //
-            // modifier keys are ignored because you can have a sequence
-            // that contains modifiers such as "enter ctrl+space" and in most
-            // cases the modifier key will be pressed before the next key
-            //
-            // also if you have a sequence such as "ctrl+b a" then pressing the
-            // "b" key will trigger a "keypress" and a "keydown"
-            //
-            // the "keydown" is expected when there is a modifier, but the
-            // "keypress" ends up matching the _nextExpectedAction since it occurs
-            // after and that causes the sequence to reset
-            //
-            // we ignore keypresses in a sequence that directly follow a keydown
-            // for the same character
-            var ignoreThisKeypress = e.type == 'keypress' && _ignoreNextKeypress;
-            if (e.type == _nextExpectedAction && !_isModifier(character) && !ignoreThisKeypress) {
-                _resetSequences(doNotReset);
-            }
-
-            _ignoreNextKeypress = processedSequenceCallback && e.type == 'keydown';
-        };
-
-        /**
-         * handles a keydown event
-         *
-         * @param {Event} e
-         * @returns void
-         */
-        function _handleKeyEvent(e) {
-
-            // normalize e.which for key events
-            // @see http://stackoverflow.com/questions/4285627/javascript-keycode-vs-charcode-utter-confusion
-            if (typeof e.which !== 'number') {
-                e.which = e.keyCode;
-            }
-
-            var character = _characterFromEvent(e);
-
-            // no character found then stop
-            if (!character) {
-                return;
-            }
-
-            // need to use === for the character check because the character can be 0
-            if (e.type == 'keyup' && _ignoreNextKeyup === character) {
-                _ignoreNextKeyup = false;
-                return;
-            }
-
-            self.handleKey(character, _eventModifiers(e), e);
-        }
-
-        /**
-         * called to set a 1 second timeout on the specified sequence
-         *
-         * this is so after each key press in the sequence you have 1 second
-         * to press the next key before you have to start over
-         *
-         * @returns void
-         */
-        function _resetSequenceTimer() {
-            clearTimeout(_resetTimer);
-            _resetTimer = setTimeout(_resetSequences, 1000);
-        }
-
-        /**
-         * binds a key sequence to an event
-         *
-         * @param {string} combo - combo specified in bind call
-         * @param {Array} keys
-         * @param {Function} callback
-         * @param {string=} action
-         * @returns void
-         */
-        function _bindSequence(combo, keys, callback, action) {
-
-            // start off by adding a sequence level record for this combination
-            // and setting the level to 0
-            _sequenceLevels[combo] = 0;
-
-            /**
-             * callback to increase the sequence level for this sequence and reset
-             * all other sequences that were active
-             *
-             * @param {string} nextAction
-             * @returns {Function}
-             */
-            function _increaseSequence(nextAction) {
-                return function() {
-                    _nextExpectedAction = nextAction;
-                    ++_sequenceLevels[combo];
-                    _resetSequenceTimer();
-                };
-            }
-
-            /**
-             * wraps the specified callback inside of another function in order
-             * to reset all sequence counters as soon as this sequence is done
-             *
-             * @param {Event} e
-             * @returns void
-             */
-            function _callbackAndReset(e) {
-                _fireCallback(callback, e, combo);
-
-                // we should ignore the next key up if the action is key down
-                // or keypress.  this is so if you finish a sequence and
-                // release the key the final key will not trigger a keyup
-                if (action !== 'keyup') {
-                    _ignoreNextKeyup = _characterFromEvent(e);
-                }
-
-                // weird race condition if a sequence ends with the key
-                // another sequence begins with
-                setTimeout(_resetSequences, 10);
-            }
-
-            // loop through keys one at a time and bind the appropriate callback
-            // function.  for any key leading up to the final one it should
-            // increase the sequence. after the final, it should reset all sequences
-            //
-            // if an action is specified in the original bind call then that will
-            // be used throughout.  otherwise we will pass the action that the
-            // next key in the sequence should match.  this allows a sequence
-            // to mix and match keypress and keydown events depending on which
-            // ones are better suited to the key provided
-            for (var i = 0; i < keys.length; ++i) {
-                var isFinal = i + 1 === keys.length;
-                var wrappedCallback = isFinal ? _callbackAndReset : _increaseSequence(action || _getKeyInfo(keys[i + 1]).action);
-                _bindSingle(keys[i], wrappedCallback, action, combo, i);
-            }
-        }
-
-        /**
-         * binds a single keyboard combination
-         *
-         * @param {string} combination
-         * @param {Function} callback
-         * @param {string=} action
-         * @param {string=} sequenceName - name of sequence if part of sequence
-         * @param {number=} level - what part of the sequence the command is
-         * @returns void
-         */
-        function _bindSingle(combination, callback, action, sequenceName, level) {
-
-            // store a direct mapped reference for use with Mousetrap.trigger
-            self._directMap[combination + ':' + action] = callback;
-
-            // make sure multiple spaces in a row become a single space
-            combination = combination.replace(/\s+/g, ' ');
-
-            var sequence = combination.split(' ');
-            var info;
-
-            // if this pattern is a sequence of keys then run through this method
-            // to reprocess each pattern one key at a time
-            if (sequence.length > 1) {
-                _bindSequence(combination, sequence, callback, action);
-                return;
-            }
-
-            info = _getKeyInfo(combination, action);
-
-            // make sure to initialize array if this is the first time
-            // a callback is added for this key
-            self._callbacks[info.key] = self._callbacks[info.key] || [];
-
-            // remove an existing match if there is one
-            _getMatches(info.key, info.modifiers, {type: info.action}, sequenceName, combination, level);
-
-            // add this call back to the array
-            // if it is a sequence put it at the beginning
-            // if not put it at the end
-            //
-            // this is important because the way these are processed expects
-            // the sequence ones to come first
-            self._callbacks[info.key][sequenceName ? 'unshift' : 'push']({
-                callback: callback,
-                modifiers: info.modifiers,
-                action: info.action,
-                seq: sequenceName,
-                level: level,
-                combo: combination
-            });
-        }
-
-        /**
-         * binds multiple combinations to the same callback
-         *
-         * @param {Array} combinations
-         * @param {Function} callback
-         * @param {string|undefined} action
-         * @returns void
-         */
-        self._bindMultiple = function(combinations, callback, action) {
-            for (var i = 0; i < combinations.length; ++i) {
-                _bindSingle(combinations[i], callback, action);
-            }
-        };
-
-        // start!
-        _addEvent(targetElement, 'keypress', _handleKeyEvent);
-        _addEvent(targetElement, 'keydown', _handleKeyEvent);
-        _addEvent(targetElement, 'keyup', _handleKeyEvent);
-    }
-
-    /**
-     * binds an event to mousetrap
-     *
-     * can be a single key, a combination of keys separated with +,
-     * an array of keys, or a sequence of keys separated by spaces
-     *
-     * be sure to list the modifier keys first to make sure that the
-     * correct key ends up getting bound (the last key in the pattern)
-     *
-     * @param {string|Array} keys
-     * @param {Function} callback
-     * @param {string=} action - 'keypress', 'keydown', or 'keyup'
-     * @returns void
-     */
-    Mousetrap.prototype.bind = function(keys, callback, action) {
-        var self = this;
-        keys = keys instanceof Array ? keys : [keys];
-        self._bindMultiple.call(self, keys, callback, action);
-        return self;
-    };
-
-    /**
-     * unbinds an event to mousetrap
-     *
-     * the unbinding sets the callback function of the specified key combo
-     * to an empty function and deletes the corresponding key in the
-     * _directMap dict.
-     *
-     * TODO: actually remove this from the _callbacks dictionary instead
-     * of binding an empty function
-     *
-     * the keycombo+action has to be exactly the same as
-     * it was defined in the bind method
-     *
-     * @param {string|Array} keys
-     * @param {string} action
-     * @returns void
-     */
-    Mousetrap.prototype.unbind = function(keys, action) {
-        var self = this;
-        return self.bind.call(self, keys, function() {}, action);
-    };
-
-    /**
-     * triggers an event that has already been bound
-     *
-     * @param {string} keys
-     * @param {string=} action
-     * @returns void
-     */
-    Mousetrap.prototype.trigger = function(keys, action) {
-        var self = this;
-        if (self._directMap[keys + ':' + action]) {
-            self._directMap[keys + ':' + action]({}, keys);
-        }
-        return self;
-    };
-
-    /**
-     * resets the library back to its initial state.  this is useful
-     * if you want to clear out the current keyboard shortcuts and bind
-     * new ones - for example if you switch to another page
-     *
-     * @returns void
-     */
-    Mousetrap.prototype.reset = function() {
-        var self = this;
-        self._callbacks = {};
-        self._directMap = {};
-        return self;
-    };
-
-    /**
-     * should we stop this event before firing off callbacks
-     *
-     * @param {Event} e
-     * @param {Element} element
-     * @return {boolean}
-     */
-    Mousetrap.prototype.stopCallback = function(e, element) {
-        var self = this;
-
-        // if the element has the class "mousetrap" then no need to stop
-        if ((' ' + element.className + ' ').indexOf(' mousetrap ') > -1) {
-            return false;
-        }
-
-        if (_belongsTo(element, self.target)) {
-            return false;
-        }
-
-        // stop for input, select, and textarea
-        return element.tagName == 'INPUT' || element.tagName == 'SELECT' || element.tagName == 'TEXTAREA' || element.isContentEditable;
-    };
-
-    /**
-     * exposes _handleKey publicly so it can be overwritten by extensions
-     */
-    Mousetrap.prototype.handleKey = function() {
-        var self = this;
-        return self._handleKey.apply(self, arguments);
-    };
-
-    /**
-     * allow custom key mappings
-     */
-    Mousetrap.addKeycodes = function(object) {
-        for (var key in object) {
-            if (object.hasOwnProperty(key)) {
-                _MAP[key] = object[key];
-            }
-        }
-        _REVERSE_MAP = null;
-    };
-
-    /**
-     * Init the global mousetrap functions
-     *
-     * This method is needed to allow the global mousetrap functions to work
-     * now that mousetrap is a constructor function.
-     */
-    Mousetrap.init = function() {
-        var documentMousetrap = Mousetrap(document);
-        for (var method in documentMousetrap) {
-            if (method.charAt(0) !== '_') {
-                Mousetrap[method] = (function(method) {
-                    return function() {
-                        return documentMousetrap[method].apply(documentMousetrap, arguments);
-                    };
-                } (method));
-            }
-        }
-    };
-
-    Mousetrap.init();
-
-    // expose mousetrap to the global object
-    window.Mousetrap = Mousetrap;
-
-    // expose as a common js module
-    if (typeof module !== 'undefined' && module.exports) {
-        module.exports = Mousetrap;
-    }
-
-    // expose mousetrap as an AMD module
-    if (true) {
-        !(__WEBPACK_AMD_DEFINE_RESULT__ = (function() {
-            return Mousetrap;
-        }).call(exports, __webpack_require__, exports, module),
-				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
-    }
-}) (typeof window !== 'undefined' ? window : null, typeof  window !== 'undefined' ? document : null);
-
-
-/***/ }),
-/* 30 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-/*
- * Ben Postlethwaite
- * January 2013
- * License MIT
- */
-
-
-var colorScale = __webpack_require__(31);
-var lerp = __webpack_require__(32)
-
-module.exports = createColormap;
-
-function createColormap (spec) {
-    /*
-     * Default Options
-     */
-    var indicies, rgba, fromrgba, torgba,
-        nsteps, cmap, colormap, format,
-        nshades, colors, alpha, index, i,
-        r = [],
-        g = [],
-        b = [],
-        a = [];
-
-    if ( !spec ) spec = {};
-
-    nshades = (spec.nshades || 72) - 1;
-    format = spec.format || 'hex';
-
-    colormap = spec.colormap;
-    if (!colormap) colormap = 'jet';
-
-    if (typeof colormap === 'string') {
-        colormap = colormap.toLowerCase();
-
-        if (!colorScale[colormap]) {
-            throw Error(colormap + ' not a supported colorscale');
-        }
-
-        cmap = colorScale[colormap];
-
-    } else if (Array.isArray(colormap)) {
-        cmap = colormap.slice();
-
-    } else {
-        throw Error('unsupported colormap option', colormap);
-    }
-
-    if (cmap.length > nshades) {
-        throw new Error(
-            colormap+' map requires nshades to be at least size '+cmap.length
-        );
-    }
-
-    if (!Array.isArray(spec.alpha)) {
-
-        if (typeof spec.alpha === 'number') {
-            alpha = [spec.alpha, spec.alpha];
-
-        } else {
-            alpha = [1, 1];
-        }
-
-    } else if (spec.alpha.length !== 2) {
-        alpha = [1, 1];
-
-    } else {
-        alpha = spec.alpha.slice();
-    }
-
-    // map index points from 0..1 to 0..n-1
-    indicies = cmap.map(function(c) {
-        return Math.round(c.index * nshades);
-    });
-
-    // Add alpha channel to the map
-    alpha[0] = Math.min(Math.max(alpha[0], 0), 1);
-    alpha[1] = Math.min(Math.max(alpha[1], 0), 1);
-
-    var steps = cmap.map(function(c, i) {
-        var index = cmap[i].index
-
-        var rgba = cmap[i].rgb.slice();
-
-        // if user supplies their own map use it
-        if (rgba.length === 4 && rgba[3] >= 0 && rgba[3] <= 1) {
-            return rgba
-        }
-        rgba[3] = alpha[0] + (alpha[1] - alpha[0])*index;
-
-        return rgba
-    })
-
-
-    /*
-     * map increasing linear values between indicies to
-     * linear steps in colorvalues
-     */
-    var colors = []
-    for (i = 0; i < indicies.length-1; ++i) {
-        nsteps = indicies[i+1] - indicies[i];
-        fromrgba = steps[i];
-        torgba = steps[i+1];
-
-        for (var j = 0; j < nsteps; j++) {
-            var amt = j / nsteps
-            colors.push([
-                Math.round(lerp(fromrgba[0], torgba[0], amt)),
-                Math.round(lerp(fromrgba[1], torgba[1], amt)),
-                Math.round(lerp(fromrgba[2], torgba[2], amt)),
-                lerp(fromrgba[3], torgba[3], amt)
-            ])
-        }
-    }
-
-    //add 1 step as last value
-    colors.push(cmap[cmap.length - 1].rgb.concat(alpha[1]))
-
-    if (format === 'hex') colors = colors.map( rgb2hex );
-    else if (format === 'rgbaString') colors = colors.map( rgbaStr );
-    else if (format === 'float') colors = colors.map( rgb2float );
-
-    return colors;
-};
-
-function rgb2float (rgba) {
-    return [
-        rgba[0] / 255,
-        rgba[1] / 255,
-        rgba[2] / 255,
-        rgba[3]
-    ]
-}
-
-function rgb2hex (rgba) {
-    var dig, hex = '#';
-    for (var i = 0; i < 3; ++i) {
-        dig = rgba[i];
-        dig = dig.toString(16);
-        hex += ('00' + dig).substr( dig.length );
-    }
-    return hex;
-}
-
-function rgbaStr (rgba) {
-    return 'rgba(' + rgba.join(',') + ')';
-}
-
-
-/***/ }),
-/* 31 */
-/***/ (function(module, exports) {
-
-module.exports={
-	"jet":[{"index":0,"rgb":[0,0,131]},{"index":0.125,"rgb":[0,60,170]},{"index":0.375,"rgb":[5,255,255]},{"index":0.625,"rgb":[255,255,0]},{"index":0.875,"rgb":[250,0,0]},{"index":1,"rgb":[128,0,0]}],
-
-	"hsv":[{"index":0,"rgb":[255,0,0]},{"index":0.169,"rgb":[253,255,2]},{"index":0.173,"rgb":[247,255,2]},{"index":0.337,"rgb":[0,252,4]},{"index":0.341,"rgb":[0,252,10]},{"index":0.506,"rgb":[1,249,255]},{"index":0.671,"rgb":[2,0,253]},{"index":0.675,"rgb":[8,0,253]},{"index":0.839,"rgb":[255,0,251]},{"index":0.843,"rgb":[255,0,245]},{"index":1,"rgb":[255,0,6]}],
-
-	"hot":[{"index":0,"rgb":[0,0,0]},{"index":0.3,"rgb":[230,0,0]},{"index":0.6,"rgb":[255,210,0]},{"index":1,"rgb":[255,255,255]}],
-
-	"cool":[{"index":0,"rgb":[0,255,255]},{"index":1,"rgb":[255,0,255]}],
-
-	"spring":[{"index":0,"rgb":[255,0,255]},{"index":1,"rgb":[255,255,0]}],
-
-	"summer":[{"index":0,"rgb":[0,128,102]},{"index":1,"rgb":[255,255,102]}],
-
-	"autumn":[{"index":0,"rgb":[255,0,0]},{"index":1,"rgb":[255,255,0]}],
-
-	"winter":[{"index":0,"rgb":[0,0,255]},{"index":1,"rgb":[0,255,128]}],
-
-	"bone":[{"index":0,"rgb":[0,0,0]},{"index":0.376,"rgb":[84,84,116]},{"index":0.753,"rgb":[169,200,200]},{"index":1,"rgb":[255,255,255]}],
-
-	"copper":[{"index":0,"rgb":[0,0,0]},{"index":0.804,"rgb":[255,160,102]},{"index":1,"rgb":[255,199,127]}],
-
-	"greys":[{"index":0,"rgb":[0,0,0]},{"index":1,"rgb":[255,255,255]}],
-
-	"yignbu":[{"index":0,"rgb":[8,29,88]},{"index":0.125,"rgb":[37,52,148]},{"index":0.25,"rgb":[34,94,168]},{"index":0.375,"rgb":[29,145,192]},{"index":0.5,"rgb":[65,182,196]},{"index":0.625,"rgb":[127,205,187]},{"index":0.75,"rgb":[199,233,180]},{"index":0.875,"rgb":[237,248,217]},{"index":1,"rgb":[255,255,217]}],
-
-	"greens":[{"index":0,"rgb":[0,68,27]},{"index":0.125,"rgb":[0,109,44]},{"index":0.25,"rgb":[35,139,69]},{"index":0.375,"rgb":[65,171,93]},{"index":0.5,"rgb":[116,196,118]},{"index":0.625,"rgb":[161,217,155]},{"index":0.75,"rgb":[199,233,192]},{"index":0.875,"rgb":[229,245,224]},{"index":1,"rgb":[247,252,245]}],
-
-	"yiorrd":[{"index":0,"rgb":[128,0,38]},{"index":0.125,"rgb":[189,0,38]},{"index":0.25,"rgb":[227,26,28]},{"index":0.375,"rgb":[252,78,42]},{"index":0.5,"rgb":[253,141,60]},{"index":0.625,"rgb":[254,178,76]},{"index":0.75,"rgb":[254,217,118]},{"index":0.875,"rgb":[255,237,160]},{"index":1,"rgb":[255,255,204]}],
-
-	"bluered":[{"index":0,"rgb":[0,0,255]},{"index":1,"rgb":[255,0,0]}],
-
-	"rdbu":[{"index":0,"rgb":[5,10,172]},{"index":0.35,"rgb":[106,137,247]},{"index":0.5,"rgb":[190,190,190]},{"index":0.6,"rgb":[220,170,132]},{"index":0.7,"rgb":[230,145,90]},{"index":1,"rgb":[178,10,28]}],
-
-	"picnic":[{"index":0,"rgb":[0,0,255]},{"index":0.1,"rgb":[51,153,255]},{"index":0.2,"rgb":[102,204,255]},{"index":0.3,"rgb":[153,204,255]},{"index":0.4,"rgb":[204,204,255]},{"index":0.5,"rgb":[255,255,255]},{"index":0.6,"rgb":[255,204,255]},{"index":0.7,"rgb":[255,153,255]},{"index":0.8,"rgb":[255,102,204]},{"index":0.9,"rgb":[255,102,102]},{"index":1,"rgb":[255,0,0]}],
-
-	"rainbow":[{"index":0,"rgb":[150,0,90]},{"index":0.125,"rgb":[0,0,200]},{"index":0.25,"rgb":[0,25,255]},{"index":0.375,"rgb":[0,152,255]},{"index":0.5,"rgb":[44,255,150]},{"index":0.625,"rgb":[151,255,0]},{"index":0.75,"rgb":[255,234,0]},{"index":0.875,"rgb":[255,111,0]},{"index":1,"rgb":[255,0,0]}],
-
-	"portland":[{"index":0,"rgb":[12,51,131]},{"index":0.25,"rgb":[10,136,186]},{"index":0.5,"rgb":[242,211,56]},{"index":0.75,"rgb":[242,143,56]},{"index":1,"rgb":[217,30,30]}],
-
-	"blackbody":[{"index":0,"rgb":[0,0,0]},{"index":0.2,"rgb":[230,0,0]},{"index":0.4,"rgb":[230,210,0]},{"index":0.7,"rgb":[255,255,255]},{"index":1,"rgb":[160,200,255]}],
-
-	"earth":[{"index":0,"rgb":[0,0,130]},{"index":0.1,"rgb":[0,180,180]},{"index":0.2,"rgb":[40,210,40]},{"index":0.4,"rgb":[230,230,50]},{"index":0.6,"rgb":[120,70,20]},{"index":1,"rgb":[255,255,255]}],
-
-	"electric":[{"index":0,"rgb":[0,0,0]},{"index":0.15,"rgb":[30,0,100]},{"index":0.4,"rgb":[120,0,100]},{"index":0.6,"rgb":[160,90,0]},{"index":0.8,"rgb":[230,200,0]},{"index":1,"rgb":[255,250,220]}],
-
-	"alpha": [{"index":0, "rgb": [255,255,255,0]},{"index":1, "rgb": [255,255,255,1]}],
-
-	"viridis": [{"index":0,"rgb":[68,1,84]},{"index":0.13,"rgb":[71,44,122]},{"index":0.25,"rgb":[59,81,139]},{"index":0.38,"rgb":[44,113,142]},{"index":0.5,"rgb":[33,144,141]},{"index":0.63,"rgb":[39,173,129]},{"index":0.75,"rgb":[92,200,99]},{"index":0.88,"rgb":[170,220,50]},{"index":1,"rgb":[253,231,37]}],
-
-	"inferno": [{"index":0,"rgb":[0,0,4]},{"index":0.13,"rgb":[31,12,72]},{"index":0.25,"rgb":[85,15,109]},{"index":0.38,"rgb":[136,34,106]},{"index":0.5,"rgb":[186,54,85]},{"index":0.63,"rgb":[227,89,51]},{"index":0.75,"rgb":[249,140,10]},{"index":0.88,"rgb":[249,201,50]},{"index":1,"rgb":[252,255,164]}],
-
-	"magma": [{"index":0,"rgb":[0,0,4]},{"index":0.13,"rgb":[28,16,68]},{"index":0.25,"rgb":[79,18,123]},{"index":0.38,"rgb":[129,37,129]},{"index":0.5,"rgb":[181,54,122]},{"index":0.63,"rgb":[229,80,100]},{"index":0.75,"rgb":[251,135,97]},{"index":0.88,"rgb":[254,194,135]},{"index":1,"rgb":[252,253,191]}],
-
-	"plasma": [{"index":0,"rgb":[13,8,135]},{"index":0.13,"rgb":[75,3,161]},{"index":0.25,"rgb":[125,3,168]},{"index":0.38,"rgb":[168,34,150]},{"index":0.5,"rgb":[203,70,121]},{"index":0.63,"rgb":[229,107,93]},{"index":0.75,"rgb":[248,148,65]},{"index":0.88,"rgb":[253,195,40]},{"index":1,"rgb":[240,249,33]}],
-
-	"warm": [{"index":0,"rgb":[125,0,179]},{"index":0.13,"rgb":[172,0,187]},{"index":0.25,"rgb":[219,0,170]},{"index":0.38,"rgb":[255,0,130]},{"index":0.5,"rgb":[255,63,74]},{"index":0.63,"rgb":[255,123,0]},{"index":0.75,"rgb":[234,176,0]},{"index":0.88,"rgb":[190,228,0]},{"index":1,"rgb":[147,255,0]}],
-
-	"cool": [{"index":0,"rgb":[125,0,179]},{"index":0.13,"rgb":[116,0,218]},{"index":0.25,"rgb":[98,74,237]},{"index":0.38,"rgb":[68,146,231]},{"index":0.5,"rgb":[0,204,197]},{"index":0.63,"rgb":[0,247,146]},{"index":0.75,"rgb":[0,255,88]},{"index":0.88,"rgb":[40,255,8]},{"index":1,"rgb":[147,255,0]}],
-
-	"rainbow-soft": [{"index":0,"rgb":[125,0,179]},{"index":0.1,"rgb":[199,0,180]},{"index":0.2,"rgb":[255,0,121]},{"index":0.3,"rgb":[255,108,0]},{"index":0.4,"rgb":[222,194,0]},{"index":0.5,"rgb":[150,255,0]},{"index":0.6,"rgb":[0,255,55]},{"index":0.7,"rgb":[0,246,150]},{"index":0.8,"rgb":[50,167,222]},{"index":0.9,"rgb":[103,51,235]},{"index":1,"rgb":[124,0,186]}],
-
-	"bathymetry": [{"index":0,"rgb":[40,26,44]},{"index":0.13,"rgb":[59,49,90]},{"index":0.25,"rgb":[64,76,139]},{"index":0.38,"rgb":[63,110,151]},{"index":0.5,"rgb":[72,142,158]},{"index":0.63,"rgb":[85,174,163]},{"index":0.75,"rgb":[120,206,163]},{"index":0.88,"rgb":[187,230,172]},{"index":1,"rgb":[253,254,204]}],
-
-	"cdom": [{"index":0,"rgb":[47,15,62]},{"index":0.13,"rgb":[87,23,86]},{"index":0.25,"rgb":[130,28,99]},{"index":0.38,"rgb":[171,41,96]},{"index":0.5,"rgb":[206,67,86]},{"index":0.63,"rgb":[230,106,84]},{"index":0.75,"rgb":[242,149,103]},{"index":0.88,"rgb":[249,193,135]},{"index":1,"rgb":[254,237,176]}],
-
-	"chlorophyll": [{"index":0,"rgb":[18,36,20]},{"index":0.13,"rgb":[25,63,41]},{"index":0.25,"rgb":[24,91,59]},{"index":0.38,"rgb":[13,119,72]},{"index":0.5,"rgb":[18,148,80]},{"index":0.63,"rgb":[80,173,89]},{"index":0.75,"rgb":[132,196,122]},{"index":0.88,"rgb":[175,221,162]},{"index":1,"rgb":[215,249,208]}],
-
-	"density": [{"index":0,"rgb":[54,14,36]},{"index":0.13,"rgb":[89,23,80]},{"index":0.25,"rgb":[110,45,132]},{"index":0.38,"rgb":[120,77,178]},{"index":0.5,"rgb":[120,113,213]},{"index":0.63,"rgb":[115,151,228]},{"index":0.75,"rgb":[134,185,227]},{"index":0.88,"rgb":[177,214,227]},{"index":1,"rgb":[230,241,241]}],
-
-	"freesurface-blue": [{"index":0,"rgb":[30,4,110]},{"index":0.13,"rgb":[47,14,176]},{"index":0.25,"rgb":[41,45,236]},{"index":0.38,"rgb":[25,99,212]},{"index":0.5,"rgb":[68,131,200]},{"index":0.63,"rgb":[114,156,197]},{"index":0.75,"rgb":[157,181,203]},{"index":0.88,"rgb":[200,208,216]},{"index":1,"rgb":[241,237,236]}],
-
-	"freesurface-red": [{"index":0,"rgb":[60,9,18]},{"index":0.13,"rgb":[100,17,27]},{"index":0.25,"rgb":[142,20,29]},{"index":0.38,"rgb":[177,43,27]},{"index":0.5,"rgb":[192,87,63]},{"index":0.63,"rgb":[205,125,105]},{"index":0.75,"rgb":[216,162,148]},{"index":0.88,"rgb":[227,199,193]},{"index":1,"rgb":[241,237,236]}],
-
-	"oxygen": [{"index":0,"rgb":[64,5,5]},{"index":0.13,"rgb":[106,6,15]},{"index":0.25,"rgb":[144,26,7]},{"index":0.38,"rgb":[168,64,3]},{"index":0.5,"rgb":[188,100,4]},{"index":0.63,"rgb":[206,136,11]},{"index":0.75,"rgb":[220,174,25]},{"index":0.88,"rgb":[231,215,44]},{"index":1,"rgb":[248,254,105]}],
-
-	"par": [{"index":0,"rgb":[51,20,24]},{"index":0.13,"rgb":[90,32,35]},{"index":0.25,"rgb":[129,44,34]},{"index":0.38,"rgb":[159,68,25]},{"index":0.5,"rgb":[182,99,19]},{"index":0.63,"rgb":[199,134,22]},{"index":0.75,"rgb":[212,171,35]},{"index":0.88,"rgb":[221,210,54]},{"index":1,"rgb":[225,253,75]}],
-
-	"phase": [{"index":0,"rgb":[145,105,18]},{"index":0.13,"rgb":[184,71,38]},{"index":0.25,"rgb":[186,58,115]},{"index":0.38,"rgb":[160,71,185]},{"index":0.5,"rgb":[110,97,218]},{"index":0.63,"rgb":[50,123,164]},{"index":0.75,"rgb":[31,131,110]},{"index":0.88,"rgb":[77,129,34]},{"index":1,"rgb":[145,105,18]}],
-
-	"salinity": [{"index":0,"rgb":[42,24,108]},{"index":0.13,"rgb":[33,50,162]},{"index":0.25,"rgb":[15,90,145]},{"index":0.38,"rgb":[40,118,137]},{"index":0.5,"rgb":[59,146,135]},{"index":0.63,"rgb":[79,175,126]},{"index":0.75,"rgb":[120,203,104]},{"index":0.88,"rgb":[193,221,100]},{"index":1,"rgb":[253,239,154]}],
-
-	"temperature": [{"index":0,"rgb":[4,35,51]},{"index":0.13,"rgb":[23,51,122]},{"index":0.25,"rgb":[85,59,157]},{"index":0.38,"rgb":[129,79,143]},{"index":0.5,"rgb":[175,95,130]},{"index":0.63,"rgb":[222,112,101]},{"index":0.75,"rgb":[249,146,66]},{"index":0.88,"rgb":[249,196,65]},{"index":1,"rgb":[232,250,91]}],
-
-	"turbidity": [{"index":0,"rgb":[34,31,27]},{"index":0.13,"rgb":[65,50,41]},{"index":0.25,"rgb":[98,69,52]},{"index":0.38,"rgb":[131,89,57]},{"index":0.5,"rgb":[161,112,59]},{"index":0.63,"rgb":[185,140,66]},{"index":0.75,"rgb":[202,174,88]},{"index":0.88,"rgb":[216,209,126]},{"index":1,"rgb":[233,246,171]}],
-
-	"velocity-blue": [{"index":0,"rgb":[17,32,64]},{"index":0.13,"rgb":[35,52,116]},{"index":0.25,"rgb":[29,81,156]},{"index":0.38,"rgb":[31,113,162]},{"index":0.5,"rgb":[50,144,169]},{"index":0.63,"rgb":[87,173,176]},{"index":0.75,"rgb":[149,196,189]},{"index":0.88,"rgb":[203,221,211]},{"index":1,"rgb":[254,251,230]}],
-
-	"velocity-green": [{"index":0,"rgb":[23,35,19]},{"index":0.13,"rgb":[24,64,38]},{"index":0.25,"rgb":[11,95,45]},{"index":0.38,"rgb":[39,123,35]},{"index":0.5,"rgb":[95,146,12]},{"index":0.63,"rgb":[152,165,18]},{"index":0.75,"rgb":[201,186,69]},{"index":0.88,"rgb":[233,216,137]},{"index":1,"rgb":[255,253,205]}],
-
-	"cubehelix": [{"index":0,"rgb":[0,0,0]},{"index":0.07,"rgb":[22,5,59]},{"index":0.13,"rgb":[60,4,105]},{"index":0.2,"rgb":[109,1,135]},{"index":0.27,"rgb":[161,0,147]},{"index":0.33,"rgb":[210,2,142]},{"index":0.4,"rgb":[251,11,123]},{"index":0.47,"rgb":[255,29,97]},{"index":0.53,"rgb":[255,54,69]},{"index":0.6,"rgb":[255,85,46]},{"index":0.67,"rgb":[255,120,34]},{"index":0.73,"rgb":[255,157,37]},{"index":0.8,"rgb":[241,191,57]},{"index":0.87,"rgb":[224,220,93]},{"index":0.93,"rgb":[218,241,142]},{"index":1,"rgb":[227,253,198]}]
-};
-
-
-/***/ }),
-/* 32 */
-/***/ (function(module, exports) {
-
-function lerp(v0, v1, t) {
-    return v0*(1-t)+v1*t
-}
-module.exports = lerp
-
-/***/ }),
-/* 33 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-var __WEBPACK_AMD_DEFINE_RESULT__;
-
-(function () {
-	// registers the extension on a cytoscape lib ref
-	var register = function register(cytoscape) {
-		if (!cytoscape) {
-			return;
-		}
-
-		var cyCanvas = function cyCanvas(args) {
-			var cy = this;
-			var container = cy.container();
-
-			var canvas = document.createElement("canvas");
-
-			container.appendChild(canvas);
-
-			var defaults = {
-				zIndex: 1,
-				pixelRatio: "auto"
-			};
-
-			var options = Object.assign({}, defaults, args);
-
-			if (options.pixelRatio === "auto") {
-				options.pixelRatio = window.devicePixelRatio || 1;
-			}
-
-			function resize() {
-				var width = container.offsetWidth;
-				var height = container.offsetHeight;
-
-				var canvasWidth = width * options.pixelRatio;
-				var canvasHeight = height * options.pixelRatio;
-
-				canvas.width = canvasWidth;
-				canvas.height = canvasHeight;
-
-				canvas.style.width = width + "px";
-				canvas.style.height = height + "px";
-
-				cy.trigger("cyCanvas.resize");
-			}
-
-			cy.on("resize", function () {
-				resize();
-			});
-
-			canvas.setAttribute("style", "position:absolute; top:0; left:0; z-index:" + options.zIndex + ";");
-
-			resize();
-
-			return {
-				/**
-     * @return {Canvas} The generated canvas
-     */
-				getCanvas: function getCanvas() {
-					return canvas;
-				},
-
-				/**
-     * Helper: Clear the canvas
-     * @param {CanvasRenderingContext2D} ctx
-     */
-				clear: function clear(ctx) {
-					var width = cy.width();
-					var height = cy.height();
-					ctx.save();
-					ctx.setTransform(1, 0, 0, 1, 0, 0);
-					ctx.clearRect(0, 0, width * options.pixelRatio, height * options.pixelRatio);
-					ctx.restore();
-				},
-
-				/**
-     * Helper: Reset the context transform to an identity matrix
-     * @param {CanvasRenderingContext2D} ctx
-     */
-				resetTransform: function resetTransform(ctx) {
-					ctx.setTransform(1, 0, 0, 1, 0, 0);
-				},
-
-				/**
-     * Helper: Set the context transform to match Cystoscape's zoom & pan
-     * @param {CanvasRenderingContext2D} ctx
-     */
-				setTransform: function setTransform(ctx) {
-					var pan = cy.pan();
-					var zoom = cy.zoom();
-					ctx.setTransform(1, 0, 0, 1, 0, 0);
-					ctx.translate(pan.x * options.pixelRatio, pan.y * options.pixelRatio);
-					ctx.scale(zoom * options.pixelRatio, zoom * options.pixelRatio);
-				}
-			};
-		};
-
-		cytoscape("core", "cyCanvas", cyCanvas);
-	};
-
-	if (typeof module !== "undefined" && module.exports) {
-		// expose as a commonjs module
-		module.exports = function (cytoscape) {
-			register(cytoscape);
-		};
-	}
-
-	if (true) {
-		// expose as an amd/requirejs module
-		!(__WEBPACK_AMD_DEFINE_RESULT__ = (function () {
-			return register;
-		}).call(exports, __webpack_require__, exports, module),
-				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
-	}
-
-	if (typeof cytoscape !== "undefined") {
-		// expose to global cytoscape (i.e. window.cytoscape)
-		register(cytoscape);
-	}
-})();
-
-/***/ }),
-/* 34 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-__webpack_require__(35);
-
-var utils = _interopRequireWildcard(__webpack_require__(6));
-
-function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = Object.defineProperty && Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : {}; if (desc.get || desc.set) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } } newObj.default = obj; return newObj; } }
-
-var cy;
-var stage;
-var currentShape;
-var thisThing;
-var oldX, oldY;
-var haveAddedText = false;
-
-function CommentsCanvas(cyObj) {
-  /* ******************\
-  || CANVAS BULLSHIT ||
-  ********************/
-  thisThing = this;
-  cy = cyObj;
-  var layer = cy.cyCanvas({
-    zIndex: 100,
-    pixelRatio: 'auto'
-  });
-  var canvas = layer.getCanvas();
-  canvas.setAttribute('id', 'commentsCanvas');
-  stage = new createjs.Stage(canvas);
-  cy.on('render cyCanvas.resize', function (evt) {
-    var pan = cy.pan();
-    var zoom = cy.zoom();
-    stage.x = 2 * pan.x;
-    stage.y = 2 * pan.y;
-    stage.scaleX = zoom;
-    stage.scaleY = zoom;
-    stage.update();
-  });
-
-  this.serialize = function () {
-    /*console.log(JSON.stringify(stage.children.map(function (shape) {
-      return toBase64(shape)
-    })))*/
-    console.log(stage.children);
-    console.log(stage.children.map(serialize));
-    return stage.children.map(serialize);
-  };
-
-  this.reset = function () {};
-
-  this.enableDrawingMode = function () {
-    this.drawingMode = true;
-    cy.userPanningEnabled(false);
-    cy.boxSelectionEnabled(false);
-    cy.on('mousedown', this.startDrawing);
-    cy.on('mouseup', this.stopDrawing);
-    cy.on('tap', addText);
-    haveAddedText = false;
-  };
-
-  this.disableDrawingMode = function () {
-    this.drawingMode = false;
-    cy.userPanningEnabled(true);
-    cy.boxSelectionEnabled(true);
-    cy.off('mousedown', this.startDrawing);
-    cy.off('mouseup', this.stopDrawing);
-    cy.off('tap', addText);
-    haveAddedText = false;
-  };
-
-  this.startDrawing = function (evt) {
-    currentShape = new createjs.Shape();
-    var g = currentShape.graphics;
-    addPointListeners(currentShape);
-    g.setStrokeStyle(50, 'round', 'round');
-    g.beginStroke(createjs.Graphics.getRGB(0, 0, 0));
-    stage.addChild(currentShape);
-    cy.on('mousemove', addPoint, false);
-  };
-
-  this.stopDrawing = function () {
-    cy.off('mousemove', addPoint, false);
-  };
-
-  this.load = function (json) {
-    var pos = function pos(ele) {
-      return {
-        position: {
-          x: ele.x / 2,
-          y: ele.y / 2
-        }
-      };
-    };
-
-    json.forEach(function (element) {
-      if (element.type === "Text") {
-        addText(pos(element), element.text);
-      } else {
-        thisThing.startDrawing();
-        element.points.forEach(function (ele) {
-          addPoint(pos(ele));
-        });
-        thisThing.stopDrawing();
-      }
-    });
-  };
-}
-
-var addText = function addText(evt) {
-  var inpText = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
-
-  if (inpText === null) {
-    inpText = utils.getText();
-  }
-
-  if (inpText !== null) {
-    haveAddedText = true;
-    var text = new createjs.Text(inpText, '20px Arial', 'black');
-    text.x = 2 * evt.position.x;
-    text.y = 2 * evt.position.y;
-    addTextListeners(text);
-    stage.addChild(text);
-    stage.update();
-  }
-};
-
-var addPoint = function addPoint(evt) {
-  if (!haveAddedText) {
-    var x = 2 * evt.position.x;
-    var y = 2 * evt.position.y;
-    currentShape.graphics.lineTo(x, y);
-    stage.update();
-  }
-};
-
-var addPointListeners = function addPointListeners(obj) {
-  var move = function move(evt) {
-    obj.x = 2 * evt.position.x;
-    obj.y = 2 * evt.position.y;
-    stage.update();
-  };
-
-  var commentDelete = function commentDelete(evt) {
-    if (evt.keyCode === 8
-    /* backspace */
-    ) {
-        stage.removeChild(obj);
-      }
-  };
-
-  obj.on('mousedown', function (evt) {
-    currentShape = obj;
-    cy.userPanningEnabled(false);
-    cy.boxSelectionEnabled(false);
-    cy.on('mousemove', move);
-    document.addEventListener('keydown', commentDelete);
-  });
-  obj.on('pressup', function (evt) {
-    cy.userPanningEnabled(true);
-    cy.boxSelectionEnabled(true);
-    cy.off('mousemove', move);
-    document.removeEventListener('keydown', commentDelete);
-  });
-};
-
-var addTextListeners = function addTextListeners(obj) {
-  var move = function move(evt) {
-    obj.x = 2 * evt.position.x;
-    obj.y = 2 * evt.position.y;
-    stage.update();
-  };
-
-  var commentDelete = function commentDelete(evt) {
-    if (evt.keyCode === 8
-    /* backspace */
-    ) {
-        stage.removeChild(obj);
-      }
-  };
-
-  obj.on('mousedown', function (evt) {
-    currentShape = obj;
-    cy.userPanningEnabled(false);
-    cy.boxSelectionEnabled(false);
-    cy.on('mousemove', move);
-    document.addEventListener('keydown', commentDelete);
-  });
-  obj.on('pressup', function (evt) {
-    cy.userPanningEnabled(true);
-    cy.boxSelectionEnabled(true);
-    cy.off('mousemove', move);
-    document.removeEventListener('keydown', commentDelete);
-  });
-};
-
-var serialize = function serialize(comObj) {
-  console.log(comObj.constructor.name);
-
-  if (comObj.constructor.name === "Text") {
-    return {
-      type: "Text",
-      text: comObj.text,
-      x: comObj.x,
-      y: comObj.y
-    };
-  } else {
-    return {
-      type: "Line",
-      points: comObj.graphics._instructions.slice(1, -1) // (slice cuts off the 'beginpath' and format instructions,
-      // redundant atm)
-
-    };
-  }
-};
-
-module.exports = {
-  CommentsCanvas: CommentsCanvas
-};
-
-/***/ }),
-/* 35 */
-/***/ (function(module, exports, __webpack_require__) {
-
-__webpack_require__(36)
-__webpack_require__(37)
-__webpack_require__(40)
-__webpack_require__(41)
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 
 	/**
 	 * Dispatched when the user presses their left mouse button and then releases it while over the display object.
@@ -65817,18 +53255,12 @@ __webpack_require__(41)
 	 * @since 0.6.0
 	 */
 
-<<<<<<< HEAD
 	/**
 	 * Dispatched when the user double clicks their left mouse button over this display object.
 	 * See the {{#crossLink "MouseEvent"}}{{/crossLink}} class for a listing of event properties.
 	 * @event dblclick
 	 * @since 0.6.0
 	 */
-=======
-/***/ }),
-/* 36 */
-/***/ (function(module, exports) {
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 
 	/**
 	 * Dispatched when the user's mouse enters this display object. This event must be enabled using
@@ -80184,16 +67616,11 @@ window.createjs = window.createjs || {};
 
 }());
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(38)(module), __webpack_require__(1)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(38)(module), __webpack_require__(0)))
 
 /***/ }),
-<<<<<<< HEAD
 /* 38 */
 /***/ (function(module, exports) {
-=======
-/* 37 */
-/***/ (function(module, exports, __webpack_require__) {
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 
 module.exports = function(module) {
 	if(!module.webpackPolyfill) {
@@ -80826,500 +68253,6 @@ window.createjs = window.createjs||{};
 			// redispatching an active event object, so clone it:
 			eventObj = eventObj.clone();
 		}
-<<<<<<< HEAD
-=======
-
-		// TODO: it would be nice to eliminate this. Maybe in favour of evtObj instanceof Event? Or !!evtObj.createEvent
-		try { eventObj.target = this; } catch (e) {} // try/catch allows redispatching of native events
-
-		if (!eventObj.bubbles || !this.parent) {
-			this._dispatchEvent(eventObj, 2);
-		} else {
-			var top=this, list=[top];
-			while (top.parent) { list.push(top = top.parent); }
-			var i, l=list.length;
-
-			// capture & atTarget
-			for (i=l-1; i>=0 && !eventObj.propagationStopped; i--) {
-				list[i]._dispatchEvent(eventObj, 1+(i==0));
-			}
-			// bubbling
-			for (i=1; i<l && !eventObj.propagationStopped; i++) {
-				list[i]._dispatchEvent(eventObj, 3);
-			}
-		}
-		return !eventObj.defaultPrevented;
-	};
-
-	/**
-	 * Indicates whether there is at least one listener for the specified event type.
-	 * @method hasEventListener
-	 * @param {String} type The string type of the event.
-	 * @return {Boolean} Returns true if there is at least one listener for the specified event.
-	 **/
-	p.hasEventListener = function(type) {
-		var listeners = this._listeners, captureListeners = this._captureListeners;
-		return !!((listeners && listeners[type]) || (captureListeners && captureListeners[type]));
-	};
-
-	/**
-	 * Indicates whether there is at least one listener for the specified event type on this object or any of its
-	 * ancestors (parent, parent's parent, etc). A return value of true indicates that if a bubbling event of the
-	 * specified type is dispatched from this object, it will trigger at least one listener.
-	 *
-	 * This is similar to {{#crossLink "EventDispatcher/hasEventListener"}}{{/crossLink}}, but it searches the entire
-	 * event flow for a listener, not just this object.
-	 * @method willTrigger
-	 * @param {String} type The string type of the event.
-	 * @return {Boolean} Returns `true` if there is at least one listener for the specified event.
-	 **/
-	p.willTrigger = function(type) {
-		var o = this;
-		while (o) {
-			if (o.hasEventListener(type)) { return true; }
-			o = o.parent;
-		}
-		return false;
-	};
-
-	/**
-	 * @method toString
-	 * @return {String} a string representation of the instance.
-	 **/
-	p.toString = function() {
-		return "[EventDispatcher]";
-	};
-
-
-// private methods:
-	/**
-	 * @method _dispatchEvent
-	 * @param {Object | String | Event} eventObj
-	 * @param {Object} eventPhase
-	 * @protected
-	 **/
-	p._dispatchEvent = function(eventObj, eventPhase) {
-		var l, listeners = (eventPhase==1) ? this._captureListeners : this._listeners;
-		if (eventObj && listeners) {
-			var arr = listeners[eventObj.type];
-			if (!arr||!(l=arr.length)) { return; }
-			try { eventObj.currentTarget = this; } catch (e) {}
-			try { eventObj.eventPhase = eventPhase; } catch (e) {}
-			eventObj.removed = false;
-
-			arr = arr.slice(); // to avoid issues with items being removed or added during the dispatch
-			for (var i=0; i<l && !eventObj.immediatePropagationStopped; i++) {
-				var o = arr[i];
-				if (o.handleEvent) { o.handleEvent(eventObj); }
-				else { o(eventObj); }
-				if (eventObj.removed) {
-					this.off(eventObj.type, o, eventPhase==1);
-					eventObj.removed = false;
-				}
-			}
-		}
-	};
-
-
-	createjs.EventDispatcher = EventDispatcher;
-}());
-
-//##############################################################################
-// ProgressEvent.js
-//##############################################################################
-
-window.createjs = window.createjs || {};
-
-(function (scope) {
-	"use strict";
-
-	// constructor
-	/**
-	 * A CreateJS {{#crossLink "Event"}}{{/crossLink}} that is dispatched when progress changes.
-	 * @class ProgressEvent
-	 * @param {Number} loaded The amount that has been loaded. This can be any number relative to the total.
-	 * @param {Number} [total=1] The total amount that will load. This will default to 1, so if the `loaded` value is
-	 * a percentage (between 0 and 1), it can be omitted.
-	 * @todo Consider having this event be a "fileprogress" event as well
-	 * @constructor
-	 */
-	function ProgressEvent(loaded, total) {
-		this.Event_constructor("progress");
-
-		/**
-		 * The amount that has been loaded (out of a total amount)
-		 * @property loaded
-		 * @type {Number}
-		 */
-		this.loaded = loaded;
-
-		/**
-		 * The total "size" of the load.
-		 * @property total
-		 * @type {Number}
-		 * @default 1
-		 */
-		this.total = (total == null) ? 1 : total;
-
-		/**
-		 * The percentage (out of 1) that the load has been completed. This is calculated using `loaded/total`.
-		 * @property progress
-		 * @type {Number}
-		 * @default 0
-		 */
-		this.progress = (total == 0) ? 0 : this.loaded / this.total;
-	};
-
-	var p = createjs.extend(ProgressEvent, createjs.Event);
-
-	/**
-	 * Returns a clone of the ProgressEvent instance.
-	 * @method clone
-	 * @return {ProgressEvent} a clone of the Event instance.
-	 **/
-	p.clone = function() {
-		return new createjs.ProgressEvent(this.loaded, this.total);
-	};
-
-	createjs.ProgressEvent = createjs.promote(ProgressEvent, "Event");
-
-}(window));
-
-//##############################################################################
-// json3.js
-//##############################################################################
-
-/*! JSON v3.3.2 | http://bestiejs.github.io/json3 | Copyright 2012-2014, Kit Cambridge | http://kit.mit-license.org */
-;(function () {
-  // Detect the `define` function exposed by asynchronous module loaders. The
-  // strict `define` check is necessary for compatibility with `r.js`.
-  var isLoader = "function" === "function" && __webpack_require__(39);
-
-  // A set of types used to distinguish objects from primitives.
-  var objectTypes = {
-    "function": true,
-    "object": true
-  };
-
-  // Detect the `exports` object exposed by CommonJS implementations.
-  var freeExports = objectTypes[typeof exports] && exports && !exports.nodeType && exports;
-
-  // Use the `global` object exposed by Node (including Browserify via
-  // `insert-module-globals`), Narwhal, and Ringo as the default context,
-  // and the `window` object in browsers. Rhino exports a `global` function
-  // instead.
-  var root = objectTypes[typeof window] && window || this,
-      freeGlobal = freeExports && objectTypes[typeof module] && module && !module.nodeType && typeof global == "object" && global;
-
-  if (freeGlobal && (freeGlobal["global"] === freeGlobal || freeGlobal["window"] === freeGlobal || freeGlobal["self"] === freeGlobal)) {
-    root = freeGlobal;
-  }
-
-  // Public: Initializes JSON 3 using the given `context` object, attaching the
-  // `stringify` and `parse` functions to the specified `exports` object.
-  function runInContext(context, exports) {
-    context || (context = root["Object"]());
-    exports || (exports = root["Object"]());
-
-    // Native constructor aliases.
-    var Number = context["Number"] || root["Number"],
-        String = context["String"] || root["String"],
-        Object = context["Object"] || root["Object"],
-        Date = context["Date"] || root["Date"],
-        SyntaxError = context["SyntaxError"] || root["SyntaxError"],
-        TypeError = context["TypeError"] || root["TypeError"],
-        Math = context["Math"] || root["Math"],
-        nativeJSON = context["JSON"] || root["JSON"];
-
-    // Delegate to the native `stringify` and `parse` implementations.
-    if (typeof nativeJSON == "object" && nativeJSON) {
-      exports.stringify = nativeJSON.stringify;
-      exports.parse = nativeJSON.parse;
-    }
-
-    // Convenience aliases.
-    var objectProto = Object.prototype,
-        getClass = objectProto.toString,
-        isProperty, forEach, undef;
-
-    // Test the `Date#getUTC*` methods. Based on work by @Yaffle.
-    var isExtended = new Date(-3509827334573292);
-    try {
-      // The `getUTCFullYear`, `Month`, and `Date` methods return nonsensical
-      // results for certain dates in Opera >= 10.53.
-      isExtended = isExtended.getUTCFullYear() == -109252 && isExtended.getUTCMonth() === 0 && isExtended.getUTCDate() === 1 &&
-        // Safari < 2.0.2 stores the internal millisecond time value correctly,
-        // but clips the values returned by the date methods to the range of
-        // signed 32-bit integers ([-2 ** 31, 2 ** 31 - 1]).
-        isExtended.getUTCHours() == 10 && isExtended.getUTCMinutes() == 37 && isExtended.getUTCSeconds() == 6 && isExtended.getUTCMilliseconds() == 708;
-    } catch (exception) {}
-
-    // Internal: Determines whether the native `JSON.stringify` and `parse`
-    // implementations are spec-compliant. Based on work by Ken Snyder.
-    function has(name) {
-      if (has[name] !== undef) {
-        // Return cached feature test result.
-        return has[name];
-      }
-      var isSupported;
-      if (name == "bug-string-char-index") {
-        // IE <= 7 doesn't support accessing string characters using square
-        // bracket notation. IE 8 only supports this for primitives.
-        isSupported = "a"[0] != "a";
-      } else if (name == "json") {
-        // Indicates whether both `JSON.stringify` and `JSON.parse` are
-        // supported.
-        isSupported = has("json-stringify") && has("json-parse");
-      } else {
-        var value, serialized = '{"a":[1,true,false,null,"\\u0000\\b\\n\\f\\r\\t"]}';
-        // Test `JSON.stringify`.
-        if (name == "json-stringify") {
-          var stringify = exports.stringify, stringifySupported = typeof stringify == "function" && isExtended;
-          if (stringifySupported) {
-            // A test function object with a custom `toJSON` method.
-            (value = function () {
-              return 1;
-            }).toJSON = value;
-            try {
-              stringifySupported =
-                // Firefox 3.1b1 and b2 serialize string, number, and boolean
-                // primitives as object literals.
-                stringify(0) === "0" &&
-                // FF 3.1b1, b2, and JSON 2 serialize wrapped primitives as object
-                // literals.
-                stringify(new Number()) === "0" &&
-                stringify(new String()) == '""' &&
-                // FF 3.1b1, 2 throw an error if the value is `null`, `undefined`, or
-                // does not define a canonical JSON representation (this applies to
-                // objects with `toJSON` properties as well, *unless* they are nested
-                // within an object or array).
-                stringify(getClass) === undef &&
-                // IE 8 serializes `undefined` as `"undefined"`. Safari <= 5.1.7 and
-                // FF 3.1b3 pass this test.
-                stringify(undef) === undef &&
-                // Safari <= 5.1.7 and FF 3.1b3 throw `Error`s and `TypeError`s,
-                // respectively, if the value is omitted entirely.
-                stringify() === undef &&
-                // FF 3.1b1, 2 throw an error if the given value is not a number,
-                // string, array, object, Boolean, or `null` literal. This applies to
-                // objects with custom `toJSON` methods as well, unless they are nested
-                // inside object or array literals. YUI 3.0.0b1 ignores custom `toJSON`
-                // methods entirely.
-                stringify(value) === "1" &&
-                stringify([value]) == "[1]" &&
-                // Prototype <= 1.6.1 serializes `[undefined]` as `"[]"` instead of
-                // `"[null]"`.
-                stringify([undef]) == "[null]" &&
-                // YUI 3.0.0b1 fails to serialize `null` literals.
-                stringify(null) == "null" &&
-                // FF 3.1b1, 2 halts serialization if an array contains a function:
-                // `[1, true, getClass, 1]` serializes as "[1,true,],". FF 3.1b3
-                // elides non-JSON values from objects and arrays, unless they
-                // define custom `toJSON` methods.
-                stringify([undef, getClass, null]) == "[null,null,null]" &&
-                // Simple serialization test. FF 3.1b1 uses Unicode escape sequences
-                // where character escape codes are expected (e.g., `\b` => `\u0008`).
-                stringify({ "a": [value, true, false, null, "\x00\b\n\f\r\t"] }) == serialized &&
-                // FF 3.1b1 and b2 ignore the `filter` and `width` arguments.
-                stringify(null, value) === "1" &&
-                stringify([1, 2], null, 1) == "[\n 1,\n 2\n]" &&
-                // JSON 2, Prototype <= 1.7, and older WebKit builds incorrectly
-                // serialize extended years.
-                stringify(new Date(-8.64e15)) == '"-271821-04-20T00:00:00.000Z"' &&
-                // The milliseconds are optional in ES 5, but required in 5.1.
-                stringify(new Date(8.64e15)) == '"+275760-09-13T00:00:00.000Z"' &&
-                // Firefox <= 11.0 incorrectly serializes years prior to 0 as negative
-                // four-digit years instead of six-digit years. Credits: @Yaffle.
-                stringify(new Date(-621987552e5)) == '"-000001-01-01T00:00:00.000Z"' &&
-                // Safari <= 5.1.5 and Opera >= 10.53 incorrectly serialize millisecond
-                // values less than 1000. Credits: @Yaffle.
-                stringify(new Date(-1)) == '"1969-12-31T23:59:59.999Z"';
-            } catch (exception) {
-              stringifySupported = false;
-            }
-          }
-          isSupported = stringifySupported;
-        }
-        // Test `JSON.parse`.
-        if (name == "json-parse") {
-          var parse = exports.parse;
-          if (typeof parse == "function") {
-            try {
-              // FF 3.1b1, b2 will throw an exception if a bare literal is provided.
-              // Conforming implementations should also coerce the initial argument to
-              // a string prior to parsing.
-              if (parse("0") === 0 && !parse(false)) {
-                // Simple parsing test.
-                value = parse(serialized);
-                var parseSupported = value["a"].length == 5 && value["a"][0] === 1;
-                if (parseSupported) {
-                  try {
-                    // Safari <= 5.1.2 and FF 3.1b1 allow unescaped tabs in strings.
-                    parseSupported = !parse('"\t"');
-                  } catch (exception) {}
-                  if (parseSupported) {
-                    try {
-                      // FF 4.0 and 4.0.1 allow leading `+` signs and leading
-                      // decimal points. FF 4.0, 4.0.1, and IE 9-10 also allow
-                      // certain octal literals.
-                      parseSupported = parse("01") !== 1;
-                    } catch (exception) {}
-                  }
-                  if (parseSupported) {
-                    try {
-                      // FF 4.0, 4.0.1, and Rhino 1.7R3-R4 allow trailing decimal
-                      // points. These environments, along with FF 3.1b1 and 2,
-                      // also allow trailing commas in JSON objects and arrays.
-                      parseSupported = parse("1.") !== 1;
-                    } catch (exception) {}
-                  }
-                }
-              }
-            } catch (exception) {
-              parseSupported = false;
-            }
-          }
-          isSupported = parseSupported;
-        }
-      }
-      return has[name] = !!isSupported;
-    }
-
-    if (!has("json")) {
-      // Common `[[Class]]` name aliases.
-      var functionClass = "[object Function]",
-          dateClass = "[object Date]",
-          numberClass = "[object Number]",
-          stringClass = "[object String]",
-          arrayClass = "[object Array]",
-          booleanClass = "[object Boolean]";
-
-      // Detect incomplete support for accessing string characters by index.
-      var charIndexBuggy = has("bug-string-char-index");
-
-      // Define additional utility methods if the `Date` methods are buggy.
-      if (!isExtended) {
-        var floor = Math.floor;
-        // A mapping between the months of the year and the number of days between
-        // January 1st and the first of the respective month.
-        var Months = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
-        // Internal: Calculates the number of days between the Unix epoch and the
-        // first day of the given month.
-        var getDay = function (year, month) {
-          return Months[month] + 365 * (year - 1970) + floor((year - 1969 + (month = +(month > 1))) / 4) - floor((year - 1901 + month) / 100) + floor((year - 1601 + month) / 400);
-        };
-      }
-
-      // Internal: Determines if a property is a direct property of the given
-      // object. Delegates to the native `Object#hasOwnProperty` method.
-      if (!(isProperty = objectProto.hasOwnProperty)) {
-        isProperty = function (property) {
-          var members = {}, constructor;
-          if ((members.__proto__ = null, members.__proto__ = {
-            // The *proto* property cannot be set multiple times in recent
-            // versions of Firefox and SeaMonkey.
-            "toString": 1
-          }, members).toString != getClass) {
-            // Safari <= 2.0.3 doesn't implement `Object#hasOwnProperty`, but
-            // supports the mutable *proto* property.
-            isProperty = function (property) {
-              // Capture and break the object's prototype chain (see section 8.6.2
-              // of the ES 5.1 spec). The parenthesized expression prevents an
-              // unsafe transformation by the Closure Compiler.
-              var original = this.__proto__, result = property in (this.__proto__ = null, this);
-              // Restore the original prototype chain.
-              this.__proto__ = original;
-              return result;
-            };
-          } else {
-            // Capture a reference to the top-level `Object` constructor.
-            constructor = members.constructor;
-            // Use the `constructor` property to simulate `Object#hasOwnProperty` in
-            // other environments.
-            isProperty = function (property) {
-              var parent = (this.constructor || constructor).prototype;
-              return property in this && !(property in parent && this[property] === parent[property]);
-            };
-          }
-          members = null;
-          return isProperty.call(this, property);
-        };
-      }
-
-      // Internal: Normalizes the `for...in` iteration algorithm across
-      // environments. Each enumerated key is yielded to a `callback` function.
-      forEach = function (object, callback) {
-        var size = 0, Properties, members, property;
-
-        // Tests for bugs in the current environment's `for...in` algorithm. The
-        // `valueOf` property inherits the non-enumerable flag from
-        // `Object.prototype` in older versions of IE, Netscape, and Mozilla.
-        (Properties = function () {
-          this.valueOf = 0;
-        }).prototype.valueOf = 0;
-
-        // Iterate over a new instance of the `Properties` class.
-        members = new Properties();
-        for (property in members) {
-          // Ignore all properties inherited from `Object.prototype`.
-          if (isProperty.call(members, property)) {
-            size++;
-          }
-        }
-        Properties = members = null;
-
-        // Normalize the iteration algorithm.
-        if (!size) {
-          // A list of non-enumerable properties inherited from `Object.prototype`.
-          members = ["valueOf", "toString", "toLocaleString", "propertyIsEnumerable", "isPrototypeOf", "hasOwnProperty", "constructor"];
-          // IE <= 8, Mozilla 1.0, and Netscape 6.2 ignore shadowed non-enumerable
-          // properties.
-          forEach = function (object, callback) {
-            var isFunction = getClass.call(object) == functionClass, property, length;
-            var hasProperty = !isFunction && typeof object.constructor != "function" && objectTypes[typeof object.hasOwnProperty] && object.hasOwnProperty || isProperty;
-            for (property in object) {
-              // Gecko <= 1.0 enumerates the `prototype` property of functions under
-              // certain conditions; IE does not.
-              if (!(isFunction && property == "prototype") && hasProperty.call(object, property)) {
-                callback(property);
-              }
-            }
-            // Manually invoke the callback for each non-enumerable property.
-            for (length = members.length; property = members[--length]; hasProperty.call(object, property) && callback(property));
-          };
-        } else if (size == 2) {
-          // Safari <= 2.0.4 enumerates shadowed properties twice.
-          forEach = function (object, callback) {
-            // Create a set of iterated properties.
-            var members = {}, isFunction = getClass.call(object) == functionClass, property;
-            for (property in object) {
-              // Store each property name to prevent double enumeration. The
-              // `prototype` property of functions is not enumerated due to cross-
-              // environment inconsistencies.
-              if (!(isFunction && property == "prototype") && !isProperty.call(members, property) && (members[property] = 1) && isProperty.call(object, property)) {
-                callback(property);
-              }
-            }
-          };
-        } else {
-          // No bugs detected; use the standard `for...in` algorithm.
-          forEach = function (object, callback) {
-            var isFunction = getClass.call(object) == functionClass, property, isConstructor;
-            for (property in object) {
-              if (!(isFunction && property == "prototype") && isProperty.call(object, property) && !(isConstructor = property === "constructor")) {
-                callback(property);
-              }
-            }
-            // Manually invoke the callback for the `constructor` property due to
-            // cross-environment inconsistencies.
-            if (isConstructor || isProperty.call(object, (property = "constructor"))) {
-              callback(property);
-            }
-          };
-        }
-        return forEach(object, callback);
-      };
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 
 		// TODO: it would be nice to eliminate this. Maybe in favour of evtObj instanceof Event? Or !!evtObj.createEvent
 		try { eventObj.target = this; } catch (e) {} // try/catch allows redispatching of native events
@@ -87991,81 +74924,6 @@ window.createjs = window.createjs || {};
 	createjs.WebAudioPlugin = createjs.promote(WebAudioPlugin, "AbstractPlugin");
 }());
 
-<<<<<<< HEAD
-=======
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(38)(module), __webpack_require__(0)))
-
-/***/ }),
-/* 38 */
-/***/ (function(module, exports) {
-
-module.exports = function(module) {
-	if(!module.webpackPolyfill) {
-		module.deprecate = function() {};
-		module.paths = [];
-		// module.parent = undefined by default
-		if(!module.children) module.children = [];
-		Object.defineProperty(module, "loaded", {
-			enumerable: true,
-			get: function() {
-				return module.l;
-			}
-		});
-		Object.defineProperty(module, "id", {
-			enumerable: true,
-			get: function() {
-				return module.i;
-			}
-		});
-		module.webpackPolyfill = 1;
-	}
-	return module;
-};
-
-
-/***/ }),
-/* 39 */
-/***/ (function(module, exports) {
-
-/* WEBPACK VAR INJECTION */(function(__webpack_amd_options__) {/* globals __webpack_amd_options__ */
-module.exports = __webpack_amd_options__;
-
-/* WEBPACK VAR INJECTION */}.call(exports, {}))
-
-/***/ }),
-/* 40 */
-/***/ (function(module, exports) {
-
-/*!
-* SoundJS
-* Visit http://createjs.com/ for documentation, updates and examples.
-*
-* Copyright (c) 2010 gskinner.com, inc.
-*
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-*
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-*
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-* OTHER DEALINGS IN THE SOFTWARE.
-*/
-
-
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 //##############################################################################
 // HTMLAudioTagPool.js
 //##############################################################################
@@ -92186,27 +79044,415 @@ window.createjs = window.createjs || {};
 "use strict";
 
 
-var _BiwaScheme = _interopRequireDefault(__webpack_require__(43));
+var _biwascheme = _interopRequireDefault(__webpack_require__(13));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-function compileCanvas(graph) {
-  var compiledLisp = evaluateContext(graph, []);
-  displayResult(compiledLisp);
-}
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
-function displayResult(compiledLisp) {
-  function writeToDisplay(lispOutput) {
-    var newHtml = '>> ' + lispOutput + '<br />' + compiledLisp;
-    document.getElementById('lispOutput').innerHTML = newHtml;
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+/*
+ * This file controls how a vambda program is compiled into Lisp and executed.
+ * The entry point is the compileCanvas function. It accepts the entry
+ * nodes to the program, compiles the program, and executes the compiled program.
+ *
+ * In overview: this is done recursively. The function evaluateNode compiles
+ * a node with its parents. When the node is not a singleton (ie is a define
+ * or a lambda), evaluateContext compiles the content of the node recursively.
+ */
+var Node =
+/*#__PURE__*/
+function () {
+  /*
+   * A node is either a basic node, a lambda bubble or a define bubble.
+   * This class contains some basic utility functions.
+   */
+  function Node(cytoscapeObj) {
+    _classCallCheck(this, Node);
+
+    this._cytoscapeObj = cytoscapeObj;
   }
 
-  var biwa = new _BiwaScheme.default.Interpreter(writeToDisplay);
-  biwa.evaluate(compiledLisp, writeToDisplay);
+  _createClass(Node, [{
+    key: "evaluate",
+    value: function evaluate() {
+      var boundVariables = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : new Set();
+      console.log("NOT IMPLEMENTED");
+    }
+  }, {
+    key: "nodeNames",
+    value: function nodeNames() {
+      console.log("NOT DEFINED");
+    }
+  }, {
+    key: "name",
+    get: function get() {
+      // Gets name of the element if there is one,
+      // else refer to the node by its id.
+      if (this._cytoscapeObj.data('name') !== '') {
+        var id = this._cytoscapeObj.data('name');
+      } else {
+        var id = this._cytoscapeObj.id();
+      }
+
+      return id;
+    }
+  }], [{
+    key: "type",
+    value: function type(ele) {
+      return ele.data('type');
+    }
+  }]);
+
+  return Node;
+}();
+
+var DefineNode =
+/*#__PURE__*/
+function (_Node) {
+  _inherits(DefineNode, _Node);
+
+  function DefineNode(cytoscapeObj) {
+    var _this;
+
+    _classCallCheck(this, DefineNode);
+
+    _this = _possibleConstructorReturn(this, (DefineNode.__proto__ || Object.getPrototypeOf(DefineNode)).call(this, cytoscapeObj));
+
+    var contents = _this._cytoscapeObj.children();
+
+    _this.innerContext = new Context(contents);
+    return _this;
+  }
+
+  _createClass(DefineNode, [{
+    key: "evaluate",
+    value: function evaluate() {
+      var boundVariables = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : new Set();
+      // Evaluates the context contained inside the define, to determine
+      // what the name gets set to inside a Context.
+      return this.innerContext.evaluate(boundVariables);
+    }
+  }, {
+    key: "nodeNames",
+    value: function nodeNames() {
+      return this.innerContext.nodeNames();
+    }
+  }, {
+    key: "compare",
+    value: function compare(other) {
+      /*
+       * Compare the contents of this define to the content of another define.
+       * If one defines a bound variable which is contained in the other,
+       * they should be ordered so that the defining one comes first.
+       */
+      console.log("this", this.nodeNames(), this.name);
+      console.log("other", other.nodeNames(), other.name);
+
+      if (this.nodeNames().has(other.name)) {
+        console.log("this has other");
+        return 1;
+      } else if (other.nodeNames().has(this.name)) {
+        console.log("other has this");
+        return -1;
+      } else {
+        console.log("neither have each other");
+        return 0;
+      }
+    }
+  }]);
+
+  return DefineNode;
+}(Node);
+
+var ExecutionNode =
+/*#__PURE__*/
+function (_Node2) {
+  _inherits(ExecutionNode, _Node2);
+
+  function ExecutionNode(cytoscapeObj) {
+    var _this2;
+
+    _classCallCheck(this, ExecutionNode);
+
+    _this2 = _possibleConstructorReturn(this, (ExecutionNode.__proto__ || Object.getPrototypeOf(ExecutionNode)).call(this, cytoscapeObj));
+    _this2.incomingEdges = _this2._cytoscapeObj.incomers('edge').sort(function (a, b) {
+      return getRef(a).localeCompare(getRef(b));
+    });
+    _this2.parents = _this2.incomingEdges.map(function (edge) {
+      return createNodeObject(edge.source());
+    });
+    return _this2;
+  }
+
+  _createClass(ExecutionNode, [{
+    key: "evaluate",
+    value: function evaluate() {
+      var contextualBoundVariables = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : new Set();
+
+      if (this.parents.length > 0) {
+        // It's some kind of execution.
+        // Evaluate the incomers recursively.
+        var stringedEdges = this.incomingEdges.map(function (edge) {
+          return edge.name;
+        }).join(' ');
+        return '(' + this.evaluateContent(contextualBoundVariables) + ' ' + this.parents.map(function (node) {
+          return node.evaluate();
+        }).join(' ') + ')';
+      } else {
+        return this.evaluateContent(contextualBoundVariables);
+      }
+    }
+  }, {
+    key: "evaluateContent",
+    value: function evaluateContent() {
+      var contextualBoundVariables = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : new Set();
+      console.log("evaluateContent TO BE DEFINED");
+    }
+  }, {
+    key: "nodeNames",
+    value: function nodeNames() {
+      var linkedNames = flatten(this.parents.map(function (n) {
+        return Array.from(n.nodeNames());
+      }));
+      var nestedNames = Array.from(this.nestedNodeNames());
+      var names = new Set(linkedNames.concat(nestedNames)); //console.log("nodenames:", linkedNames, nestedNames, names)
+
+      return names;
+    }
+  }, {
+    key: "nestedNodeNames",
+    value: function nestedNodeNames() {
+      console.log("NESTEDNODENAMES NOT DEFINED");
+    }
+  }]);
+
+  return ExecutionNode;
+}(Node);
+
+var LambdaNode =
+/*#__PURE__*/
+function (_ExecutionNode) {
+  _inherits(LambdaNode, _ExecutionNode);
+
+  function LambdaNode(cytoscapeObj) {
+    var _this3;
+
+    _classCallCheck(this, LambdaNode);
+
+    _this3 = _possibleConstructorReturn(this, (LambdaNode.__proto__ || Object.getPrototypeOf(LambdaNode)).call(this, cytoscapeObj));
+
+    var contents = _this3._cytoscapeObj.children();
+
+    _this3.innerContext = new Context(contents);
+    return _this3;
+  }
+
+  _createClass(LambdaNode, [{
+    key: "evaluateContent",
+    value: function evaluateContent() {
+      var contextualBoundVariables = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : new Set();
+      var boundVariables = this.nearBoundVariables.concat(this.extraBoundVariables).sort();
+      var stringedBoundVariables = '(' + boundVariables.filter(function (el, i, arr) {
+        return arr.indexOf(el) === i;
+      }).join(' ') + ')';
+      var innerResult = this.innerContext.evaluate(new Set(_toConsumableArray(contextualBoundVariables).concat(_toConsumableArray(stringedBoundVariables))));
+      return '(lambda ' + stringedBoundVariables + ' ' + innerResult + ')';
+    }
+  }, {
+    key: "nestedNodeNames",
+    value: function nestedNodeNames() {
+      /*
+       * Returns the names of every node inside this context;
+       * used to determine order of definitions.
+       */
+      return this.innerContext.nodeNames();
+    }
+  }, {
+    key: "nearBoundVariables",
+    get: function get() {
+      // TODO: this should be done using the object structure and searching
+      // recursively.
+      var boundVars = this._cytoscapeObj.children().filter("node[type = 'NearBoundVariable']").map(function (n) {
+        return getRef(n);
+      });
+
+      return boundVars;
+    }
+  }, {
+    key: "extraBoundVariables",
+    get: function get() {
+      return this._cytoscapeObj.data('name').split(' ');
+    }
+  }]);
+
+  return LambdaNode;
+}(ExecutionNode);
+
+var BasicNode =
+/*#__PURE__*/
+function (_ExecutionNode2) {
+  _inherits(BasicNode, _ExecutionNode2);
+
+  function BasicNode(cytoscapeObj) {
+    var _this4;
+
+    _classCallCheck(this, BasicNode);
+
+    _this4 = _possibleConstructorReturn(this, (BasicNode.__proto__ || Object.getPrototypeOf(BasicNode)).call(this, cytoscapeObj));
+    _this4.incomingEdges = _this4._cytoscapeObj.incomers('edge').sort(function (a, b) {
+      return getRef(a).localeCompare(getRef(b));
+    });
+    _this4.parents = _this4.incomingEdges.map(function (edge) {
+      return createNodeObject(edge.source());
+    });
+    return _this4;
+  }
+
+  _createClass(BasicNode, [{
+    key: "evaluateContent",
+    value: function evaluateContent() {
+      var contextualBoundVariables = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : new Set();
+      return this.name;
+    }
+  }, {
+    key: "nestedNodeNames",
+    value: function nestedNodeNames() {
+      /*
+       * Returns the name of this node in a set;
+       * used to determine order of definitions.
+       */
+      return new Set([this.name]);
+    }
+  }]);
+
+  return BasicNode;
+}(ExecutionNode);
+
+var Context =
+/*#__PURE__*/
+function () {
+  /*
+   * A context consists of a collection of nodes to be evaluated in some order.
+   * A well-defined context has exactly one execution tree and any number of
+   * definitions.
+   *
+   * Currently, we assume the context is well-defined. TODO: add better
+   * handling for when this is not the case.
+   * (An error monad would be great here. But... JavaScript...)
+   */
+  // TODO: the methods here should rely more on the constructed objects.
+  function Context(cytoscapeNodes) {
+    _classCallCheck(this, Context);
+
+    this._cytoscapeNodes = cytoscapeNodes;
+    this.definitionNodes = this.makeDefinitionNodes();
+    this.executionNodes = this.makeExecutionNodes();
+
+    if (this.executionNodes.length !== 1) {
+      // Throw a shit-fit
+      console.log("Error, context with ".concat(this.executionNodes.length, " execution nodes found.") + '\nContexts must have exactly one execution node.');
+    } //console.log("Context: defns, executions", this.definitionNodes, this.executionNodes)
+
+  }
+
+  _createClass(Context, [{
+    key: "makeDefinitionNodes",
+    value: function makeDefinitionNodes() {
+      // Get all of the definition nodes, ordered by definition order.
+      var unsortedNodes = this._cytoscapeNodes.filter(function (n) {
+        return Context.typ(n) === 'Define';
+      }).map(function (ele, i, eles) {
+        return new DefineNode(ele);
+      });
+
+      var sortedNodes = sort_porder(unsortedNodes);
+      return sortedNodes;
+    }
+  }, {
+    key: "makeExecutionNodes",
+    value: function makeExecutionNodes() {
+      var _this5 = this;
+
+      return this._cytoscapeNodes.filter(function (n) {
+        return Context.typ(n) !== 'Define' && _this5._cytoscapeNodes.leaves().contains(n);
+      }).map(function (ele, i, eles) {
+        return createNodeObject(ele);
+      });
+    }
+  }, {
+    key: "evaluate",
+    value: function evaluate() {
+      var baseBoundVariables = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : new Set();
+      var boundVariables = new Set(baseBoundVariables); // Shallow copy to avoid side effects.
+
+      var defnItems = '';
+
+      for (var i = 0; i < this.definitionNodes.length; i++) {
+        var defn = this.definitionNodes[i];
+        var itemString = "(" + defn.name + " " + defn.evaluate(boundVariables) + ")\n";
+        defnItems = defnItems.concat(itemString);
+        boundVariables.add(defn.name);
+      }
+
+      var executionItems = this.executionNodes.map(function (n) {
+        return n.evaluate();
+      }).join('\n');
+      var compiledExecution = this.executionNodes.map(function (node) {
+        return node.evaluate(boundVariables);
+      }).toString();
+
+      if (defnItems.length > 0) {
+        return "(letrec (\n" + defnItems + "\n)\n" + compiledExecution + "\n)";
+      } else {
+        return compiledExecution;
+      }
+    }
+  }, {
+    key: "nodeNames",
+    value: function nodeNames() {
+      // TODO: This is clearly ridiculous. A proper language would just union sets ffs.
+      var allNodes = this.definitionNodes.concat(this.executionNodes);
+      var allNames = allNodes.map(function (node) {
+        return Array.from(node.nodeNames());
+      });
+      return new Set(flatten(allNames));
+    }
+  }], [{
+    key: "typ",
+    value: function typ(node) {
+      return node.data('type');
+    }
+  }]);
+
+  return Context;
+}();
+
+function createNodeObject(ele) {
+  if (Node.type(ele) === 'Define') {
+    return new DefineNode(ele);
+  } else if (Node.type(ele) === 'Lambda') {
+    return new LambdaNode(ele);
+  } else {
+    return new BasicNode(ele);
+  }
 }
 
 function getRef(ele) {
-  // Gets name if there is one, else refer to the node by its id.
+  // Gets name of the element if there is one,
+  // else refer to the edge by its source, or node by its id.
+  // TODO: eliminate this. May require instantiating edges as classes, or not.
   if (ele.data('name') !== '') {
     return ele.data('name');
   } else if (ele.isEdge()) {
@@ -92216,125 +79462,30 @@ function getRef(ele) {
   }
 }
 
-function nodeEval(node) {
-  var selfType = typ(node);
-  var subNodes = node.children();
-
-  if (selfType === 'Parens') {
-    return '((lambda ()' + evaluateContext(subNodes, boundVariables) + '))';
-  }
-
-  if (selfType === 'Lambda') {
-    // Find variables of the lambda function.
-    var nearBoundVariables = subNodes.filter("node[type = 'NearBoundVariable']").map(function (n) {
-      return getRef(n);
-    });
-    var extraBoundVariables = node.data('name').split(' ');
-    var boundVariables = nearBoundVariables.concat(extraBoundVariables).sort();
-    var stringedBoundVariables = '(' + boundVariables.filter(function (el, i, arr) {
-      return arr.indexOf(el) === i;
-    }).join(' ') + ')';
-    return '(lambda' + stringedBoundVariables + ' ' + evaluateContext(subNodes, boundVariables) + ')';
-  } else if (selfType === 'Define') {
-    //return '(define ' + getRef(node) + ' (delay ((lambda ()' + evaluateContext(subNodes, boundVariables) + '))))'
-    return '(define ' + getRef(node) + ' ((lambda () ' + evaluateContext(subNodes, boundVariables) + ' )))';
-  } else {
-    // Else we have a variable to evaluate, with force-delay to make the evaluation lazy.
-    // 'if' can't be force-delayed, so we need a special rule for this evaluation.
-    // (TODO: this is an ugly fix!)
-
-    /*var nodeName = getRef(node)
-    if (nodeName === 'if') {
-      return nodeName
-    } else {
-      return '(force (delay ' + getRef(node) + '))'
-    }*/
-    return getRef(node);
-  }
-}
-
-function evaluateNode(node) {
-  var contextualBoundVariables = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : [];
-  var compiledNode = nodeEval(node);
-
-  if (node.incomers('edge').length > 0) {
-    // It's some kind of execution.
-    // Evaluate the incomers recursively.
-    var edgeRefs = node.incomers('edge').sort(function (a, b) {
-      return getRef(a).localeCompare(getRef(b));
-    }).map(function (edge) {
-      return evaluateNode(edge.source());
-    });
-    var stringedEdges = edgeRefs.join(' ');
-    return '(' + compiledNode + ' ' + stringedEdges + ')';
-  } else {
-    return compiledNode;
-  }
-}
-
-function evaluateContext(context) {
-  var boundVariables = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : [];
-  // A context is a list of nodes to be evaluated in an order.
-  var unsorted_defs = context.filter(function (n) {
-    return typ(n) === 'Define';
-  }).toArray();
-  console.log("UNSORTED:", unsorted_defs.map(function (f) {
-    return f.data('name');
-  }));
-  var definitionNodes = sort_porder(unsorted_defs, definition_order);
-  console.log("SORTED:", definitionNodes.map(function (f) {
-    return f.data('name');
-  })); // Hopefully there's exactly one execution node (?)
-
-  var executionNodes = context.filter(function (n) {
-    return typ(n) !== 'Define' && context.leaves().contains(n);
-  }); // Evaluate definitions first, then the execution.
-
-  var definitions = definitionNodes.map(function (ele, i, eles) {
-    return evaluateNode(ele, boundVariables);
-  });
-  var executions = executionNodes.map(function (ele, i, eles) {
-    return evaluateNode(ele, boundVariables);
-  });
-  var allPhrases = definitions.concat(executions);
-
-  if (allPhrases.length > 1) {
-    return allPhrases.join('\n');
-  } else {
-    return allPhrases.join('\n');
-  }
-}
-
-function typ(node) {
-  return node.data('type');
-}
-
-function definition_order(nodeA, nodeB) {
-  /*
-   * If A and B are two definition nodes in a context
-   * and A is contained in B then B needs to precede A in execution.
+function compileCanvas(graph) {
+  /* Accepts a cytoscape collection which is the entry nodes to the program.
+   * That is, the first executed node and the top level 'define' nodes around it.
+   * Compiles the program and executes it, returning both the result and
+   * the compiled lisp code.
    */
-  //console.log((nodeA.descendants().union(nodeA)))
-  var nodeA_descendants = nodeA.descendants().union(nodeA).map(function (x, i, eles) {
-    return x.data('name');
-  }); //console.log(nodeA, nodeA_descendants)
+  // We begin with a call to evaluate the global context.
+  var compiledLisp = new Context(graph).evaluate(); //var compiledLisp = "(let* ( (SQRT (lambda (x) (let* ( (square (lambda ( a1a68690-6b60-42ac-aec7-9227e83f54b8) (* a1a68690-6b60-42ac-aec7-9227e83f54b8 a1a68690-6b60-42ac-aec7-9227e83f54b8))) (MIN 1) (good-enough? (lambda ( guess) (< (abs (- (square guess) x)) MIN))) (average (lambda ( 35b68c47-24de-4ed5-ab77-36efcf85e582 985c01aa-9a75-4e18-a885-5379fb7128e3) (/ (+ 35b68c47-24de-4ed5-ab77-36efcf85e582 985c01aa-9a75-4e18-a885-5379fb7128e3) 2.0))) (improve-guess (lambda ( guess) (average (/ x guess) guess))) (sqrt-iter (lambda ( guess) (if (good-enough? guess) guess (sqrt-iter (improve-guess guess))))) ) (sqrt-iter 8) ))) ) (SQRT 95) )"
 
-  var nodeB_descendants = nodeB.descendants().union(nodeB).map(function (x, i, eles) {
-    return x.data('name');
-  });
-
-  if (nodeB.data('name') in nodeA_descendants) {
-    return 1;
-  } else {
-    return 0;
-  }
+  console.log(compiledLisp);
+  var result = execute(compiledLisp);
+  return [result, compiledLisp];
 }
 
-function sort_porder(array, order_fn) {
+function execute(compiledLisp) {
+  var biwa = new _biwascheme.default.Interpreter();
+  return biwa.evaluate(compiledLisp);
+}
+
+function sort_porder(array) {
   //var array = raw_array.copy()
   for (var i = 0; i < array.length - 1; i++) {
     for (var j = i + 1; j < array.length; j++) {
-      if (order_fn(array[i], array[j]) > 0) {
+      if (array[i].compare(array[j]) > 0) {
         var temp = array[i];
         array[i] = array[j];
         array[j] = temp;
@@ -92345,8193 +79496,11 @@ function sort_porder(array, order_fn) {
   return array;
 }
 
+function flatten(arrayOfArrays) {
+  return [].concat.apply([], arrayOfArrays);
+}
+
 module.exports = compileCanvas;
-
-/***/ }),
-/* 43 */
-/***/ (function(module, exports, __webpack_require__) {
-
-/* WEBPACK VAR INJECTION */(function(process) {var _ = __webpack_require__(5);
-_.str = __webpack_require__(6);
-
-var Console = {};
-Console.puts = function(str, no_newline) {
-  BiwaScheme.Port.current_output.put_string(str + (no_newline ? "" : "\n"))
-};
-
-Console.p = function() {
-  [].slice.call(arguments).forEach(BiwaScheme.Port.current_output.put_string);
-};
-
-if(typeof(BiwaScheme) == "undefined") BiwaScheme = {};
-BiwaScheme.on_node = true;
-BiwaScheme._ = _;
-BiwaScheme.Console = Console;
-/*
- * BiwaScheme 0.6.8 - R6RS Scheme in JavaScript
- *
- * Copyright (c) 2007-2014 Yutaka HARA (http://www.biwascheme.org/)
- * @license Licensed under the MIT license.
- */
-
-var BiwaScheme = BiwaScheme || {};
-
-BiwaScheme.Version = "0.6.8";  // TODO: deprecate this
-BiwaScheme.VERSION = "0.6.8";
-BiwaScheme.GitCommit = "dfce3cb5a2228174dfdb9b0161483623a41b6f81";
-// 
-// Heap based scheme from 3imp.pdf
-//
-
-//
-// variables
-//
-BiwaScheme.TopEnv = {};
-BiwaScheme.CoreEnv = {};
-
-//
-// Nil
-// javascript representation of empty list( '() )
-//
-BiwaScheme.nil = {
-  toString: function() { return "nil"; },
-  to_write: function() { return "()"; },
-  to_array: function() { return []; },
-  length: function() { return 0; }
-};
-
-//
-// #<undef> (The undefined value)
-// also used as #<unspecified> values
-//
-BiwaScheme.undef = new Object();
-BiwaScheme.undef.toString = function(){ return "#<undef>"; }
-
-// Prints the arguments to console.debug.
-BiwaScheme.debug = function(/*arguments*/){
-  var args = _.toArray(arguments);
-  console.debug.apply(console, _.map(args, BiwaScheme.inspect));
-}
-
-//
-// Assertion
-//
-BiwaScheme.assert = function(cond, desc) {
-  if (!cond) {
-    throw new BiwaScheme.Bug("[BUG] Assertion failed: "+desc);
-  }
-}
-
-//
-// Configurations
-//
-
-// Maximum depth of stack trace
-// (You can also set Interpreter#max_trace_size for each Interpreter)
-BiwaScheme.max_trace_size = 40;
-
-// Stop showing deprecation warning
-BiwaScheme.suppress_deprecation_warning = false;
-//
-// Super-simple class implementation
-//
-// Example usage:
-//
-// BiwaScheme.Foo = BiwaScheme.Class.create({
-//   initialize: function(a){
-//     this.a = a;
-//   },
-//
-//   toString: function(){
-//     return "foo[" + this.a + "]";
-//   }
-// });
-//
-// BiwaScheme.Bar = BiwaScheme.Class.extend(new BiwaScheme.Foo("hello1"), {
-//   initialize: function(b){
-//     this.b = b;
-//   },
-//
-//   printEverything: function(){
-//     console.log("a = ", this.a, "b = ", this.b);
-//   },
-//
-//   toString: function(){
-//     return "bar[" + this.b + "]";
-//   }
-// });
-
-BiwaScheme.Class = {
-  create: function(methods) {
-    var klass = function(){ this.initialize.apply(this, arguments); };
-    _.extend(klass.prototype, methods);
-    return klass;
-  },
-
-  extend: function(parent, methods) {
-    var klass = function(){ this.initialize.apply(this, arguments); };
-    klass.prototype = parent;
-    _.extend(klass.prototype, methods);
-    return klass;
-  }
-};
-
-// Update the given method to memoized version.
-//
-// - klass : a class defined by BiwaScheme.Class.create
-// - name_or_names : method name (a string or an array of strings)
-//
-// Example
-//
-//   // Given this method
-//   BiwaScheme.Enumeration.EnumType = ...
-//     universe: function(){
-//       return ...
-//     }
-//   ...
-//   // Memoize
-//   BiwaScheme.Class.memoize(BiwaScheme.Enumeration.EnumType,
-//                            "_universe"); 
-//
-//   // Equal to:
-//   BiwaScheme.Enumeration.EnumType = ...
-//     universe: function(){
-//       if(!this.hasOwnProperty("cached_universe")){
-//         this.cached_universe = this.compute_universe();
-//       }
-//       return this.cached_universe;
-//     },
-//     compute_universe: function(){ 
-//       // Original function, renamed to compute_*
-//       return ...
-//     }
-//   ...
-BiwaScheme.Class.memoize = function(klass, name_or_names){
-  var proto = klass.prototype;
-  var names = _.isArray(name_or_names) ? name_or_names : [name_or_names];
-
-  _.each(names, function(name){
-    // Copy original function foo as 'compute_foo'
-    proto["compute_"+name] = proto[name];
-
-    // Define memoizing version
-    proto[name] = function(/*arguments*/){
-      if(!this.hasOwnProperty("cached_"+name)){
-        this["cached_"+name] = this["compute_"+name].apply(this, _.toArray(arguments));
-      }
-      return this["cached_"+name];
-    }
-  });
-}
-//
-// write.js: Functions to convert objects to strings
-//
-
-//
-// write
-//
-
-BiwaScheme.to_write = function(obj){
-  if(obj === undefined)
-    return "undefined";
-  else if(obj === null)
-    return "null";
-  else if(_.isFunction(obj))
-    return "#<Function "+(obj.fname ? obj.fname :
-                          obj.toSource ? _.str.truncate(obj.toSource(), 40) :
-                          "")+">";
-  else if(_.isString(obj))
-    return '"' +
-           obj.replace(/\\|\"/g,function($0){return'\\'+$0;})
-              .replace(/\x07/g, "\\a")
-              .replace(/\x08/g, "\\b")
-              .replace(/\t/g, "\\t")
-              .replace(/\n/g, "\\n")
-              .replace(/\v/g, "\\v")
-              .replace(/\f/g, "\\f")
-              .replace(/\r/g, "\\r") +
-           '"';
-  else if(_.isArray(obj) && obj.closure_p)
-    return "#<Closure>";
-  else if(_.isArray(obj))
-    return "#(" + _.map(obj, function(e) { return BiwaScheme.to_write(e); }).join(" ") + ")";
-  else if(typeof(obj.to_write) == 'function')
-    return obj.to_write();
-  else if(isNaN(obj) && typeof(obj) == 'number')
-    return "+nan.0";
-  else{
-    switch(obj){
-      case true: return "#t";
-      case false: return "#f";
-      case Infinity: return "+inf.0";
-      case -Infinity: return "-inf.0";
-    }
-  }
-  return BiwaScheme.inspect(obj);
-}
-
-//
-// display
-//
-
-BiwaScheme.to_display = function(obj){
-  if(_.isUndefined(obj))
-    return 'undefined';
-  else if(_.isNull(obj))
-    return 'null';
-  else if(typeof(obj.valueOf()) == "string")
-    return obj;
-  else if(obj instanceof BiwaScheme.Symbol)
-    return obj.name;
-  else if(obj instanceof Array)
-    return '#(' + _.map(obj, BiwaScheme.to_display).join(' ') + ')';
-  else if(obj instanceof BiwaScheme.Pair)
-    return obj.inspect(BiwaScheme.to_display);
-  else if(obj instanceof BiwaScheme.Char)
-    return obj.value;
-  else
-    return BiwaScheme.to_write(obj);
-}
-
-//
-// write/ss (write with substructure)
-//
-
-// example:  > (let ((x (list 'a))) (list x x))                   //           (#0=(a) #0#)
-// 2-pass algorithm.
-// (1) detect all the objects which appears more than once
-//     (find_cyclic, reduce_cyclic_info)
-// (2) write object using this information
-//   * add prefix '#n=' for first appearance
-//   * just write '#n#' for other appearance
-
-//TODO: support Values
-BiwaScheme.write_ss = function(obj, array_mode){
-  var known = [obj], used = [false];
-  BiwaScheme.find_cyclic(obj, known, used);
-  var cyclic   = BiwaScheme.reduce_cyclic_info(known, used);
-  var appeared = new Array(cyclic.length);
-  for(var i=cyclic.length-1; i>=0; i--) appeared[i] = false;
-
-  return BiwaScheme.to_write_ss(obj, cyclic, appeared, array_mode);
-}
-BiwaScheme.to_write_ss = function(obj, cyclic, appeared, array_mode){
-  var ret = "";
-  var i = cyclic.indexOf(obj);
-  if(i >= 0){
-    if(appeared[i]){
-      return "#"+i+"#";
-    }
-    else{
-      appeared[i] = true;
-      ret = "#"+i+"=";
-    }
-  }
-
-  if(obj instanceof BiwaScheme.Pair){
-    var a = [];
-    a.push(BiwaScheme.to_write_ss(obj.car, cyclic, appeared, array_mode));
-    for(var o=obj.cdr; o != BiwaScheme.nil; o=o.cdr){
-      if(!(o instanceof BiwaScheme.Pair) || cyclic.indexOf(o) >= 0){
-        a.push(".");
-        a.push(BiwaScheme.to_write_ss(o, cyclic, appeared, array_mode));
-        break;
-      }
-      a.push(BiwaScheme.to_write_ss(o.car, cyclic, appeared, array_mode));
-    }
-    ret += "(" + a.join(" ") + ")";
-  }
-  else if(obj instanceof Array){
-    var a = _.map(obj, function(item){
-      return BiwaScheme.to_write_ss(item, cyclic, appeared, array_mode);
-    })
-    if(array_mode)
-      ret += "[" + a.join(", ") + "]";
-    else
-      ret += "#(" + a.join(" ") + ")";
-  }
-  else{
-    ret += BiwaScheme.to_write(obj);
-  }
-  return ret;
-}
-BiwaScheme.reduce_cyclic_info = function(known, used){
-  var n_used = 0;
-  for(var i=0; i<used.length; i++){
-    if(used[i]){
-      known[n_used] = known[i];
-      n_used++;
-    }
-  }
-  return known.slice(0, n_used);
-}
-BiwaScheme.find_cyclic = function(obj, known, used){
-  var items = (obj instanceof BiwaScheme.Pair)  ? [obj.car, obj.cdr] :
-              (obj instanceof Array) ? obj :
-              null;
-  if(!items) return;
-
-  _.each(items, function(item){
-    if(typeof(item)=='number' || typeof(item)=='string' ||
-      item === BiwaScheme.undef || item === true || item === false ||
-      item === BiwaScheme.nil || item instanceof BiwaScheme.Symbol) return;
-
-    var i = known.indexOf(item);
-    if(i >= 0)
-      used[i] = true;
-    else{
-      known.push(item);
-      used.push(false);
-      BiwaScheme.find_cyclic(item, known, used);
-    }
-  });
-};
-
-//
-// inspect
-//
-BiwaScheme.inspect = function(object, opts) {
-  try {
-    if (_.isUndefined(object)) return 'undefined';
-    if (object === null) return 'null';
-    if (object === true) return '#t';
-    if (object === false) return '#f';
-    if (object.inspect) return object.inspect();
-    if (_.isString(object)) {
-      return '"' + object.replace(/"/g, '\\"') + '"';
-    }
-    if (_.isArray(object)) {
-      return '[' + _.map(object, BiwaScheme.inspect).join(', ') + ']';
-    }
-
-    if (opts && opts["fallback"]){
-      return opts["fallback"];
-    }
-    else {
-      return object.toString();
-    }
-  } catch (e) {
-    if (e instanceof RangeError) return '...';
-    throw e;
-  }
-};
-//
-// types.js - type predicators, equality, compare
-//
-
-BiwaScheme.isNil = function(obj){
-  return (obj === BiwaScheme.nil);
-};
-
-BiwaScheme.isUndef = function(obj){
-  return (obj === BiwaScheme.undef);
-};
-
-BiwaScheme.isBoolean = _.isBoolean; // Return true if arg is either true or false
-
-//BiwaScheme.isNumber is defined in number.js (Return true if arg is scheme number)
-
-BiwaScheme.isString = _.isString;
-
-BiwaScheme.isChar = function(obj){
-  return (obj instanceof BiwaScheme.Char);
-};
-
-BiwaScheme.isSymbol = function(obj){
-  return (obj instanceof BiwaScheme.Symbol);
-};
-
-BiwaScheme.isPort = function(obj){
-  return (obj instanceof BiwaScheme.Port);
-};
-
-// Note: '() is not a pair in scheme
-BiwaScheme.isPair = function(obj){
-  return (obj instanceof BiwaScheme.Pair);
-};
-
-// Returns true if obj is a proper list
-// Note: isList returns true for '()
-BiwaScheme.isList = function(obj){
-  var nil = BiwaScheme.nil, Pair = BiwaScheme.Pair;
-
-  if (obj === nil) { // Empty list
-    return true;
-  }
-  if (!(obj instanceof Pair)) { // Argument isn't even a pair
-    return false;
-  }
-
-  var tortoise = obj;
-  var hare = obj.cdr;
-  while (true) {
-    if (hare === nil) { // End of list
-      return true;
-    }
-    if (hare === tortoise) { // Cycle
-      return false;
-    }
-    if (!(hare instanceof Pair)) { // Improper list
-      return false;
-    }
-
-    if (hare.cdr === nil) { // End of list
-      return true;
-    }
-    if (!(hare.cdr instanceof Pair)) { // Improper list
-      return false;
-    }
-
-    hare = hare.cdr.cdr;
-    tortoise = tortoise.cdr;
-  }
-};
-
-BiwaScheme.isVector = function(obj){
-  return (obj instanceof Array) && (obj.closure_p !== true);
-};
-
-BiwaScheme.isHashtable = function(obj){
-  return (obj instanceof BiwaScheme.Hashtable);
-};
-
-BiwaScheme.isMutableHashtable = function(obj){
-  return (obj instanceof BiwaScheme.Hashtable) && obj.mutable;
-};
-
-BiwaScheme.isClosure = function(obj){
-  return (obj instanceof Array) && (obj.closure_p === true);
-};
-
-// procedure: Scheme closure or JavaScript function
-// valid argument for anywhere function is expected
-BiwaScheme.isProcedure = function(obj){
-  return BiwaScheme.isClosure(obj) || _.isFunction(obj);
-};
-
-// Return true if obj is a scheme value which evaluates to itself
-BiwaScheme.isSelfEvaluating = function(obj) {
-  return BiwaScheme.isBoolean(obj) ||
-         BiwaScheme.isNumber(obj) ||
-         BiwaScheme.isString(obj) ||
-         BiwaScheme.isChar(obj);
-};
-
-//
-// equality
-//
-BiwaScheme.eq = function(a, b){
-  return a === b;
-};
-// TODO: Records (etc.)
-BiwaScheme.eqv = function(a, b){
-  return a == b && (typeof(a) == typeof(b));
-};
-BiwaScheme.equal = function(a, b){
-  //TODO: must terminate for cyclic objects
-  return BiwaScheme.to_write(a) == BiwaScheme.to_write(b);
-};
-
-//
-// comaprator
-//
-// Return true when a < b
-BiwaScheme.lt = function(a, b) {
-  if(typeof a !== typeof b){
-    return compareFn(typeof a, typeof b); 	
-  }
-  return a < b;
-};
-//
-// Errors
-//
-
-BiwaScheme.Error = BiwaScheme.Class.create({
-  initialize: function(msg){
-    this.message = "Error: "+msg;
-  },
-  toString: function(){
-    return this.message;
-  }
-});
-
-BiwaScheme.Bug = BiwaScheme.Class.extend(new BiwaScheme.Error(), {
-  initialize: function(msg){
-    this.message = "[BUG] "+msg;
-  }
-});
-
-// currently used by "raise"
-BiwaScheme.UserError = BiwaScheme.Class.extend(new BiwaScheme.Error(), {
-  initialize: function(msg){
-    this.message = msg;
-  }
-});
-
-//
-// Set - set of string
-// contents must be string (or at least sortable)
-//
-BiwaScheme.Set = BiwaScheme.Class.create({
-  initialize : function(/*args*/){
-    this.arr = [];
-    var i;
-    for(i=0; i<arguments.length; i++)
-      this.arr[i] = arguments[i];
-  },
-
-  equals : function(other){
-    if(this.arr.length != other.arr.length)
-      return false;
-
-    var a1 = _.clone(this.arr);
-    var a2 = _.clone(other.arr);
-    a1.sort();
-    a2.sort();
-    for(var i=0; i<this.arr.length; i++){
-      if(a1[i] != a2[i]) return false;
-    }
-    return true;
-  },
-  set_cons : function(item){
-    var o = new BiwaScheme.Set(item);
-    o.arr = _.clone(this.arr);
-    o.arr.push(item);
-    return o;
-  },
-  set_union : function(/*args*/){
-    var o = new BiwaScheme.Set();
-    o.arr = _.clone(this.arr);
-
-    for(var k=0; k<arguments.length; k++){
-      var s2 = arguments[k];
-      if(!(s2 instanceof BiwaScheme.Set))
-        throw new BiwaScheme.Error("set_union: arguments must be a set");
-
-      for(var i=0; i<s2.arr.length; i++)
-        o.add(s2.arr[i]);
-    }
-    return o;
-  },
-  set_intersect : function(s2){
-    if(!(s2 instanceof BiwaScheme.Set))
-      throw new BiwaScheme.Error("set_intersect: arguments must be a set");
-
-    var o = new BiwaScheme.Set();
-    for(var i=0; i<this.arr.length; i++)
-      if(s2.member(this.arr[i]))
-        o.add(this.arr[i]);
-    return o;
-  },
-  set_minus : function(s2){
-    if(!(s2 instanceof BiwaScheme.Set))
-      throw new BiwaScheme.Error("set_minus: arguments must be a set");
-
-    var o = new BiwaScheme.Set();
-    for(var i=0; i<this.arr.length; i++)
-      if(!s2.member(this.arr[i]))
-        o.add(this.arr[i]);
-    return o;
-  },
-  add : function(item){
-    if(!this.member(item)){
-      this.arr.push(item);
-    }
-  },
-  member : function(item){
-    for(var i=0; i<this.arr.length; i++)
-      if(this.arr[i] == item) return true;
-
-    return false;
-  },
-  rindex : function(item){
-    for(var i=this.arr.length-1; i>=0 ; i--)
-      if(this.arr[i] == item) return (this.arr.length-1-i);
-
-    return null;
-  },
-  index : function(item){
-    for(var i=0; i<this.arr.length; i++)
-      if(this.arr[i] == item) return i;
-
-    return null;
-  },
-  inspect : function(){
-    return "Set(" + this.arr.join(", ") + ")";
-  },
-  toString : function(){
-    return this.inspect();
-  },
-  size : function(){
-    return this.arr.length;
-  }
-});
-//
-// Values
-//
-BiwaScheme.Values = BiwaScheme.Class.create({
-  initialize: function(values){
-    this.content = values;
-  },
-  to_write: function(){
-    return "#<Values " +
-             _.map(this.content, BiwaScheme.to_write).join(" ") +
-           ">";
-  }
-});
-
-//
-// Pair 
-// cons cell
-//
-
-BiwaScheme.Pair = BiwaScheme.Class.create({
-  initialize: function(car, cdr){
-    this.car = car;
-    this.cdr = cdr;
-  },
-
-  caar: function(){ return this.car.car; },
-  cadr: function(){ return this.cdr.car; },
-  cdar: function(){ return this.cdr.car; },
-  cddr: function(){ return this.cdr.cdr; },
-
-  first:  function(){ return this.car; },
-  second: function(){ return this.cdr.car; },
-  third:  function(){ return this.cdr.cdr.car; },
-  fourth: function(){ return this.cdr.cdr.cdr.car; },
-  fifth:  function(){ return this.cdr.cdr.cdr.cdr.car; },
-
-  // returns array containing all the car's of list
-  // '(1 2 3) => [1,2,3]
-  // '(1 2 . 3) => [1,2]
-  to_array: function(){
-    var ary = [];
-    for(var o = this; o instanceof BiwaScheme.Pair; o=o.cdr){
-      ary.push(o.car);
-    }
-    return ary;
-  },
-
-  to_set: function(){
-    var set = new BiwaScheme.Set();
-    for(var o = this; o instanceof BiwaScheme.Pair; o=o.cdr){
-      set.add(o.car);
-    }
-    return set;
-  },
-
-  length: function(){
-    var n = 0;
-    for(var o = this; o instanceof BiwaScheme.Pair; o=o.cdr){
-      n++;
-    }
-    return n;
-  },
-
-  // Return the last cdr
-  last_cdr: function(){
-    var o;
-    for(o = this; o instanceof BiwaScheme.Pair; o = o.cdr)
-      ;
-    return o;
-  },
-
-  // calls the given func passing each car of list
-  // returns cdr of last Pair
-  foreach: function(func){
-    for(var o = this; o instanceof BiwaScheme.Pair; o=o.cdr){
-      func(o.car);
-    }
-    return o;
-  },
-
-  // Returns an array which contains the resuls of calling func
-  // with the car's as an argument.
-  // If the receiver is not a proper list, the last cdr is ignored.
-  // The receiver must not be a cyclic list.
-  map: function(func){
-    var ary = [];
-    for(var o = this; BiwaScheme.isPair(o); o = o.cdr){
-      ary.push(func(o.car));
-    }
-    return ary;
-  },
-
-  // Destructively concat the given list to the receiver.
-  // The receiver must be a proper list.
-  // Returns the receiver.
-  concat: function(list){
-    var o = this;
-    while(o instanceof BiwaScheme.Pair && o.cdr != BiwaScheme.nil){
-      o = o.cdr;
-    }
-    o.cdr = list;
-    return this;
-  },
-
-  // returns human-redable string of pair
-  inspect: function(conv){
-    conv || (conv = BiwaScheme.inspect);
-    var a = [];
-    var last = this.foreach(function(o){
-      a.push(conv(o));
-    });
-    if(last != BiwaScheme.nil){
-      a.push(".");
-      a.push(conv(last));
-    }
-    return "(" + a.join(" ") + ")";
-  },
-  toString : function(){
-    return this.inspect();
-  },
-
-  to_write: function(){
-    return this.inspect(BiwaScheme.to_write);
-  }
-});
-
-// Creates a list out of the arguments, optionally converting any nested arrays into nested lists if the deep argument is true.
-// Example:
-//   BiwaScheme.List(1, 2, [3, 4]) ;=> (list 1 2 (vector 3 4))
-//   BiwaScheme.deep_array_to_list(1, 2, [3, 4]) ;=> (list 1 2 (list 3 4))
-var array_to_list = function(ary, deep) {
-  var list = BiwaScheme.nil;
-  for(var i=ary.length-1; i>=0; i--){
-    var obj = ary[i];
-    if(deep && _.isArray(obj) && !obj.is_vector){
-      obj = array_to_list(obj, deep);
-    }
-    list = new BiwaScheme.Pair(obj, list);
-  }
-  return list;
-}
-
-// Shallow: List(1, 2, [3]) == (list 1 2 (vector 3 4))
-BiwaScheme.List = function() {
-  var ary = _.toArray(arguments);
-  return array_to_list(ary, false);
-};
-
-// Shallow: array_to_list(1, 2, [3]) == (list 1 2 (vector 3 4))
-BiwaScheme.array_to_list = function(ary) {
-  return array_to_list(ary, false);
-};
-
-// Deep: deep_array_to_list(1, 2, [3, 4]) == (list 1 2 (list 3 4))
-// deep_array_to_list([1, 2, 3]) - deep
-BiwaScheme.deep_array_to_list = function(ary) {
-  return array_to_list(ary, true);
-};
-//
-// Symbol
-//
-
-BiwaScheme.Symbol = BiwaScheme.Class.create({
-  initialize: function(str){
-    this.name = str;
-    BiwaScheme.Symbols[ str ] = this;
-  },
-
-  inspect: function(){
-    return "'"+this.name;
-    //return "#<Symbol '"+this.name+"'>";
-  },
-
-  toString: function(){
-    return "'"+this.name;
-  },
-
-  to_write: function(){
-    return this.name;
-  }
-});
-BiwaScheme.Symbols = {};
-BiwaScheme.Sym = function(name,leaveCase){
-  if( BiwaScheme.Symbols[name] === undefined ){
-    return new BiwaScheme.Symbol(name);
-  }
-  else if( ! (BiwaScheme.Symbols[name] instanceof BiwaScheme.Symbol) ){ //pre-defined member (like 'eval' in Firefox)
-    return new BiwaScheme.Symbol(name);
-  }
-  else{
-    return BiwaScheme.Symbols[name];
-  }
-}
-
-BiwaScheme.gensym = function(){
-  return BiwaScheme.Sym(_.uniqueId("__gensym"));
-};
-//
-// Char
-//
-
-BiwaScheme.Char = BiwaScheme.Class.create({
-  initialize: function(c){
-    BiwaScheme.Chars[ this.value = c ] = this;
-  },
-  to_write: function(){
-    switch(this.value){
-      case '\n': return "#\\newline";
-      case ' ':  return "#\\space";
-      case '\t': return "#\\tab";
-      default:   return "#\\"+this.value;
-    }
-  },
-  inspect: function(){
-    return this.to_write();
-  }
-});
-BiwaScheme.Chars = {};
-BiwaScheme.Char.get = function(c) {
-  if(typeof(c) != "string") {
-    throw new BiwaScheme.Bug("Char.get: " +
-                             BiwaScheme.inspect(c) + " is not a string");
-  }
-  if( BiwaScheme.Chars[c] === undefined )
-    return new BiwaScheme.Char(c);
-  else
-    return BiwaScheme.Chars[c];
-};
-
-//
-// number.js
-//
-
-//
-// Complex
-//
-BiwaScheme.Complex = BiwaScheme.Class.create({
-  initialize: function(real, imag){
-    this.real = real;
-    this.imag = imag;
-  },
-  magnitude: function(){
-    return Math.sqrt(this.real * this.real + this.imag * this.imag);
-  },
-  angle: function(){
-    return Math.atan2(this.imag, this.real);
-  },
-  isReal: function(){
-    return this.imag == 0;
-  },
-  isRational: function() {
-    return this.imag == 0 && BiwaScheme.isRational(this.real);
-  },
-  isInteger: function(){
-    return this.imag == 0 && BiwaScheme.isInteger(this.real);
-  },
-  toString: function(radix){
-    if (this.real === 0 && this.imag === 0)
-      return "0";
-    var img = "";
-    if (this.imag !== 0) {
-      if (this.imag > 0 && this.real !== 0){
-          img+="+";
-      }
-      switch(this.imag) {
-          case 1:
-              break;
-          case -1: img+="-";
-               break;
-          default: img+=this.imag.toString(radix);
-      }
-     img+="i";
-    }
-    var real = "";
-    if (this.real !== 0){
-      real += this.real.toString(radix);
-    }
-    return real+img;
-  }
-})
-BiwaScheme.Complex.from_polar = function(r, theta){
-  var real = r * Math.cos(theta);
-  var imag = r * Math.sin(theta);
-  return new BiwaScheme.Complex(real, imag);
-}
-BiwaScheme.Complex.assure = function(num){
-  if(num instanceof BiwaScheme.Complex)
-    return num
-  else
-    return new BiwaScheme.Complex(num, 0);
-}
-
-//
-// Rational (unfinished)
-//
-BiwaScheme.Rational = BiwaScheme.Class.create({
-  initialize: function(numerator, denominator){
-    this.numerator = numerator;
-    this.denominator = denominator;
-  },
-
-  isInteger: function() {
-     // FIXME
-  }
-})
-
-//
-// Predicates
-//
-BiwaScheme.isNumber = function(x) {
-  return (x instanceof BiwaScheme.Complex)  ||
-         (x instanceof BiwaScheme.Rational) ||
-         (typeof(x) == 'number');
-};
-BiwaScheme.isComplex = BiwaScheme.isNumber;
-BiwaScheme.isReal = function(x) {
-  if (x instanceof BiwaScheme.Complex || x instanceof BiwaScheme.Rational) {
-    return x.isReal()
-  }
-  else {
-    return (typeof(x) == 'number');
-  }
-};
-BiwaScheme.isRational = function(x) {
-  if (x instanceof BiwaScheme.Complex) {
-    return x.isRational();
-  }
-  else if (x instanceof BiwaScheme.Rational) {
-    return true;
-  }
-  else {
-    return (typeof(x) == 'number');
-  }
-};
-BiwaScheme.isInteger = function(x) {
-  if (x instanceof BiwaScheme.Complex || x instanceof BiwaScheme.Rational) {
-    return x.isInteger();
-  }
-  else {
-    return (typeof(x) == 'number') && (x % 1 == 0);
-  }
-};
-//
-// Port
-//
-
-// (eof-object)
-BiwaScheme.eof = new Object;
-
-BiwaScheme.Port = BiwaScheme.Class.create({
-  initialize: function(is_in, is_out){
-    this.is_open = true;
-    this.is_binary = false; //??
-    this.is_input = is_in;
-    this.is_output = is_out;
-  },
-  close: function(){
-    // close port
-    this.is_open = false;
-  },
-  inspect: function(){
-    return "#<Port>";
-  },
-  to_write: function(){
-    return "#<Port>";
-  }
-});
-
-//
-// string ports (srfi-6)
-//
-BiwaScheme.Port.StringOutput = BiwaScheme.Class.extend(new BiwaScheme.Port(false, true), {
-  initialize: function(){
-    this.buffer = [];
-  },
-  put_string: function(str){
-    this.buffer.push(str);
-  },
-  output_string: function(str){
-    return this.buffer.join("");
-  }
-});
-
-BiwaScheme.Port.StringInput = BiwaScheme.Class.extend(new BiwaScheme.Port(true, false), {
-  initialize: function(str){
-    this.str = str;
-  },
-  get_string: function(after){
-    return after(this.str);
-  }
-});
-
-BiwaScheme.Port.NullInput = BiwaScheme.Class.extend(new BiwaScheme.Port(true, false), {
-  initialize: function(){
-  },
-  get_string: function(after){
-    // Never give them anything!
-    return after('');
-  }
-});
-
-BiwaScheme.Port.NullOutput = BiwaScheme.Class.extend(new BiwaScheme.Port(false, true), {
-  initialize: function(output_function){
-    this.output_function = output_function;
-  },
-  put_string: function(str){}
-});
-
-BiwaScheme.Port.CustomOutput = BiwaScheme.Class.extend(new BiwaScheme.Port(false, true), {
-  initialize: function(output_function){
-    this.output_function = output_function;
-  },
-  put_string: function(str){
-    this.output_function(str);
-  }
-});
-
-BiwaScheme.Port.CustomInput = BiwaScheme.Class.extend(new BiwaScheme.Port(true, false), {
-  initialize: function(input_function){
-    this.input_function = input_function;
-  },
-  get_string: function(after){
-    var input_function = this.input_function;
-    return new BiwaScheme.Pause(function(pause) {
-      input_function(function(input) {
-        pause.resume(after(input));
-      });
-    });
-  }
-});
-
-// User must set the current input/output
-BiwaScheme.Port.current_input  = new BiwaScheme.Port.NullInput();
-BiwaScheme.Port.current_output = new BiwaScheme.Port.NullOutput();
-BiwaScheme.Port.current_error  = new BiwaScheme.Port.NullOutput();
-//
-// R6RS Records
-// http://www.r6rs.org/final/html/r6rs-lib/r6rs-lib-Z-H-7.html#node_chap_6
-//
-// Record is like struct in C, but supports more feature like inheritance.
-// see also: src/library/r6rs_lib.js
-
-//
-// Record 
-// represents each instance of record type
-//
-BiwaScheme.Record = BiwaScheme.Class.create({
-  initialize: function(rtd, values){
-    BiwaScheme.assert_record_td(rtd, "new Record");
-
-    this.rtd = rtd;
-    this.fields = values;
-  },
-
-  get: function(k){
-    return this.fields[k]
-  },
-
-  set: function(k, v){
-    this.fields[k] = v;
-  },
-
-  toString: function(){
-    var contents = BiwaScheme.to_write(this.fields);
-    return "#<Record "+this.rtd.name+" "+contents+">";
-  }
-});
-
-BiwaScheme.isRecord = function(o){
-  return (o instanceof BiwaScheme.Record);
-};
-
-// Defined record types
-BiwaScheme.Record._DefinedTypes = {};
-
-BiwaScheme.Record.define_type = function(name_str, rtd, cd){
-  return BiwaScheme.Record._DefinedTypes[name_str] = {rtd: rtd, cd: cd};
-};
-BiwaScheme.Record.get_type = function(name_str){
-  return BiwaScheme.Record._DefinedTypes[name_str];
-};
-
-//
-// RTD (Record type descriptor)
-//
-BiwaScheme.Record.RTD = BiwaScheme.Class.create({
-  //                   Symbol RTD        Symbol Bool  Bool    Array
-  initialize: function(name, parent_rtd, uid, sealed, opaque, fields){
-    this.name = name;
-    this.parent_rtd = parent_rtd;
-    this.is_base_type = !parent_rtd;
-
-    if(uid){
-      this.uid = uid;
-      this.generative = false;
-    }
-    else{
-      this.uid = this._generate_new_uid();;
-      this.generative = true;
-    }
-
-    this.sealed = !!sealed;
-    this.opaque = parent_rtd.opaque || (!!opaque);
-
-    this.fields = _.map(fields, function(field){
-      return {name: field[0], mutable: !!field[1]};
-    });
-  },
-
-  // Returns the name of the k-th field.
-  // Only used for error messages.
-  field_name: function(k){
-    var names = this._field_names();
-
-    for(par = this.parent_rtd; par; par = par.parent_rtd){
-      names = par._field_names() + names;
-    }
-
-    return names[k];
-  },
-  _field_names: function(){
-    return _.map(this.fields, function(spec){
-        return spec.name;
-      });
-  },
-
-  _generate_new_uid: function(){
-    return BiwaScheme.Sym(_.uniqueId("__record_td_uid"));
-  },
-
-  toString: function(){
-    return "#<RecordTD "+name+">";
-  }
-});
-
-BiwaScheme.Record.RTD.NongenerativeRecords = {};
-BiwaScheme.isRecordTD = function(o){
-  return (o instanceof BiwaScheme.Record.RTD);
-};
-
-//
-// CD (Record constructor descriptor)
-//
-BiwaScheme.Record.CD = BiwaScheme.Class.create({
-  initialize: function(rtd, parent_cd, protocol){
-    this._check(rtd, parent_cd, protocol);
-    this.rtd = rtd;
-    this.parent_cd = parent_cd;
-    if(protocol){
-      this.has_custom_protocol = true;
-      this.protocol = protocol;
-    }
-    else{
-      this.has_custom_protocol = false;
-      if(rtd.parent_rtd)
-        this.protocol = this._default_protocol_for_derived_types();
-      else
-        this.protocol = this._default_protocol_for_base_types();
-    }
-  },
-
-  _check: function(rtd, parent_cd, protocol){
-    if(rtd.is_base_type && parent_cd)
-      throw new Error("Record.CD.new: cannot specify parent cd of a base type");
-
-    if(parent_cd && rtd.parent_rtd && (parent_cd.rtd != rtd.parent_rtd))
-      throw new Error("Record.CD.new: mismatched parents between rtd and parent_cd");
-
-    if(rtd.parent_rtd && !parent_cd && protocol)
-      throw new Error("Record.CD.new: protocol must be #f when parent_cd is not given");
-
-    if(parent_cd && parent_cd.has_custom_protocol && !protocol)
-      throw new Error("Record.CD.new: protocol must be specified when parent_cd has a custom protocol");
-  },
-  
-  _default_protocol_for_base_types: function(){
-    // (lambda (p) p)
-    // called with `p' as an argument
-    return function(ar){
-      var p = ar[0];
-      BiwaScheme.assert_procedure(p, "_default_protocol/base");
-      return p;
-    };
-  },
-
-  _default_protocol_for_derived_types: function(){
-    // (lambda (n) 
-    //   (lambda (a b x y s t)
-    //     (let1 p (n a b x y) (p s t))))
-    // called with `n' as an argument
-    var rtd = this.rtd;
-    return function(ar){
-      var n = ar[0];
-      BiwaScheme.assert_procedure(n, "_default_protocol/n");
-
-      var ctor = function(args){
-        var my_argc = rtd.fields.length;
-        var ancestor_argc = args.length - my_argc;
-
-        var ancestor_values = args.slice(0, ancestor_argc);
-        var my_values       = args.slice(ancestor_argc);
-
-        // (n a b x y) => p
-        return new BiwaScheme.Call(n, ancestor_values, function(ar){
-          var p = ar[0];
-          BiwaScheme.assert_procedure(p, "_default_protocol/p");
-
-          // (p s t) => record
-          return new BiwaScheme.Call(p, my_values, function(ar){
-            var record = ar[0];
-            BiwaScheme.assert_record(record, "_default_protocol/result");
-
-            return record;
-          });
-        });
-      };
-      return ctor;
-    };
-  },
-
-  toString: function(){
-    return "#<RecordCD "+this.rtd.name+">";
-  },
-
-  record_constructor: function(){
-    var arg_for_protocol = (this.parent_cd ? this._make_n([], this.rtd)
-                                           : this._make_p());
-    arg_for_protocol = _.bind(arg_for_protocol, this);
-
-    return new BiwaScheme.Call(this.protocol, [arg_for_protocol], function(ar){
-      var ctor = ar[0];
-      BiwaScheme.assert_procedure(ctor, "record_constructor");
-      return ctor;
-    });
-  },
-
-  // Create the function `p' which is given to the protocol.
-  _make_p: function(){
-    return function(values){
-      return new BiwaScheme.Record(this.rtd, values);
-      // TODO: check argc 
-    };
-  },
-
-  // Create the function `n' which is given to the protocol.
-  // When creating an instance of a derived type,
-  // _make_n is called for each ancestor rtd's.
-  _make_n: function(children_values, rtd){
-    var parent_cd = this.parent_cd;
-
-    if(parent_cd){
-      // called from protocol (n)
-      var n = function(args_for_n){
-
-        // called from protocol (p)
-        var p = function(args_for_p){
-          var values = [].concat(args_for_p[0]).concat(children_values)
-          var parent_n = parent_cd._make_n(values, rtd);
-
-          return new BiwaScheme.Call(parent_cd.protocol, [parent_n], function(ar){
-            var ctor = ar[0];
-            BiwaScheme.assert_procedure(ctor, "_make_n");
-
-            return new BiwaScheme.Call(ctor, args_for_n, function(ar){
-              var record = ar[0];
-              BiwaScheme.assert_record(record);
-              return record;
-            });
-          });
-        };
-        return p;
-      };
-      return n;
-    }
-    else{
-      var n = function(my_values){
-        var values = my_values.concat(children_values);
-        return new BiwaScheme.Record(rtd, values);
-        // TODO: check argc 
-      };
-      return n;
-    }
-  }
-});
-
-BiwaScheme.isRecordCD = function(o){
-  return (o instanceof BiwaScheme.Record.CD);
-};
-// 
-// R6RS Enumerations
-// http://www.r6rs.org/final/html/r6rs-lib/r6rs-lib-Z-H-15.html#node_chap_14
-//
-// Example
-//
-//   (define-enumeration color
-//     (black white purple maroon)
-//     color-set)
-//   
-//   (color black)                  ;=> 'black
-//   (color purpel)                 ;=> &syntax exception
-//   (enum-set->list
-//     (color-set maroon white))    ;=> #<enum-set (white maroon)>
-
-BiwaScheme.Enumeration = {};
-
-// Represents an enum_type.
-//
-// Becuase there is no way to access an EnumType directly from Scheme,
-// EnumType#to_write is not defined.
-//
-// Properties
-//
-// members - Array of symbols (no duplicate)
-//
-BiwaScheme.Enumeration.EnumType = BiwaScheme.Class.create({
-  // Creates a new enum_type.
-  //
-  // members - Array of symbols.
-  //           Symbols may be duplicate (I think you shouldn't, though :-p).
-  initialize: function(members){
-    this.members = _.uniq(members);
-  },
-
-  // Returns an EnumSet.
-  universe: function(){
-    return new BiwaScheme.Enumeration.EnumSet(this, this.members);
-  }, 
-
-  // Returns a function which map a symbol to an integer (or #f, if 
-  // the symbol is out of the universe).
-  // 
-  // Implementation note: don't forget this.members may have duplicates.
-  indexer: function(){
-    // ar[0] - a symbol
-    // Returns an integer or #f.
-    return _.bind(function(ar){
-      BiwaScheme.assert_symbol(ar[0], "(enum-set indexer)");
-      var idx = _.indexOf(this.members, ar[0]);
-      return (idx === -1) ? false : idx;
-    }, this);
-  },
-
-  // Retuns a function which creates an enum_set from a list of
-  // symbols (Symbols may be duplicate.)
-  constructor: function(){
-    // ar[0] - a list of symbol
-    // Returns a enum_set.
-    return _.bind(function(ar){
-      BiwaScheme.assert_list(ar[0], "(enum-set constructor)");
-      var symbols = ar[0].to_array();
-      _.each(symbols, function(arg){
-        BiwaScheme.assert_symbol(arg, "(enum-set constructor)");
-      });
-
-      return new BiwaScheme.Enumeration.EnumSet(this, symbols);
-    }, this);
-  }
-});
-BiwaScheme.Class.memoize(BiwaScheme.Enumeration.EnumType,
-  ["universe", "indexer", "constructor"]); 
-
-// Represents an enum_set of an enum_type.
-//
-// Properties
-//
-// enum_type - The enum_type.
-// symbols   - Array of symbols (no duplicate, properly ordered)
-//
-BiwaScheme.Enumeration.EnumSet = BiwaScheme.Class.create({
-  // Creates a new enum_set.
-  //
-  // enum_type - An EnumType
-  // symbols   - Array of symbols.
-  //
-  // initialize normalizes symbols.
-  //   - remove duplicates
-  //   - order by universe
-  initialize: function(enum_type, symbols){
-    this.enum_type = enum_type;
-    this.symbols = _.filter(enum_type.members, function(sym){
-      return _.include(symbols, sym);
-    });
-  },
-
-  // Returns a list of symbols.
-  symbol_list: function(){
-    return BiwaScheme.array_to_list(this.symbols); 
-  },
-  
-  // Returns true if the enum_set includes the symbol.
-  // 'symbol' is allowed to be a symbol which is not included in the universe.
-  is_member: function(symbol){
-    return _.include(this.symbols, symbol);
-  },
-  
-  // Returns true if:
-  // - the enum_set is a subset of the enum_set 'other', and
-  // - the universe of the enum_set is a subset of 
-  //   the universe of 'other'.
-  // The enum_set and 'other' may belong to different enum_type.
-  is_subset: function(other){
-    // Check elements
-    if(_.any(this.symbols, function(sym){
-         return !_.include(other.symbols, sym);
-       })){
-      return false;
-    }
-
-    // Check universe
-    if(this.enum_type === other.enum_type){
-      return true;
-    }
-    else{
-      return _.all(this.enum_type.members, function(sym){
-               return _.include(other.enum_type.members, sym);
-             });
-    }
-  },
-
-  // Returns true if:
-  //   - the enum_set contains the same set of symbols as 'other', and
-  //   - universe of the enum_set contains the same set of symbols
-  //     as the universe of 'other'.
-  //
-  // The enum_set and 'other' may belong to different enum_type.
-  equal_to: function(other){
-    return this.is_subset(other) && other.is_subset(this);
-  },
-
-  // Returns a enum_set which has:
-  // - all the symbols included in the enum_set or the enum_set 'other'.
-  // The enum_set and 'other' *must* belong to the same enum_type.
-  union: function(other){
-    var syms = _.filter(this.enum_type.members, _.bind(function(sym){
-                 return _.include(this.symbols, sym) ||
-                        _.include(other.symbols, sym);
-               }, this));
-    return new BiwaScheme.Enumeration.EnumSet(this.enum_type, syms);
-  },
-
-  // Returns a enum_set which has:
-  // - the symbols included both in the enum_set or the enum_set 'other'.
-  // The enum_set and 'other' *must* belong to the same enum_type.
-  intersection: function(other){
-    var syms = _.filter(this.symbols, function(sym){
-                 return _.include(other.symbols, sym);
-               });
-    return new BiwaScheme.Enumeration.EnumSet(this.enum_type, syms);
-  },
-
-  // Returns a enum_set which has:
-  // - the symbols included in the enum_set and not in the enum_set 'other'.
-  // The enum_set and 'other' *must* belong to the same enum_type.
-  difference: function(other){
-    var syms = _.filter(this.symbols, function(sym){
-                 return !_.include(other.symbols, sym);
-               });
-    return new BiwaScheme.Enumeration.EnumSet(this.enum_type, syms);
-  },
-
-  // Returns a enum_set which has:
-  // - the symbols included in the universe but not in the enum_set.
-  complement: function(){
-    var syms = _.filter(this.enum_type.members, _.bind(function(sym){
-                 return !_.include(this.symbols, sym);
-               }, this));
-    return new BiwaScheme.Enumeration.EnumSet(this.enum_type, syms);
-  },
-
-  // Returns a enum_set which has:
-  // - the symbols included in the enum_set and the universe of the enum_set 'other'.
-  // The enum_set and 'other' may belong to different enum_type.
-  projection: function(other){
-    var syms = _.filter(this.symbols, function(sym){
-                 return _.include(other.enum_type.members, sym);
-               });
-    return new BiwaScheme.Enumeration.EnumSet(other.enum_type, syms);
-  },
-
-  // Returns a string which represents the enum_set.
-  toString: function(){
-    return "#<EnumSet "+BiwaScheme.inspect(this.symbols)+">";
-  }
-});
-BiwaScheme.Class.memoize(BiwaScheme.Enumeration.EnumSet, "symbol_list");
-
-BiwaScheme.isEnumSet = function(obj){
-  return (obj instanceof BiwaScheme.Enumeration.EnumSet);
-};
-//
-// Hashtable
-//
-// Based on the base JavaScript Object class, but
-//  * Object takes only strings as keys
-//  * R6RS hashtable needs its own hash function
-// so some hacks are needed.
-
-BiwaScheme.Hashtable = BiwaScheme.Class.create({
-  initialize: function(_hash_proc, _equiv_proc, mutable){
-    this.mutable = (mutable === undefined) ? true :
-                   mutable ? true : false;
-
-    this.hash_proc = _hash_proc;
-    this.equiv_proc = _equiv_proc;
-
-    // Hash (hashed) => (array of (key and value))
-    this.pairs_of = {};
-  },
-
-  clear: function(){
-    this.pairs_of = {};
-  },
-
-  candidate_pairs: function(hashed){
-    return this.pairs_of[hashed];
-  },
-
-  add_pair: function(hashed, key, value){
-    var pairs = this.pairs_of[hashed];
-
-    if (pairs) {
-      pairs.push([key, value]);
-    }
-    else {
-      this.pairs_of[hashed] = [[key, value]];
-    }
-  },
-
-  remove_pair: function(hashed, pair){
-    var pairs = this.pairs_of[hashed];
-    var i = pairs.indexOf(pair);
-    if (i == -1){
-      throw new BiwaScheme.Bug("Hashtable#remove_pair: pair not found!");
-    }
-    else {
-      pairs.splice(i, 1); //remove 1 element from i-th index
-    }
-  },
-
-  create_copy: function(mutable){
-    var copy = new BiwaScheme.Hashtable(this.hash_proc, this.equiv_proc,
-                                        mutable);
-    // clone the pairs to copy
-    _.each(_.keys(this.pairs_of), _.bind(function(hashed){
-      var pairs = this.pairs_of[hashed];
-      var cloned = _.map(pairs, function(pair){
-        return _.clone(pair);
-      });
-      copy.pairs_of[hashed] = cloned;
-    }, this));
-
-    return copy;
-  },
-
-  size: function(){
-    var n = 0;
-    this._apply_pair(function(pair){
-      n++;
-    });
-    return n;
-  },
-
-  keys: function(){
-    return this._apply_pair(function(pair){
-      return pair[0];
-    });
-  },
-
-  values: function(){
-    return this._apply_pair(function(pair){
-      return pair[1];
-    });
-  },
-
-  _apply_pair: function(func){
-    var a = [];
-    _.each(_.values(this.pairs_of), function(pairs){
-      _.each(pairs, function(pair){
-        a.push(func(pair));
-      });
-    });
-    return a;
-  },
-
-  to_write: function(){
-    return "#<Hashtable size=" + this.size() + ">";
-  }
-});
-
-//
-// Hash functions
-//
-
-BiwaScheme.Hashtable.equal_hash = function(ar){
-  return BiwaScheme.to_write(ar[0]);
-};
-BiwaScheme.Hashtable.eq_hash = BiwaScheme.Hashtable.equal_hash;
-BiwaScheme.Hashtable.eqv_hash = BiwaScheme.Hashtable.equal_hash;
-
-BiwaScheme.Hashtable.string_hash = function(ar){
-  return ar[0];
-};
-
-BiwaScheme.Hashtable.string_ci_hash = function(ar){
-  return _.isString(ar[0]) ? ar[0].toLowerCase() : ar[0];
-};
-
-BiwaScheme.Hashtable.symbol_hash = function(ar){
-  return (ar[0] instanceof BiwaScheme.Symbol) ? ar[0].name : ar[0];
-};
-
-//
-// Equivalence functions
-//
-
-BiwaScheme.Hashtable.eq_equiv = function(ar){
-  return BiwaScheme.eq(ar[0], ar[1]);
-};
-
-BiwaScheme.Hashtable.eqv_equiv = function(ar){
-  return BiwaScheme.eqv(ar[0], ar[1]);
-};
-//
-// Syntax
-//
-BiwaScheme.Syntax = BiwaScheme.Class.create({
-  initialize: function(sname, func){
-    this.sname = sname;
-    this.func = func;
-  },
-  transform: function(x){
-    if (!this.func){
-      throw new BiwaScheme.Bug("sorry, syntax "+this.sname+
-                               " is a pseudo syntax now");
-    }
-    return this.func(x);
-  },
-  inspect: function(){
-    return "#<Syntax " + this.sname +">";
-  }
-})
-
-// A built-in syntax did not have associated Syntax object.
-// Following code installed dummy Syntax objects to built-in syntax.
-BiwaScheme.CoreEnv["define"] = new BiwaScheme.Syntax("define");
-BiwaScheme.CoreEnv["begin"]  = new BiwaScheme.Syntax("begin");
-BiwaScheme.CoreEnv["quote"]  = new BiwaScheme.Syntax("quote");
-BiwaScheme.CoreEnv["lambda"] = new BiwaScheme.Syntax("lambda");
-BiwaScheme.CoreEnv["if"]     = new BiwaScheme.Syntax("if");
-BiwaScheme.CoreEnv["set!"]   = new BiwaScheme.Syntax("set!");
-  //
-  // Parser 
-  // copied from jsScheme - should be rewrriten (support #0=, etc)
-  //
-  BiwaScheme.Parser = BiwaScheme.Class.create({
-    initialize: function(txt){
-      this.tokens = this.tokenize(txt);
-      this.i = 0;
-    },
-
-    inspect: function(){
-      return [
-        "#<Parser:",
-        this.i, "/", this.tokens.length, " ",
-        BiwaScheme.inspect(this.tokens),
-        ">"
-      ].join("");
-    },
-
-    tokenize: function(txt) {
-      var tokens = new Array(), oldTxt=null;
-      var in_srfi_30_comment = 0;
-
-      while( txt != "" && oldTxt != txt ) {
-        oldTxt = txt;
-        txt = txt.replace( /^\s*(;[^\r\n]*(\r|\n|$)|#;|#\||#\\[^\w]|#?(\(|\[|{)|\)|\]|}|\'|`|,@|,|\+inf\.0|-inf\.0|\+nan\.0|\"(\\(.|$)|[^\"\\])*(\"|$)|[^\s()\[\]{}]+)/,
-        function($0,$1) {
-          var t = $1;
-
-          if (t == "#|") {
-            in_srfi_30_comment++;
-            return "";
-          }
-          else if (in_srfi_30_comment > 0) {
-            if ( /(.*\|#)/.test(t) ) {
-              in_srfi_30_comment--;
-              if (in_srfi_30_comment < 0) {
-                throw new BiwaScheme.Error("Found an extra comment terminator: `|#'")
-              }
-              // Push back the rest substring to input stream.
-              return t.substring(RegExp.$1.length, t.length);
-            }
-            else {
-              return "";
-            }
-          }
-          else {
-            if( t.charAt(0) != ';' ) tokens[tokens.length]=t;
-            return "";
-          }
-        } );
-      }
-      return tokens;
-    },
-
-    sexpCommentMarker: new Object,
-    getObject: function() {
-      var r = this.getObject0();
-
-      if (r != this.sexpCommentMarker)
-        return r;
-
-      r = this.getObject();
-      if (r == BiwaScheme.Parser.EOS)
-        throw new BiwaScheme.Error("Readable object not found after S exression comment");
-
-      r = this.getObject();
-      return r;
-    },
-    
-    getList: function( close ) {
-      var list = BiwaScheme.nil, prev = list;
-      while( this.i < this.tokens.length ) {
-
-        this.eatObjectsInSexpComment("Input stream terminated unexpectedly(in list)");
-
-        if( this.tokens[ this.i ] == ')' || this.tokens[ this.i ] == ']' || this.tokens[ this.i ] == '}' ) {
-          this.i++; break;
-        }
-
-        if( this.tokens[ this.i ] == '.' ) {
-          this.i++;
-          var o = this.getObject();
-          if( o != BiwaScheme.Parser.EOS && list != BiwaScheme.nil ) {
-            prev.cdr = o;
-          }
-        } else {
-            var cur = new BiwaScheme.Pair( this.getObject(), BiwaScheme.nil);
-            if( list == BiwaScheme.nil ) list = cur;
-            else prev.cdr = cur;
-            prev = cur;
-        }
-      }
-      return list;
-    },
-
-    getVector: function( close ) {
-      var arr = new Array();
-      while( this.i < this.tokens.length ) {
-        
-        this.eatObjectsInSexpComment("Input stream terminated unexpectedly(in vector)");
-        
-        if( this.tokens[ this.i ] == ')' ||
-        this.tokens[ this.i ] == ']' ||
-        this.tokens[ this.i ] == '}' ) { this.i++; break; }
-        arr[ arr.length ] = this.getObject();
-      }
-      return arr;
-    },
-
-    eatObjectsInSexpComment: function(err_msg) {
-      while( this.tokens[ this.i ] == '#;' ) {
-        this.i++;
-        if ((this.getObject() == BiwaScheme.Parser.EOS) || (this.i >= this.tokens.length))
-          throw new BiwaScheme.Error(err_msg);  
-      }
-    }, 
-
-    getObject0: function() {
-      if( this.i >= this.tokens.length )
-        return BiwaScheme.Parser.EOS;
-
-      var t = this.tokens[ this.i++ ];
-      // if( t == ')' ) return null;
-
-      if (t == '#;')
-        return this.sexpCommentMarker;
-
-      var s = t == "'"  ? 'quote' :
-              t == "`"  ? 'quasiquote' :
-              t == ","  ? 'unquote' :
-              t == ",@" ? 'unquote-splicing' : false;
-
-      if( s || t == '(' || t == '#(' || t == '[' || t == '#[' || t == '{' || t == '#{' ) {
-        return s ? new BiwaScheme.Pair( BiwaScheme.Sym(s), new BiwaScheme.Pair( this.getObject(), BiwaScheme.nil ))
-        : (t=='(' || t=='[' || t=='{') ? this.getList(t) : this.getVector(t);
-      } 
-      else {
-        switch(t){
-          case "+inf.0" : return Infinity;
-          case "-inf.0" : return -Infinity;
-          case "+nan.0" : return NaN;
-        }
-
-        var n;
-        if( /^#x[0-9a-z]+$/i.test(t) ) {  // #x... Hex
-          n = new Number('0x'+t.substring(2,t.length) );
-        } 
-        else if( /^#d[0-9\.]+$/i.test(t) ) {  // #d... Decimal
-          n = new Number( t.substring(2,t.length) );
-        } 
-        else{
-          n = new Number(t);  // use constrictor as parser
-        }
-
-        if( ! isNaN(n) ) {
-          return n.valueOf();
-        } else if( t == '#f' || t == '#F' ) {
-          return false;
-        } else if( t == '#t' || t == '#T' ) {
-          return true;
-        } else if( t.toLowerCase() == '#\\newline' ) {
-          return BiwaScheme.Char.get('\n');
-        } else if( t.toLowerCase() == '#\\space' ) {
-          return BiwaScheme.Char.get(' ');
-        } else if( t.toLowerCase() == '#\\tab' ) {
-          return BiwaScheme.Char.get('\t');
-        } else if( /^#\\.$/.test(t) ) {
-          return BiwaScheme.Char.get( t.charAt(2) );
-        } else if( /^#\\x[a-zA-Z0-9]+$/.test(t) ) {
-          var scalar = parseInt(t.slice(3), 16);
-          // R6RS 11.11 (surrogate codepoints)
-          if (scalar >= 0xD800 && scalar <= 0xDFFF) {
-            throw new BiwaScheme.Error("Character in Unicode excluded range.");
-          }
-          // ECMA-262 4.3.16 -- Basically, strings are sequences of 16-bit
-          // unsigned integers, so anything greater than 0xFFFF won't fit.
-          // NOTE: This violates R6RS which requires the full Unicode range!
-          else if (scalar > 0xFFFF) {
-            throw new BiwaScheme.Error("Character literal out of range.");
-          } else {
-            return BiwaScheme.Char.get(String.fromCharCode(scalar));
-          }
-        } else if( /^\"(\\(.|$)|[^\"\\])*\"?$/.test(t) ) {
-          return t.replace(/(\r?\n|\\n)/g, "\n").replace( /^\"|\\(.|$)|\"$/g, function($0,$1) {
-            return $1 ? $1 : '';
-          } );
-        } else return BiwaScheme.Sym(t);  // 2Do: validate !!
-      }
-    }
-  });
-  // indicates end of source file
-  BiwaScheme.Parser.EOS = new Object();
-  
-
-///
-/// Compiler
-///
-/// Note: macro expansion is done by Intepreter#expand
-
-BiwaScheme.Compiler = BiwaScheme.Class.create({
-  initialize: function(){
-  },
-
-  is_tail: function(x){
-    return (x[0] == "return");
-  },
-
-  //free: set
-  //e: env(= [locals, frees])
-  //next: opc
-  //ret: opc["refer_*", n, ["argument", 
-  //          ["refer_*", n, ... ["argument", next]
-  collect_free: function(free, e, next){
-    var vars = free;
-    var opc = next;
-    var arr = vars.arr;
-    for(var i=0; i<arr.length; i++){
-      opc = this.compile_refer(arr[i], e, ["argument", opc]);
-    }
-    //Console.puts("collect_free "+free.inspect()+" / "+e.inspect()+" => "+opc.inspect());
-    return opc;
-  },
-
-  //x: Symbol
-  //e: env [set of locals, set of frees]
-  //ret: opc
-  compile_refer: function(x, e, next){
-    return this.compile_lookup(x, e,
-             function(n){ return ["refer-local", n, next] },
-             function(n){ return ["refer-free",  n, next] },
-             function(sym){ return ["refer-global", sym, next] });
-  },
-
-  compile_lookup: function(x, e, return_local, return_free, return_global){
-    var locals = e[0], free = e[1];
-    if((n = locals.index(x)) != null){
-      //Console.puts("compile_refer:"+x.inspect()+" in "+e.inspect()+" results refer-local "+n);
-      return return_local(n);
-    }
-    else if((n = free.index(x)) != null){
-      //Console.puts("compile_refer:"+x.inspect()+" in "+e.inspect()+" results refer-free "+n);
-      return return_free(n);
-    }
-    else{
-      var sym = x.name;
-      return return_global(sym);
-    }
-    //throw new BiwaScheme.Error("undefined symbol `" + sym + "'");
-  },
-
-  //generate boxing code (intersection of sets & vars)
-  //if no need of boxing, just returns next
-  //  sets(Set): assigned variables 
-  //  vars(List): used variables
-  //  next(opc):
-  //  ret(opc):
-  make_boxes: function(sets, vars, next){
-    var vars = vars;
-    var n = 0;
-    var a = [];
-    while(vars instanceof BiwaScheme.Pair){
-      if(sets.member(vars.car))
-        a.push(n);
-      n++;
-      vars = vars.cdr;
-    }
-    var opc = next;
-    for(var i=a.length-1; i>=0; i--)
-      opc = ["box", a[i], opc];
-    return opc;
-  },
-
-  // Enumerate variables which (could be assigned && included in v)
-  // x: exp
-  // v: set(vars)
-  // ret: set
-  find_sets: function(x, v){
-    //Console.puts("find_sets: " + to_write(x) + " " + to_write(v))
-    var ret=null;
-    if(x instanceof BiwaScheme.Symbol){
-      ret = new BiwaScheme.Set();
-    }
-    else if(x instanceof BiwaScheme.Pair){
-      switch(x.first()){
-      case BiwaScheme.Sym("define"):
-        var exp=x.third();
-        ret = this.find_sets(exp, v);
-      case BiwaScheme.Sym("begin"):
-        ret = this.find_sets(x.cdr, v); //(ignores improper list)
-        break;
-      case BiwaScheme.Sym("quote"):
-        ret = new BiwaScheme.Set();
-        break;
-      case BiwaScheme.Sym("lambda"):
-        var vars=x.second(), body=x.cdr.cdr;
-        if (vars instanceof BiwaScheme.Pair){ // (lambda (...) ...)
-          ret = this.find_sets(body, v.set_minus(vars.to_set()));
-        }
-        else { // (lambda args ...)
-          ret = this.find_sets(body, v.set_minus(new BiwaScheme.Set(vars)));
-        }
-        break;
-      case BiwaScheme.Sym("if"):
-        var testc=x.second(), thenc=x.third(), elsec=x.fourth();
-        ret = this.find_sets(testc, v).set_union(
-                        this.find_sets(thenc, v),
-                        this.find_sets(elsec, v));
-        break;
-      case BiwaScheme.Sym("set!"):
-        var vari=x.second(), xx=x.third();
-        if(v.member(vari))
-          ret = this.find_sets(xx, v).set_cons(vari);
-        else
-          ret = this.find_sets(xx, v);
-        break;
-      case BiwaScheme.Sym("call/cc"):
-        var exp=x.second();
-        ret = this.find_sets(exp, v);
-        break;
-      default:
-        var set = new BiwaScheme.Set();
-        for(var p=x; p instanceof BiwaScheme.Pair; p=p.cdr){
-          set = set.set_union(this.find_sets(p.car, v));
-        }
-        ret = set;
-        break;
-      }
-    }
-    else{
-      ret = new BiwaScheme.Set();
-    }
-
-    if(ret == null)
-      throw new BiwaScheme.Bug("find_sets() exited in unusual way");
-    else
-      return ret;
-  },
-
-  // find_free(): find free variables in x
-  //              these variables are collected by collect_free().
-  // x: expression 
-  // b: set of local vars (= variables which are not free)
-  // f: set of free var candidates 
-  //    (local vars of outer lambdas)
-  // ret: set of free vars
-  find_free: function(x, b, f){
-    var ret=null;
-    if(x instanceof BiwaScheme.Symbol){
-      if(f.member(x))
-        ret = new BiwaScheme.Set(x);
-      else
-        ret = new BiwaScheme.Set();
-    }
-    else if(x instanceof BiwaScheme.Pair){
-      switch(x.first()){
-      case BiwaScheme.Sym("define"):
-        var exp=x.third();
-        ret = this.find_free(exp, b, f);
-        break;
-      case BiwaScheme.Sym("begin"):
-        ret = this.find_free(x.cdr, b, f); //(ignores improper list)
-        break;
-      case BiwaScheme.Sym("quote"):
-        ret = new BiwaScheme.Set();
-        break;
-      case BiwaScheme.Sym("lambda"):
-        var vars=x.second(), body=x.cdr.cdr;
-        if (vars instanceof BiwaScheme.Pair){ // (lambda (...) ...)
-          ret = this.find_free(body, b.set_union(vars.to_set()), f);
-        }
-        else { // (lambda args ...)
-          ret = this.find_free(body, b.set_cons(vars), f);
-        }
-        break;
-      case BiwaScheme.Sym("if"):
-        var testc=x.second(), thenc=x.third(), elsec=x.fourth();
-        ret = this.find_free(testc, b, f).set_union(
-                        this.find_free(thenc, b, f),
-                        this.find_free(elsec, b, f));
-        break;
-      case BiwaScheme.Sym("set!"):
-        var vari=x.second(), exp=x.third();
-        if(f.member(vari))
-          ret = this.find_free(exp, b, f).set_cons(vari);
-        else
-          ret = this.find_free(exp, b, f)
-        break;
-      case BiwaScheme.Sym("call/cc"):
-        var exp=x.second();
-        ret = this.find_free(exp, b, f);
-        break;
-      default:
-        var set = new BiwaScheme.Set();
-        for(var p=x; p instanceof BiwaScheme.Pair; p=p.cdr){
-          set = set.set_union(this.find_free(p.car, b, f));
-        }
-        ret = set;
-        break;
-      }
-    }
-    else{
-      ret = new BiwaScheme.Set();
-    }
-    //Console.p("find_free "+x.inspect()+" / "+b.inspect()+" => "+ret.inspect());
-
-    if(ret == null)
-      throw new BiwaScheme.Bug("find_free() exited in unusual way");
-    else
-      return ret;
-  },
-
-  // Returns the position of the dot pair.
-  // Returns -1 if x is a proper list.
-  //
-  // eg. (a b . c) -> 2
-  find_dot_pos: function(x){
-    var idx = 0;
-    for (; x instanceof BiwaScheme.Pair; x = x.cdr, ++idx)
-      ;
-    if (x != BiwaScheme.nil) {
-      return idx;
-    } else {
-      return -1;
-    }
-  },
-
-  last_pair: function(x){
-    if (x instanceof BiwaScheme.Pair){
-      for (; x.cdr instanceof BiwaScheme.Pair; x = x.cdr)
-        ;
-    }
-    return x;
-  },
-
-  // Takes an dotted list and returns proper list.
-  //
-  // eg. (x y . z) -> (x y z)
-  dotted2proper: function(ls){
-    var nreverse = function(ls){
-      var res = BiwaScheme.nil;
-      for (; ls instanceof BiwaScheme.Pair; ){
-        var d = ls.cdr;
-        ls.cdr = res;
-        res = ls;
-        ls = d;
-      }
-      return res;
-    }
-    var copy_list = function(ls){
-      var res = BiwaScheme.nil;
-      for (; ls instanceof BiwaScheme.Pair; ls = ls.cdr){
-        res = new BiwaScheme.Pair(ls.car, res);
-      }
-      return nreverse(res);
-    }
-
-    if (ls instanceof BiwaScheme.Pair) {
-      var last = this.last_pair(ls);
-      if (last instanceof BiwaScheme.Pair && last.cdr === BiwaScheme.nil){
-        return ls;
-      } else {
-        var copied = copy_list(ls);
-        this.last_pair(copied).cdr = new BiwaScheme.Pair(last.cdr, BiwaScheme.nil);
-        return copied;
-      }
-    } else {
-      return new BiwaScheme.Pair(ls, BiwaScheme.nil);
-    }
-  },
-
-  // x: exp(list of symbol or integer or..)
-  // e: env (= [locals, frees])
-  // s: vars might be set!
-  // next: opc
-  // ret: opc
-  compile: function(x, e, s, f, next){
-    //Console.p(x);
-    var ret = null;
-
-    while(1){
-      if(x instanceof BiwaScheme.Symbol){
-        // Variable reference
-        // compiled into refer-(local|free|global)
-        return this.compile_refer(x, e, (s.member(x) ? ["indirect", next] : next));
-      }
-      else if(x instanceof BiwaScheme.Pair){
-        switch(x.first()){
-        case BiwaScheme.Sym("define"):
-          ret = this._compile_define(x, next);
-
-          x = ret[0];
-          next = ret[1];
-          break;
-
-        case BiwaScheme.Sym("begin"):
-          var a = [];
-          for(var p=x.cdr; p instanceof BiwaScheme.Pair; p=p.cdr)
-            a.push(p.car);
-
-          //compile each expression (in reverse order)
-          var c = next;
-          for(var i=a.length-1; i>=0; i--){
-            c = this.compile(a[i], e, s, f, c);
-          }
-          return c;
-
-        case BiwaScheme.Sym("quote"):
-          if(x.length() < 2)
-              throw new BiwaScheme.Error("Invalid quote: "+x.to_write());
-
-          var obj=x.second();
-          return ["constant", obj, next];
-
-        case BiwaScheme.Sym("lambda"):
-          return this._compile_lambda(x, e, s, f, next);
-
-        case BiwaScheme.Sym("if"):
-          if(x.length() < 3 || x.length() > 4)
-              throw new BiwaScheme.Error("Invalid if: "+x.to_write());
-
-          var testc=x.second(), thenc=x.third(), elsec=x.fourth();
-          var thenc = this.compile(thenc, e, s, f, next);
-          var elsec = this.compile(elsec, e, s, f, next);
-          x    = testc;
-          next = ["test", thenc, elsec];
-          break;
-
-        case BiwaScheme.Sym("set!"):
-          // error-checking: should have only 3 things
-          if(x.length() != 3)
-              throw new BiwaScheme.Error("Invalid set!: "+x.to_write());
-
-          var v=x.second(), x=x.third();
-          var do_assign = this.compile_lookup(v, e,
-            function(n){ return ["assign-local", n, next]; },
-            function(n){ return ["assign-free",  n, next]; },
-            function(sym){ return ["assign-global",sym, next]; }
-          );
-          next = do_assign;
-          break;
-
-        case BiwaScheme.Sym("call/cc"): 
-          var x=x.second();
-          var c = ["conti", 
-                    (this.is_tail(next) ? (e[0].size() + 1) : 0), //number of args for outer lambda
-                    ["argument",
-                    ["constant", 1,
-                    ["argument",
-                      this.compile(x, e, s,f,  
-                        (this.is_tail(next) ? ["shift", 1, ["tco_hinted_apply"]]
-                                            : ["apply"]))]]]];
-                  //note: proc for call/cc takes 1 argument (= ["apply", 1])
-
-          // Do not push stack frame when call/cc is in a tail context
-          return this.is_tail(next) ? c : ["frame", c, next];
-
-        default: 
-          //apply 
-          //x = (func 1 2) 
-          //x.car = func = '(lambda (x) ..) or Symbol
-          //x.cdr = args = '(1 2)
-          var func = x.car;
-          var args = x.cdr;
-          var c = this.compile(func, e, s,f,  
-                    this.is_tail(next) ? ["shift", args.length(), ["tco_hinted_apply"]]
-                                       : ["apply"]);
-
-          // VM will push the number of arguments to the stack.
-          c = this.compile(args.length(), e, s, f, ["argument", c]);
-          for(var p=args; p instanceof BiwaScheme.Pair; p=p.cdr){
-            c = this.compile(p.car, e, s, f, ["argument", c]);
-          }
-
-          // Do not push stack frame for tail calls
-          return this.is_tail(next) ? c : ["frame", c, next];
-        }
-      }
-      else{
-        return ["constant", x, next];
-      }
-    }
-    //Console.p("result of " + x.inspect() + ":");
-    //Console.p(ret);
-    //dump({"ret":ret, "x":x, "e":e, "s":s, "next":next, "stack":[]});
-//      if(ret == null)
-//        throw new BiwaScheme.Bug("compile() exited in unusual way");
-//      else
-//        return ret;
-  },
-
-  // Compile define.
-  //
-  // 0. (define) ; => error
-  // 1. (define a)
-  // 2. (define a 1)
-  // 3. (define a 1 2) ; => error
-  // 4. (define (f x) x), (define (f . a) a)
-  // 5. (define 1 2) 
-  //
-  // Note: define may appear in lambda, let, let*, let-values,
-  // let*-values, letrec, letrec*. These definitions are local to the
-  // <body> of these forms.
-  _compile_define: function(x, next){
-    if(x.length() == 1) { // 0. (define)
-      throw new BiwaScheme.Error("Invalid `define': "+x.to_write());
-    }
-
-    var first = x.cdr.car;
-    var rest = x.cdr.cdr;
-    
-    if(first instanceof BiwaScheme.Symbol){    
-      if (rest === BiwaScheme.nil) { // 1. (define a)
-        x = BiwaScheme.undef;
-      }
-      else {
-        if (rest.cdr === BiwaScheme.nil) // 2. (define a 1)
-          x = rest.car;
-        else // 3. (define a 1 2)
-          throw new BiwaScheme.Error("Invalid `define': "+x.to_write());
-      }
-
-      if (!BiwaScheme.TopEnv.hasOwnProperty(first.name)) {
-        BiwaScheme.TopEnv[first.name] = BiwaScheme.undef;
-      }
-      next = ["assign-global", first.name, next];
-    }
-    else if(first instanceof BiwaScheme.Pair){ // 4. (define (f x) ...)
-      // Note: define of this form may contain internal define.
-      // They are handled in compilation of "lambda".
-
-      var fname=first.car, args=first.cdr;
-      var lambda = new BiwaScheme.Pair(BiwaScheme.Sym("lambda"), new BiwaScheme.Pair(args, rest));
-      x = lambda;
-      if (!BiwaScheme.TopEnv.hasOwnProperty(first.name)) {
-        BiwaScheme.TopEnv[fname.name] = BiwaScheme.undef;
-      }
-      next = ["assign-global", fname.name, next];
-    }
-    else{ // 5. (define 1 2)
-      throw new BiwaScheme.Error("define: symbol or pair expected but got "+first);
-    }
-
-    return [x, next];
-  },
-
-  // Compiles various forms of "lambda".
-  //
-  // * (lambda (x y) ...)
-  // * (lambda (x y . rest) ...)
-  // * (lambda args ...)
-  _compile_lambda: function(x, e, s, f, next){
-    if(x.length() < 3)
-      throw new BiwaScheme.Error("Invalid lambda: "+x.to_write());
-
-    var vars = x.cdr.car;
-    var body = x.cdr.cdr;
-
-    // Handle internal defines
-    var tbody = BiwaScheme.Compiler.transform_internal_define(body);
-    if(BiwaScheme.isPair(tbody) &&
-       BiwaScheme.isSymbol(tbody.car) &&
-       tbody.car.name == "letrec*"){
-      // The body has internal defines.
-      // Expand letrec* macro
-      var cbody = BiwaScheme.Interpreter.expand(tbody);
-    }
-    else{
-      // The body has no internal defines.
-      // Just wrap the list with begin 
-      var cbody = new BiwaScheme.Pair(BiwaScheme.Sym("begin"), x.cdr.cdr);
-    }
-
-    var dotpos = this.find_dot_pos(vars);
-    var proper = this.dotted2proper(vars);
-    var free = this.find_free(cbody, proper.to_set(), f); //free variables
-    var sets = this.find_sets(cbody, proper.to_set());    //local variables
-
-    var do_body = this.compile(cbody,
-                    [proper.to_set(), free],
-                    sets.set_union(s.set_intersect(free)),
-                    f.set_union(proper.to_set()),
-                    ["return"]);
-    var do_close = ["close", 
-                     free.size(),
-                     this.make_boxes(sets, proper, do_body),
-                     next,
-                     dotpos];
-    return this.collect_free(free, e, do_close);
-  },
-
-  run: function(expr){
-    return this.compile(expr, [new BiwaScheme.Set(), new BiwaScheme.Set()], new BiwaScheme.Set(), new BiwaScheme.Set(), ["halt"]);
-  }
-});
-
-// Compile an expression with new compiler
-BiwaScheme.Compiler.compile = function(expr, next){
-  expr = BiwaScheme.Interpreter.expand(expr);
-  return (new BiwaScheme.Compiler).run(expr, next);
-};
-
-// Transform internal defines to letrec*.
-//
-// Example
-//   (let ((a 1))
-//     (define (b) a)
-//     (b))
-//
-//   (let ((a 1))
-//     (letrec* ((b (lambda () a)))
-//       (b)))
-//
-// x - expression starts with (define ...)
-// 
-// Returns a letrec* expression, or
-// just returns x, when x does not contain definitions.
-(function(){
-// Returns true if x is a definition
-var is_definition = function(x){
-  return BiwaScheme.isPair(x) &&
-         BiwaScheme.Sym("define") === x.car;
-  // TODO: support "begin", nested "begin", "let(rec)-syntax"
-};
-
-// Convert function definition to lambda binding
-//   (define a ..)         -> (a ..)
-//   (define (f) ..)       -> (f (lambda () ..))
-//   (define (f x . y) ..) -> (f (lambda (x . y) ..))
-//   (define (f . a) ..)   -> (f (lambda a ..))
-var define_to_lambda_bind = function(def){
-  var sig  = def.cdr.car;
-  var body = def.cdr.cdr;
-
-  if (BiwaScheme.isSymbol(sig)) {
-    var variable = sig;
-
-    return new BiwaScheme.Pair(variable, body);
-  }
-  else {
-    var variable = sig.car;
-    var value = new BiwaScheme.Pair(BiwaScheme.Sym("lambda"),
-                  new BiwaScheme.Pair(sig.cdr, body));
-
-    return BiwaScheme.List(variable, value);
-  }
-};
-
-BiwaScheme.Compiler.transform_internal_define = function(x){
-  // 1. Split x into definitions and expressions
-  var defs = [], item = x;
-  while (is_definition(item.car)){
-    defs.push(item.car);
-    item = item.cdr;
-  }
-  var exprs = item;
-
-  // 2. Return x if there is no definitions
-  if (defs.length == 0)
-    return x;
-  
-  // 3. Return (letrec* <bindings> <expressions>)
-  var bindings = BiwaScheme.List.apply(null, _.map(defs, define_to_lambda_bind));
-  return new BiwaScheme.Pair(BiwaScheme.Sym("letrec*"),
-           new BiwaScheme.Pair(bindings, exprs));
-};
-})();
-//
-// pause object (facility to stop/resume interpreting)
-//
-BiwaScheme.Pause = BiwaScheme.Class.create({
-  //new (on_pause: javascript function calling setTimeout, Ajax.Request, ..)
-  initialize: function(on_pause){
-    this.on_pause = on_pause;
-  },
-
-  //save state of interpreter
-  set_state: function(intp, x, f, c, s){
-    this.interpreter = intp;
-    this.x = x;
-    this.f = f;
-    this.c = c;
-    this.s = s;
-  },
-
-  //call this when ready (to fire setTimeout, Ajax.Request..)
-  ready: function(){
-    this.on_pause(this);
-  },
-
-  //restart calculation
-  resume: function(value){
-    return this.interpreter.resume(true, value, this.x, this.f, this.c, this.s)
-  }
-});
-
-///
-/// Call
-///
-
-// The class Call is used to invoke scheme closure from 
-// library functions.
-//
-// Call#initialize takes three arguments: proc, args and after.
-//   * proc is the scheme closure to invoke.
-//   * args is an Array (not list!) of arguments for the invocation.
-//   * after is a javascript function which is invoked when 
-//     returned from the proc.
-//
-//     after takes two arguments: ar and intp.
-//       * ar is an Array which contains the result of the invocation.
-//       * intp is an Interpreter which is running.
-//
-//     If after returns another Call object, another invocation
-//     happens. If after returns a normal value, it is the value
-//     of the library function.
-//
-// example:
-//   return new Call(proc, [x, y], function(ar){ ar[0] });
-//
-BiwaScheme.Call = BiwaScheme.Class.create({
-  initialize: function(proc, args, after){
-    this.proc = proc;
-    this.args = args;
-    this.after = after || function(ar){
-      // just return result which closure returned
-      return ar[0];
-    };
-  },
-
-  inspect: function(){
-    return "#<Call args=" + this.args.inspect() + ">";
-  },
-
-  toString: function(){
-    return "#<Call>";
-  },
-
-  to_write: function(){
-    return "#<Call>";
-  }
-})
-
-//
-// Iterator - external iterator for Call.foreach
-//
-BiwaScheme.Iterator = {
-  ForArray: BiwaScheme.Class.create({
-    initialize: function(arr){
-      this.arr = arr;
-      this.i = 0;
-    },
-    has_next: function(){
-      return this.i < this.arr.length;
-    },
-    next: function(){
-      return this.arr[this.i++];
-    }
-  }),
-  ForString: BiwaScheme.Class.create({
-    initialize: function(str){
-      this.str = str;
-      this.i = 0;
-    },
-    has_next: function(){
-      return this.i < this.str.length;
-    },
-    next: function(){
-      return BiwaScheme.Char.get(this.str.charAt(this.i++));
-    }
-  }),
-  ForList: BiwaScheme.Class.create({
-    initialize: function(ls){
-      this.ls = ls;
-    },
-    has_next: function(){
-      return (this.ls instanceof BiwaScheme.Pair) &&
-             this.ls != BiwaScheme.nil;
-    },
-    next: function(){
-      var pair = this.ls;
-      this.ls = this.ls.cdr;
-      return pair;
-    }
-  }),
-  ForMulti: BiwaScheme.Class.create({
-    initialize: function(objs){
-      this.objs = objs;
-      this.size = objs.length;
-      this.iterators = _.map(objs, function(x){
-        return BiwaScheme.Iterator.of(x);
-      })
-    },
-    has_next: function(){
-      for(var i=0; i<this.size; i++)
-        if(!this.iterators[i].has_next())
-          return false;
-      
-      return true;
-    },
-    next: function(){
-      return _.map(this.iterators, function(ite){
-        return ite.next();
-      })
-    }
-  }),
-  of: function(obj){
-    switch(true){
-      case (obj instanceof Array):
-        return new this.ForArray(obj);
-      case (typeof(obj) == "string"):
-        return new this.ForString(obj);
-      case (obj instanceof BiwaScheme.Pair):
-      case (obj === BiwaScheme.nil):
-        return new this.ForList(obj);
-      default:
-        throw new BiwaScheme.Bug("Iterator.of: unknown class: "+BiwaScheme.inspect(obj));
-    }
-  }
-}
-
-//
-// Call.foreach - shortcut for successive Calls
-//
-// Some library functions, such as for-each or map,
-// call a closure for each element. Call.foreach is 
-// a utility to help defining such methods.
-//
-// Call.foreach takes a sequence and some callbacks.
-// Sequence is an Array, String, or list.
-//
-// Example:
-//   return Call.foreach(sequence, {
-//     // before each call
-//     call: function(elem){
-//       return new Call(proc, [elem]);
-//     },
-//     // after each call
-//     result: function(value, elem){
-//       ary.push(value);
-//       // you can return a value to terminate the loop
-//     },
-//     // after all the calls
-//     finish: function(){
-//       return ary;
-//     }
-//   });
-
-BiwaScheme.Call.default_callbacks = {
-  call: function(x){ return new BiwaScheme.Call(this.proc, [x]) },
-  result: function(){},
-  finish: function(){}
-}
-BiwaScheme.Call.foreach = function(obj, callbacks, is_multi){
-  is_multi || (is_multi = false);
-  _.each(["call", "result", "finish"], function(key){
-    if(!callbacks[key])
-      callbacks[key] = BiwaScheme.Call.default_callbacks[key];
-  })
-  
-  var iterator = null;
-  var x = null;
-
-  var loop = function(ar){
-    if(iterator){
-      var ret = callbacks["result"](ar[0], x);
-      if(ret !== undefined) return ret;
-    }
-    else{ // first lap
-      if(is_multi)
-        iterator = new BiwaScheme.Iterator.ForMulti(obj);
-      else
-        iterator = BiwaScheme.Iterator.of(obj);
-    }
-
-    if(!iterator.has_next()){
-      return callbacks["finish"]();
-    }
-    else{
-      x = iterator.next();
-      var result = callbacks["call"](x);
-      result.after = loop;
-      return result;
-    }
-  }
-  return loop(null);
-}
-BiwaScheme.Call.multi_foreach = function(obj, callbacks){
-  return BiwaScheme.Call.foreach(obj, callbacks, true);
-}
-
-///
-/// Interpreter
-///
-
-BiwaScheme.Interpreter = BiwaScheme.Class.create({
-  // new BiwaScheme.Interpreter()
-  // new BiwaScheme.Interpreter(lastInterpreter)
-  // new BiwaScheme.Interpreter(errorHandler)
-  // new BiwaScheme.Interpreter(lastInterpreter, errorHandler)
-  initialize: function(){
-    var last_interpreter = null;
-    var on_error = null;
-    if (arguments.length == 2) {
-      last_interpreter = arguments[0];
-      on_error = arguments[1];
-    } else if (arguments.length == 1 && arguments[0] instanceof BiwaScheme.Interpreter) {
-      last_interpreter = arguments[0];
-    } else if (arguments.length == 1 && typeof(arguments[0]) == "function") {
-      on_error = arguments[0];
-    }
-
-    // Interpreter stack
-    this.stack = [];
-    // JS function to handle error
-    this.on_error = on_error || (last_interpreter ? last_interpreter.on_error : function(e){});
-    // JS function to handle result
-    this.after_evaluate = function(){};
-
-    // (Variables for stack trace)
-    // Name of the last variable read by refer-xx
-    this.last_refer = last_interpreter ? last_interpreter.last_refer : null;
-    // Call stack (array of last_refer)
-    this.call_stack = last_interpreter ? _.clone(last_interpreter.call_stack) : [];
-    // Counts number of tail calls (= how many times should we pop call_stack
-    // in op_return)
-    this.tco_counter = [];
-    // Maximum length of call_stack
-    // (Note: we should cap call_stack for inifinite loop with recursion)
-    this.max_trace_size = last_interpreter ? last_interpreter.max_trace_size : BiwaScheme.max_trace_size;
-  },
-
-  inspect: function(){
-    return [
-      "#<Interpreter: stack size=>",
-      this.stack.length, " ",
-      "after_evaluate=",
-      BiwaScheme.inspect(this.after_evaluate),
-      ">"
-    ].join("");
-  },
-
-  // private
-  push: function(x, s){
-    this.stack[s] = x;
-    return s+1;
-  },
-
-  // private
-  //s: depth of stack to save
-  //ret: saved(copied) stack 
-  save_stack: function(s){
-    var v = [];
-    for(var i=0; i<s; i++){
-      v[i] = this.stack[i];
-    }
-    return { stack: v, last_refer: this.last_refer, call_stack: _.clone(this.call_stack), tco_counter: _.clone(this.tco_counter) };
-  },
-
-  // private
-  //v: stack array to restore
-  //ret: lenght of restored stack
-  restore_stack: function(stuff){
-    v = stuff.stack;
-    var s = v.length;
-    for(var i=0; i<s; i++){
-      this.stack[i] = v[i];
-    }
-    this.last_refer = stuff.last_refer;
-    this.call_stack = _.clone(stuff.call_stack);
-    this.tco_counter = _.clone(stuff.tco_counter);
-    return s;
-  },
-
-  // private
-  //s: depth of stack to save
-  //n: number of args(for outer lambda) to remove (= 0 unless tail position)
-  //ret: closure array
-  continuation: function(s, n){
-    // note: implementation of this function for final version doesn't exist in 3imp.pdf..
-    var ss = this.push(n, s);
-    return this.closure(["refer-local", 0,
-                          ["nuate", this.save_stack(ss), 
-                          ["return"]]], 
-                        0,     //n (number of frees)
-                        null,  //s (stack position to get frees)
-                        -1);   // dotpos
-  },
-
-  // private
-  // shift stack 
-  // n: number of items to skip (from stack top)
-  // m: number of items to shift
-  // s: stack pointer (= index of stack top + 1)
-  shift_args: function(n, m, s){
-    for(var i = n-1; i >= -1; i--){
-      this.index_set(s, i+m+1, this.index(s, i));
-    }
-    return s-m-1;
-  },
-
-  index: function(s, i){
-    return this.stack[s-i-2];
-  },
-
-  // private
-  index_set: function(s, i, v){
-    this.stack[s-i-2] = v;
-  },
-
-  // private
-  //ret: [body, stack[s-1], stack[s-2], .., stack[s-n], dotpos]
-  closure: function(body, n, s, dotpos){
-    var v = []; //(make-vector n+1+1)
-    v[0] = body;
-    for(var i=0; i<n; i++)
-      v[i+1] = this.index(s, i-1);
-    v[n+1] = dotpos;
-
-    v.closure_p = true;
-
-    return v;
-  },
-
-  // private
-  run_dump_hook: function(a, x, f, c, s) {
-    var dumper;
-    var state;
-
-
-    if (this.dumper) {
-      dumper = this.dumper;
-    }
-    else if (BiwaScheme.Interpreter.dumper) {
-      dumper = BiwaScheme.Interpreter.dumper;
-    }
-    else
-      return;
-
-    if (dumper) {
-      state = {"a":a,
-               "f":f,
-               "c":c,
-               "s":s,
-               "x":x,
-               "stack":this.stack};
-      dumper.dump(state);
-    }
-  },
-
-  // private
-  _execute: function(a, x, f, c, s){
-    var ret = null;
-    //Console.puts("executing "+x[0]);
-    
-    while(true){ //x[0] != "halt"){
-
-      this.run_dump_hook(a, x, f, c, s);
-
-      switch(x[0]){
-      case "halt":
-        return a;
-      case "refer-local":
-        var n=x[1], x=x[2];
-        a = this.index(f, n);
-        this.last_refer = "(anon)";
-        break;
-      case "refer-free":
-        var n=x[1], x=x[2];
-        a = c[n+1];
-        this.last_refer = "(anon)";
-        break;
-      case "refer-global":
-        var sym=x[1], x=x[2];
-        if(BiwaScheme.TopEnv.hasOwnProperty(sym))
-          var val = BiwaScheme.TopEnv[sym];
-        else if(BiwaScheme.CoreEnv.hasOwnProperty(sym))
-          var val = BiwaScheme.CoreEnv[sym];
-        else
-          throw new BiwaScheme.Error("execute: unbound symbol: "+BiwaScheme.inspect(sym));
-
-        a = val;
-        this.last_refer = sym || "(anon)";
-        break;
-      case "indirect":
-        var x=x[1];
-        a = a[0]; //unboxing
-        break;
-      case "constant":
-        var obj=x[1], x=x[2];
-        a = obj;
-        this.last_refer = "(anon)";
-        break;
-      case "close":
-        var ox=x;
-        var n=ox[1], body=ox[2], x=ox[3], dotpos=ox[4];
-        a = this.closure(body, n, s, dotpos);
-        s -= n;
-        break;
-      case "box":
-        var n=x[1], x=x[2];
-        this.index_set(s, n, [this.index(s, n)]); //boxing
-        break;
-      case "test":
-        var thenc=x[1], elsec=x[2];
-        x = ((a!==false) ? thenc : elsec);
-        break;
-      case "assign-global":
-        var name=x[1], x=x[2];
-        if(!BiwaScheme.TopEnv.hasOwnProperty(name) &&
-           !BiwaScheme.CoreEnv.hasOwnProperty(name))
-          throw new BiwaScheme.Error("global variable '"+name+"' is not defined");
-        
-        BiwaScheme.TopEnv[name] = a;
-        a = BiwaScheme.undef;
-        break;
-      case "assign-local":
-        var n=x[1], x=x[2];
-        var box = this.index(f, n);
-        box[0] = a;
-        a = BiwaScheme.undef;
-        break;
-      case "assign-free":
-        var n=x[1], x=x[2];
-        var box = c[n+1];
-        box[0] = a;
-        a = BiwaScheme.undef;
-        break;
-      case "conti":
-        var n=x[1], x=x[2];
-        a = this.continuation(s, n);
-        break;
-      case "nuate":
-        var stack=x[1], x=x[2];
-        s = this.restore_stack(stack);
-        break;
-      case "frame":
-        var ret = x[2];
-        x = x[1];
-        s = this.push(ret, this.push(f, this.push(c, s)));
-        this.tco_counter[this.tco_counter.length] = 0;
-        break;
-      case "argument":
-        var x=x[1];
-        s = this.push(a, s);
-        break;
-      case "shift":
-        var n=x[1], x=x[2];
-
-        // the number of arguments in the last call
-        var n_args = this.index(s, n);  
-
-        s = this.shift_args(n, n_args, s);
-        break;
-      case "tco_hinted_apply": // just like a regular apply, except we need to trace the # of TCO calls so we can generate a stacktrace
-        this.tco_counter[this.tco_counter.length - 1]++;
-        x = ["apply"].concat(_.rest(x));
-        break;
-      case "apply": //extended: n_args as second argument
-        var func = a; //, n_args = x[1];
-
-        // Save stack trace
-        this.call_stack.push(this.last_refer);
-        if (this.call_stack.length > this.max_trace_size) {
-          // Remove old memory if it grows too long
-          // Note: this simple way may be inconvenient (e.g. no trace
-          // will be shown when an error occurred right after returning
-          // from a large function)
-          this.call_stack.shift();
-        }
-
-        // the number of arguments in the last call is
-        // pushed to the stack.
-        var n_args = this.index(s, -1);
-        if(func instanceof Array){ //closure
-          a = func;
-          x = func[0];
-
-          // The position of dot in the parameter list.
-          var dotpos = func[func.length-1];
-
-          if (dotpos >= 0) {
-            // The dot is found
-            // ----------------
-            // => Process the &rest args: packing the rest args into a list.
-            var ls = BiwaScheme.nil;
-            for (var i=n_args; --i>=dotpos; ) {
-              ls = new BiwaScheme.Pair(this.index(s, i), ls);
-            }
-            if (dotpos >= n_args) {
-              // No rest argument is passed to this closure.
-              // However, the closure expects the caller passes the rest argument.
-              // In such case this VM prepares an empty list as the rest argument.
-              // --------------------------------------------------------------
-              // => We extend the stack to put the empty list.
-              for(var i = -1; i < n_args; i++){
-                this.index_set(s, i-1, this.index(s, i));
-              }
-              s++;
-              // => Update the number of arguments
-              this.index_set(s, -1, this.index(s, -1) + 1);  
-            }
-            this.index_set(s, dotpos, ls);
-          }
-          f = s;
-          c = a;
-        }
-        else if(func instanceof Function){ // Apply JavaScript function
-          // load arguments from stack
-          var args = [];
-          for(var i=0; i<n_args; i++) 
-            args.push(this.index(s, i));
-
-          // invoke the function
-          var result = func(args, this);
-
-          if(result instanceof BiwaScheme.Pause){
-            // it requested the interpreter to suspend
-            var pause = result;
-            pause.set_state(this, ["return"], f, c, s);
-            pause.ready();
-            return pause;
-          }
-          else if(result instanceof BiwaScheme.Call){
-            // it requested the interpreter to call a scheme closure
-
-            //   [frame,
-            //     [constant... (args)
-            //     [constant, proc
-            //     [apply]]]]
-            //   [frame,
-            //     [constant, after
-            //     [apply 1]]]]
-            //   x
-            var call_after = ["frame",
-                               ["argument",
-                               ["constant", 1,
-                               ["argument",
-                               ["constant", result.after,
-                               ["apply"]]]]],
-                             ["return"]];
-            var call_proc = ["constant", result.args.length,
-                            ["argument",
-                            ["constant", result.proc, 
-                            ["apply", result.args.length]]]];
-            var push_args = _.inject(result.args, function(opc, arg){
-              // (foo 1 2) => first push 2, then 1
-              //   [constant 2 ... [constant 1 ... ]
-              return ["constant", arg, 
-                     ["argument",
-                     opc]];
-            }, call_proc);
-            x = ["frame",
-                  push_args,
-                call_after]
-          }
-          else{
-            // the JavaScript function returned a normal value
-            a = result;
-            x = ["return"];
-          }
-        }
-        else{
-          // unknown function type
-          throw new BiwaScheme.Error(BiwaScheme.inspect(func) + " is not a function");
-        }
-        break;
-      case "return":
-        // Pop stack frame
-        var n=this.index(s, -1);
-        var ss=s-n;
-        x = this.index(ss, 0),
-        f = this.index(ss, 1),
-        c = this.index(ss, 2),
-        s = ss-3-1;
-
-        // Pop stack trace (> 1 times if tail calls are done)
-        var n_pops = 1 + this.tco_counter[this.tco_counter.length - 1];
-        this.call_stack.splice(-n_pops);
-        this.tco_counter.pop();
-        break;
-      default:
-        throw new BiwaScheme.Bug("unknown opecode type: "+x[0]);
-      }
-    }
-
-//      if(ret === null)
-//        throw new BiwaScheme.Bug("interpreter exited in unusual way");
-//      else
-//        return ret;
-    return a
-  },
-
-  // Compile and evaluate Scheme program
-  evaluate: function(str, after_evaluate){
-    this.parser = new BiwaScheme.Parser(str);
-    this.compiler = new BiwaScheme.Compiler();
-    if(after_evaluate) 
-      this.after_evaluate = after_evaluate;
-
-    if(BiwaScheme.Debug) Console.puts("executing: " + str);
-     
-    this.is_top = true;
-    this.file_stack = [];
-
-    try{
-      return this.resume(false);
-    }
-    catch(e){
-      e.message = e.message + " [" + this.call_stack.join(", ") + "]";
-      return this.on_error(e);
-    }
-  },
-
-  // Resume evaluation
-  // (internally used from Interpreter#execute and Pause#resume)
-  resume: function(is_resume, a, x, f, c, s){
-    var ret = BiwaScheme.undef;
-
-    for(;;){
-      if(is_resume){
-        ret = this._execute(a, x, f, c, s);
-        is_resume = false;
-      }
-      else{
-        if(!this.parser) break; // adhoc: when Pause is used via invoke_closure
-        var expr = this.parser.getObject();
-        if(expr === BiwaScheme.Parser.EOS) break;
-
-        // expand
-        expr = BiwaScheme.Interpreter.expand(expr);
-
-        // compile
-        var opc = this.compiler.run(expr);
-        //if(BiwaScheme.Debug) Console.p(opc);
-
-        // execute
-        ret = this._execute(expr, opc, 0, [], 0);
-      }
-
-      if(ret instanceof BiwaScheme.Pause){ //suspend evaluation
-        return ret;
-      }
-    }
-
-    // finished executing all forms
-    this.after_evaluate(ret);
-    return ret;
-  },
-
-  // Invoke a scheme closure
-  invoke_closure: function(closure, args){
-    args || (args = []);
-    var n_args  = args.length;
-
-    var x = ["constant", n_args, ["argument", ["constant", closure, ["apply"]]]]
-    for(var i=0; i<n_args; i++)
-      x = ["constant", args[i], ["argument", x]]
-
-    return this._execute(closure, ["frame", x, ["halt"]], 0, closure, 0);
-  },
-
-  // only compiling (for debug use only)
-  compile: function(str){
-    var obj = BiwaScheme.Interpreter.read(str);
-    var opc = BiwaScheme.Compiler.compile(obj);
-    return opc;
-  }
-});
-
-// Take a string and returns an expression.
-BiwaScheme.Interpreter.read = function(str){
-  var parser = new BiwaScheme.Parser(str);
-  var r      = parser.getObject();
-  return (r == BiwaScheme.Parser.EOS)? BiwaScheme.eof: r;
-};
-
-// Expand macro calls in a expression recursively.
-//
-// x - expression
-// flag - used internally. do not specify this
-//
-// @throws {BiwaScheme.Error} when x has syntax error
-BiwaScheme.Interpreter.expand = function(x, flag/*optional*/){
-  var expand = BiwaScheme.Interpreter.expand;
-  flag || (flag = {})
-  var ret = null;
-
-  if(x instanceof BiwaScheme.Pair){
-    switch(x.car){
-    case BiwaScheme.Sym("define"):
-      var left = x.cdr.car, exp = x.cdr.cdr;
-      ret = new BiwaScheme.Pair(BiwaScheme.Sym("define"),
-              new BiwaScheme.Pair(left, expand(exp, flag)));
-      break;
-    case BiwaScheme.Sym("begin"):
-      ret = new BiwaScheme.Pair(BiwaScheme.Sym("begin"), expand(x.cdr, flag));
-      break;
-    case BiwaScheme.Sym("quote"):
-      ret = x;
-      break;
-    case BiwaScheme.Sym("lambda"):
-      var vars=x.cdr.car, body=x.cdr.cdr;
-      ret = new BiwaScheme.Pair(BiwaScheme.Sym("lambda"),
-              new BiwaScheme.Pair(vars, expand(body, flag)));
-      break;
-    case BiwaScheme.Sym("if"):
-      var testc=x.second(), thenc=x.third(), elsec=x.fourth();
-      ret = BiwaScheme.List(BiwaScheme.Sym("if"),
-                            expand(testc, flag),
-                            expand(thenc, flag),
-                            expand(elsec, flag));
-      break;
-    case BiwaScheme.Sym("set!"):
-      var v=x.second(), x=x.third();
-      ret = BiwaScheme.List(BiwaScheme.Sym("set!"), v, expand(x, flag));
-      break;
-    case BiwaScheme.Sym("call-with-current-continuation"): 
-    case BiwaScheme.Sym("call/cc"): 
-      var x=x.second();
-      ret = BiwaScheme.List(BiwaScheme.Sym("call/cc"), expand(x, flag));
-      break;
-    default: //apply
-      var transformer = null;
-      if(BiwaScheme.isSymbol(x.car)){
-        if(BiwaScheme.TopEnv[x.car.name] instanceof BiwaScheme.Syntax)
-          transformer = BiwaScheme.TopEnv[x.car.name];
-        else if(BiwaScheme.CoreEnv[x.car.name] instanceof BiwaScheme.Syntax)
-          transformer = BiwaScheme.CoreEnv[x.car.name];
-      }
-
-      if(transformer){
-        flag["modified"] = true;
-        ret = transformer.transform(x);
-
-//            // Debug
-//            var before = BiwaScheme.to_write(x);
-//            var after = BiwaScheme.to_write(ret);
-//            if(before != after){
-//              console.log("before: " + before)
-//              console.log("expand: " + after)
-//            }
-
-        var fl;
-        for(;;){
-          ret = expand(ret, fl={});
-          if(!fl["modified"]) 
-            break;
-        }
-      }
-      else{
-        var expanded_car = expand(x.car, flag);
-        var expanded_cdr;
-        if(!(x.cdr instanceof BiwaScheme.Pair) && (x.cdr !== BiwaScheme.nil)){
-          throw new Error("proper list required for function application "+
-                          "or macro use: "+BiwaScheme.to_write(x));
-        }
-        expanded_cdr = BiwaScheme.array_to_list(
-                         _.map(x.cdr.to_array(),
-                               function(item){ return expand(item, flag); }));
-        ret = new BiwaScheme.Pair(expanded_car, expanded_cdr);
-      }
-    }
-  }
-  else{
-    ret = x;
-  }
-  return ret;
-};
-//
-// R7RS Promise (lazy library)
-//
-BiwaScheme.Promise = BiwaScheme.Class.create({
-  initialize : function(done, thunk_or_value){
-    this.box = [done, thunk_or_value];
-  },
-
-  // Return true when this promise is already calculated
-  is_done: function() {
-    return this.box[0];
-  },
-
-  // Return calculated value of this promise
-  value: function() {
-    if (!this.is_done()) {
-      throw new BiwaScheme.Bug("this promise is not calculated yet");
-    }
-    return this.box[1];
-  },
-
-  thunk: function() {
-    if (this.is_done()) {
-      throw new BiwaScheme.Bug("this promise does not know the thunk");
-    }
-    return this.box[1];
-  },
-
-  update_with: function(new_promise) {
-    this.box[0] = new_promise.box[0];
-    this.box[1] = new_promise.box[1];
-    new_promise.box = this.box;
-  }
-});
-BiwaScheme.isPromise = function(obj) {
-  return (obj instanceof BiwaScheme.Promise);
-};
-
-// Create fresh promise
-BiwaScheme.Promise.fresh = function(thunk) {
-  return new BiwaScheme.Promise(false, thunk);
-};
-// Create calculated promise
-BiwaScheme.Promise.done = function(value) {
-  return new BiwaScheme.Promise(true, value);
-};
-///
-/// infra.js - Basis for library functions
-///
-
-//
-// define_*func - define library functions
-//
-BiwaScheme.check_arity = function(len, min, max){
-  var fname = arguments.callee.caller
-                ? arguments.callee.caller.fname
-                : "(?)";
-  if(len < min){
-    if(max && max == min)
-      throw new BiwaScheme.Error(fname+": wrong number of arguments (expected: "+min+" got: "+len+")");
-    else
-      throw new BiwaScheme.Error(fname+": too few arguments (at least: "+min+" got: "+len+")");
-  }
-  else if(max && max < len)
-    throw new BiwaScheme.Error(fname+": too many arguments (at most: "+max+" got: "+len+")");
-}
-BiwaScheme.define_libfunc = function(fname, min, max, func){
-  var f = function(ar, intp){
-    BiwaScheme.check_arity(ar.length, min, max);
-    return func(ar, intp);
-  };
-
-  func["fname"] = fname; // for assert_*
-  f["fname"]    = fname; // for check_arity
-  f["inspect"] = function(){ return this.fname; }
-  BiwaScheme.CoreEnv[fname] = f;
-}
-BiwaScheme.alias_libfunc = function(fname, aliases) {
-  if (BiwaScheme.CoreEnv[fname]) {
-    if (_.isArray(aliases)) {
-      _.map(aliases, function(a) { BiwaScheme.alias_libfunc(fname, a); });
-    } else if (_.isString(aliases)) {
-      BiwaScheme.CoreEnv[aliases] = BiwaScheme.CoreEnv[fname];
-    } else {
-      console.error("[BUG] bad alias for library function " +
-                    "`" + fname + "': " + aliases.toString());
-    }
-  } else {
-    console.error("[BUG] library function " +
-                  "`" + fname + "'" +
-                  " does not exist, so can't alias it.");
-  }
-};
-BiwaScheme.define_syntax = function(sname, func) {
-  var s = new BiwaScheme.Syntax(sname, func);
-  BiwaScheme.CoreEnv[sname] = s;
-}
-BiwaScheme.define_scmfunc = function(fname, min, max, str){
-  (new BiwaScheme.Interpreter).evaluate("(define "+fname+" "+str+"\n)");
-}
-
-//  define_scmfunc("map+", 2, null, 
-//    "(lambda (proc ls) (if (null? ls) ls (cons (proc (car ls)) (map proc (cdr ls)))))");
-
-//
-// assertions - type checks
-//
-BiwaScheme.make_assert = function(check){
-  return function(/*args*/){
-    var fname = arguments.callee.caller
-                  ? arguments.callee.caller.fname
-                  : "";
-    check.apply(this, [fname].concat(_.toArray(arguments)));
-  }
-}
-BiwaScheme.make_simple_assert = function(type, test, _fname){
-  return BiwaScheme.make_assert(function(fname, obj, opt){
-    if(_fname) fname = _fname;
-    option = opt ? ("("+opt+")") : ""
-    if(!test(obj)){
-      throw new BiwaScheme.Error(fname + option + ": " +
-                                 type + " required, but got " +
-                                 BiwaScheme.to_write(obj));
-    }
-  })
-}
-
-BiwaScheme.assert_number = BiwaScheme.make_simple_assert("number", function(obj){
-  return typeof(obj) == 'number' || (obj instanceof BiwaScheme.Complex);
-});
-
-BiwaScheme.assert_integer = BiwaScheme.make_simple_assert("integer", function(obj){
-  return typeof(obj) == 'number' && (obj % 1 == 0)
-});
-
-BiwaScheme.assert_real = BiwaScheme.make_simple_assert("real number", function(obj){
-  return typeof(obj) == 'number';
-});
-
-BiwaScheme.assert_between = BiwaScheme.make_assert(function(fname, obj, from, to){
-  if( typeof(obj) != 'number' || obj != Math.round(obj) ){
-    throw new BiwaScheme.Error(fname + ": " +
-                               "number required, but got " +
-                               BiwaScheme.to_write(obj));
-  }
-
-  if( obj < from || to < obj ){
-    throw new BiwaScheme.Error(fname + ": " +
-                               "number must be between " +
-                               from + " and " + to + ", but got " +
-                               BiwaScheme.to_write(obj));
-  }
-});
-
-BiwaScheme.assert_string = BiwaScheme.make_simple_assert("string", _.isString);
-
-BiwaScheme.assert_char = BiwaScheme.make_simple_assert("character", BiwaScheme.isChar);
-BiwaScheme.assert_symbol = BiwaScheme.make_simple_assert("symbol", BiwaScheme.isSymbol);
-BiwaScheme.assert_port = BiwaScheme.make_simple_assert("port", BiwaScheme.isPort);
-BiwaScheme.assert_pair = BiwaScheme.make_simple_assert("pair", BiwaScheme.isPair);
-BiwaScheme.assert_list = BiwaScheme.make_simple_assert("list", BiwaScheme.isList);
-BiwaScheme.assert_vector = BiwaScheme.make_simple_assert("vector", BiwaScheme.isVector);
-
-BiwaScheme.assert_hashtable = BiwaScheme.make_simple_assert("hashtable",
-                                          BiwaScheme.isHashtable);
-BiwaScheme.assert_mutable_hashtable = BiwaScheme.make_simple_assert("mutable hashtable",
-                                            BiwaScheme.isMutableHashtable);
-
-BiwaScheme.assert_record = BiwaScheme.make_simple_assert("record",
-                                          BiwaScheme.isRecord);
-BiwaScheme.assert_record_td = BiwaScheme.make_simple_assert("record type descriptor",
-                                          BiwaScheme.isRecordTD);
-BiwaScheme.assert_record_cd = BiwaScheme.make_simple_assert("record constructor descriptor",
-                                          BiwaScheme.isRecordCD);
-BiwaScheme.assert_enum_set = BiwaScheme.make_simple_assert("enum_set",
-                                          BiwaScheme.isEnumSet);
-BiwaScheme.assert_promise = BiwaScheme.make_simple_assert("promise",
-                                          BiwaScheme.isPromise);
-
-BiwaScheme.assert_function = BiwaScheme.make_simple_assert("JavaScript function",
-                                         _.isFunction);
-BiwaScheme.assert_closure = BiwaScheme.make_simple_assert("scheme function",
-                                        BiwaScheme.isClosure);
-BiwaScheme.assert_procedure = BiwaScheme.make_simple_assert("scheme/js function", function(obj){
-  return BiwaScheme.isClosure(obj) || _.isFunction(obj);
-});
-
-BiwaScheme.assert_date = BiwaScheme.make_simple_assert("date", function(obj){
-  // FIXME: this is not accurate (about cross-frame issue)
-  // https://prototype.lighthouseapp.com/projects/8886/tickets/443
-  return obj instanceof Date;
-});
-
-//var assert_instance_of = BiwaScheme.make_assert(function(fname, type, obj, klass){
-//  if(!(obj instanceof klass)){
-//    throw new BiwaScheme.Error(fname + ": " +
-//                               type + " required, but got " +
-//                               BiwaScheme.to_write(obj));
-//  }
-//});
-
-BiwaScheme.assert = BiwaScheme.make_assert(function(fname, success, message, _fname){
-  if(!success){
-    throw new BiwaScheme.Error((_fname || fname)+": "+message);
-  }
-});
-
-//
-// deprecation
-//
-
-// Show deprecation warnig
-// @param {string} title - feature to be deprecated
-// @param {string} ver - when it will be removed (eg. "1.0")
-// @param {string} alt - alternatives
-BiwaScheme.deprecate = function(title, ver, alt){
-  if(BiwaScheme.suppress_deprecation_warning) return;
-
-  var msg = title+" is deprecated and will be removed in BiwaScheme "+ver+ ". "+
-            "Please use "+alt+" instead";
-  console.warn(msg); 
-};
-//
-// R6RS Base library
-//
-
-if( typeof(BiwaScheme)!='object' ) BiwaScheme={}; with(BiwaScheme) {
-  ///
-  /// R6RS Base library
-  ///
-
-  //
-  //        11.4  Expressions
-  //
-  //            11.4.1  Quotation
-  //(quote)
-  //            11.4.2  Procedures
-  //(lambda)
-  //            11.4.3  Conditionaar
-  //(if)
-  //            11.4.4  Assignments
-  //(set!)
-  //            11.4.5  Derived conditionaar
-
-  define_syntax("cond", function(x){
-    var clauses = x.cdr;
-    if(!(clauses instanceof Pair) || clauses === nil){
-      throw new Error("malformed cond: cond needs list but got " +
-                      to_write_ss(clauses));
-    }
-    // TODO: assert that clauses is a proper list
-
-    var ret = null;
-    _.each(clauses.to_array().reverse(), function(clause){
-      if(!(clause instanceof Pair)){
-        throw new Error("bad clause in cond: " + to_write_ss(clause));
-      }
-
-      if(clause.car === Sym("else")){
-        if(ret !== null){
-          throw new Error("'else' clause of cond followed by more clauses: " +
-                          to_write_ss(clauses));
-        }
-        else if(clause.cdr === nil){
-          // pattern A: (else)
-          //  -> #f            ; not specified in R6RS...?
-          ret = false;
-        }
-        else if(clause.cdr.cdr === nil){
-          // pattern B: (else expr)
-          //  -> expr
-          ret = clause.cdr.car;
-        }
-        else{
-          // pattern C: (else expr ...)
-          //  -> (begin expr ...)
-          ret = new Pair(Sym("begin"), clause.cdr);
-        }
-      }
-      else{
-        var test = clause.car;
-        if(clause.cdr === nil){
-          // pattern 1: (test)
-          //  -> (or test ret)
-          ret = List(Sym("or"), test, ret);
-        }
-        else if (clause.cdr.cdr === nil){
-          // pattern 2: (test expr)
-          //  -> (if test expr ret)
-          ret = List(Sym("if"), test, clause.cdr.car, ret);
-        }
-        else if(clause.cdr.car === Sym("=>")){
-          // pattern 3: (test => expr)
-          //  -> (let ((#<gensym1> test))
-          //       (if test (expr #<gensym1>) ret))
-          var test = clause.car, expr = clause.cdr.cdr.car;
-          var tmp_sym = BiwaScheme.gensym();
-
-          ret = List(Sym("let"),
-                     List( List(tmp_sym, test) ),
-                     List(Sym("if"), test, List(expr, tmp_sym), ret));
-        }
-        else{
-          // pattern 4: (test expr ...)
-          //  -> (if test (begin expr ...) ret)
-          ret = List(Sym("if"), test,
-                     new Pair(Sym("begin"), clause.cdr),
-                     ret);
-        }
-      }
-    });
-    return ret;
-  });
-
-  define_syntax("case", function(x){
-    var tmp_sym = BiwaScheme.gensym();
-
-    if(x.cdr === nil){
-      throw new Error("case: at least one clause is required");
-    }
-    else if(!(x.cdr instanceof Pair)){
-      throw new Error("case: proper list is required");
-    }
-    else{
-      // (case key clauses ....)
-      //  -> (let ((#<gensym1> key))
-      var key = x.cdr.car;
-      var clauses = x.cdr.cdr;
-
-      var ret = undefined;
-      _.each(clauses.to_array().reverse(), function(clause){
-        if(clause.car === Sym("else")){
-          // pattern 0: (else expr ...)
-          //  -> (begin expr ...)
-          if(ret === undefined){
-            ret = new Pair(Sym("begin"), clause.cdr);
-          }
-          else{
-            throw new Error("case: 'else' clause followed by more clauses: " +
-                            to_write_ss(clauses));
-          }
-        }
-        else{
-          // pattern 1: ((datum ...) expr ...)
-          //  -> (if (or (eqv? key (quote d1)) ...) (begin expr ...) ret)
-          ret = List(
-            Sym("if"),
-            new Pair(Sym("or"), array_to_list(_.map(clause.car.to_array(), function(d){
-                return List(Sym("eqv?"),
-                            tmp_sym,
-                            List(Sym("quote"), d));
-            }))),
-            new Pair(Sym("begin"), clause.cdr),
-            ret
-          );
-        }
-      });
-      return new Pair(Sym("let1"),
-               new Pair(tmp_sym,
-                 new Pair(key,
-                   new Pair(ret, nil))));
-    }
-  });
-
-  define_syntax("and", function(x){
-    // (and a b c) => (if a (if b c #f) #f)
-    //todo: check improper list
-    if(x.cdr == nil) return true;
-
-    var objs = x.cdr.to_array();
-    var i = objs.length-1;
-    var t = objs[i];
-    for(i=i-1; i>=0; i--)
-      t = List(Sym("if"), objs[i], t, false);
-
-    return t;
-  })
-
-  define_syntax("or", function(x){
-    // (or a b c) => (if a a (if b b (if c c #f)))
-    //todo: check improper list
-
-    var objs = x.cdr.to_array()
-    var f = false;
-    for(var i=objs.length-1; i>=0; i--)
-      f = List(Sym("if"), objs[i], objs[i], f);
-
-    return f;
-  })
-
-  //            11.4.6  Binding constructs
-  define_syntax("let", function(x){
-    //(let ((a 1) (b 2)) (print a) (+ a b))
-    //=> ((lambda (a b) (print a) (+ a b)) 1 2)
-    var name = null;
-    if (x.cdr.car instanceof Symbol) {
-      name = x.cdr.car;
-      x = x.cdr;
-    }
-    var binds = x.cdr.car, body = x.cdr.cdr;
-
-    if((!(binds instanceof Pair)) && binds != BiwaScheme.nil){
-      throw new Error("let: need a pair for bindings: got "+to_write(binds));
-    }
-
-    var vars = nil, vals = nil;
-    for(var p=binds; p instanceof Pair; p=p.cdr){
-      if(!(p.car instanceof Pair)){
-        throw new Error("let: need a pair for bindings: got "+to_write(p.car));
-      }
-      vars = new Pair(p.car.car, vars);
-      vals = new Pair(p.car.cdr.car, vals);
-    }
-
-    var lambda = null;
-    if (name) {
-      // (let loop ((a 1) (b 2)) body ..)
-      //=> (letrec ((loop (lambda (a b) body ..))) (loop 1 2))
-      vars = array_to_list(vars.to_array().reverse());
-      vals = array_to_list(vals.to_array().reverse());
-
-      var body_lambda = new Pair(Sym("lambda"), new Pair(vars, body));
-      var init_call = new Pair(name, vals);
-
-      lambda = List(Sym("letrec"),
-                    new Pair(List(name, body_lambda), nil),
-                    init_call);
-    }
-    else {
-      lambda = new Pair(new Pair(Sym("lambda"),
-                                 new Pair(vars, body)),
-                        vals);
-    }
-    return lambda;
-  })
-
-  define_syntax("let*", function(x){
-    //(let* ((a 1) (b a)) (print a) (+ a b))
-    //-> (let ((a 1))
-    //     (let ((b a)) (print a) (+ a b)))
-    var binds = x.cdr.car, body = x.cdr.cdr;
-
-    if(!(binds instanceof Pair))
-      throw new Error("let*: need a pair for bindings: got "+to_write(binds));
-
-    var ret = null;
-    _.each(binds.to_array().reverse(), function(bind){
-      ret = new Pair(Sym("let"),
-               new Pair(new Pair(bind, nil),
-                 ret == null ? body : new Pair(ret, nil)));
-    })
-    return ret;
-  })
-
-  var expand_letrec_star = function(x){
-    var binds = x.cdr.car, body = x.cdr.cdr;
-
-    if(!(binds instanceof Pair))
-      throw new Error("letrec*: need a pair for bindings: got "+to_write(binds));
-
-    var ret = body;
-    _.each(binds.to_array().reverse(), function(bind){
-      ret = new Pair(new Pair(Sym("set!"), bind),
-              ret);
-    })
-    var letbody = nil;
-    _.each(binds.to_array().reverse(), function(bind){
-      letbody = new Pair(new Pair(bind.car,
-                           new Pair(BiwaScheme.undef, nil)),
-                  letbody);
-    })
-    return new Pair(Sym("let"),
-             new Pair(letbody,
-               ret));
-  }
-  define_syntax("letrec", expand_letrec_star);
-  define_syntax("letrec*", expand_letrec_star);
-
-  define_syntax("let-values", function(x) {
-    // (let-values (((a b) (values 1 2))
-    //               ((c d . e) (values 3 4 a)))
-    //              (print a b c d e))
-    // =>
-    // (let ((#<gensym1> (lambda () (values 1 2)))
-    //       (#<gensym2> (lambda () (values 3 4 a))))
-    //   (let*-values (((a b) #<gensym1>)
-    //                 ((c d . e) #<gensym2>))
-    //                 (print a b c d e)))
-      var mv_bindings = x.cdr.car;
-      var body = x.cdr.cdr;
-      var ret = null;
-
-      var let_bindings = nil;
-      var let_star_values_bindings = nil;
-      _.each(mv_bindings.to_array().reverse(), function (item) {
-	  var init = item.cdr.car;
-	  var tmpsym = BiwaScheme.gensym()
-	  var binding = new Pair(tmpsym,
-				 new Pair(
-					  new Pair(Sym("lambda"), new Pair(nil,
-									   new Pair(init, nil))),
-					  nil));
-	  let_bindings = new Pair(binding, let_bindings);
-
-	  var formals = item.car;
-	  let_star_values_bindings = new Pair(new Pair (formals, new Pair(new Pair(tmpsym, nil), nil)),
-					      let_star_values_bindings);
-      });
-
-      var let_star_values = new Pair(Sym("let*-values"),
-				     new Pair(let_star_values_bindings,
-					      body));
-      ret = new Pair(Sym("let"),
-		     new Pair(let_bindings,
-			      new Pair (let_star_values, nil)));
-      return ret;
-
-  });
-
-  //let*-values
-  define_syntax("let*-values", function(x){
-    // (let*-values (((a b) (values 1 2))
-    //               ((c d . e) (values 3 4 a)))
-    //   (print a b c d e))
-    // -> (call-with-values
-    //      (lambda () (values 1 2))
-    //      (lambda (a b)
-    //        (call-with-values
-    //          (lambda () (values 3 4 a))
-    //          (lambda (c d . e)
-    //            (print a b c d e)))))
-    var mv_bindings = x.cdr.car;
-    var body = x.cdr.cdr;
-
-    var ret = null;
-
-    _.each(mv_bindings.to_array().reverse(), function(item){
-      var formals = item.car, init = item.cdr.car;
-      ret = new Pair(Sym("call-with-values"),
-              new Pair(new Pair(Sym("lambda"),
-                         new Pair(nil,
-                           new Pair(init, nil))),
-                new Pair(new Pair(Sym("lambda"),
-                           new Pair(formals,
-                             (ret == null ? body
-                                          : new Pair(ret, nil)))), nil)));
-    });
-    return ret;
-  });
-  //            11.4.7  Sequencing
-  //(begin)
-
-  //
-  //        11.5  Equivalence predicates
-  //
-  define_libfunc("eqv?", 2, 2, function(ar){
-    return BiwaScheme.eqv(ar[0], ar[1]);
-  })
-  define_libfunc("eq?", 2, 2, function(ar){
-    return BiwaScheme.eq(ar[0], ar[1]);
-  })
-  define_libfunc("equal?", 2, 2, function(ar){
-    return BiwaScheme.equal(ar[0], ar[1]);
-  })
-
-  //
-  //        11.6  Procedure predicate
-  //
-  //"procedure?", 1, 1
-  define_libfunc("procedure?", 1, 1, function(ar){
-    return ((ar[0] instanceof Array) && (ar[0].closure_p === true)
-	    || (typeof ar[0] == "function"));
-  })
-
-  //
-  //        11.7  Arithmetic
-  //
-
-  //            11.7.1  Propagation of exactness and inexactness
-  //            11.7.2  Representability of infinities and NaNs
-  //            11.7.3  Semantics of common operations
-  //                11.7.3.1  Integer division
-  //                11.7.3.2  Transcendental functions
-  //(no functions are introduced by above sections)
-
-  //
-  //            11.7.4  Numerical operations
-  //
-
-  //                11.7.4.1  Numerical type predicates
-  define_libfunc("number?", 1, 1, function(ar){
-    return BiwaScheme.isNumber(ar[0]);
-  });
-  define_libfunc("complex?", 1, 1, function(ar){
-    return BiwaScheme.isComplex(ar[0]);
-  });
-  define_libfunc("real?", 1, 1, function(ar){
-    return BiwaScheme.isReal(ar[0]);
-  });
-  define_libfunc("rational?", 1, 1, function(ar){
-    return BiwaScheme.isRational(ar[0]);
-  });
-  define_libfunc("integer?", 1, 1, function(ar){
-    return BiwaScheme.isInteger(ar[0]);
-  });
-
-//(real-valued? obj)    procedure
-//(rational-valued? obj)    procedure
-//(integer-valued? obj)    procedure
-//
-//(exact? z)    procedure
-//(inexact? z)    procedure
-
-  //                11.7.4.2  Generic conversions
-  //
-//(inexact z)    procedure
-//(exact z)    procedure
-//
-  //                11.7.4.3  Arithmetic operations
-
-  //inf & nan: ok (for this section)
-  define_libfunc("=", 2, null, function(ar){
-    var v = ar[0];
-    assert_number(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_number(ar[i]);
-      if(real_part(ar[i]) != real_part(v)) return false;
-      if(imag_part(ar[i]) != imag_part(v)) return false;
-    }
-    return true;
-  });
-  define_libfunc("<", 2, null, function(ar){
-    assert_number(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_number(ar[i]);
-      if(!(ar[i-1] < ar[i])) return false;
-    }
-    return true;
-  });
-  define_libfunc(">", 2, null, function(ar){
-    assert_number(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_number(ar[i]);
-      if(!(ar[i-1] > ar[i])) return false;
-    }
-    return true;
-  });
-  define_libfunc("<=", 2, null, function(ar){
-    assert_number(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_number(ar[i]);
-      if(!(ar[i-1] <= ar[i])) return false;
-    }
-    return true;
-  });
-  define_libfunc(">=", 2, null, function(ar){
-    assert_number(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_number(ar[i]);
-      if(!(ar[i-1] >= ar[i])) return false;
-    }
-    return true;
-  });
-
-  define_libfunc("zero?", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return ar[0] === 0;
-  });
-  define_libfunc("positive?", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return (ar[0] > 0);
-  });
-  define_libfunc("negative?", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return (ar[0] < 0);
-  });
-  define_libfunc("odd?", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return (ar[0] % 2 == 1) || (ar[0] % 2 == -1);
-  })
-  define_libfunc("even?", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return ar[0] % 2 == 0;
-  })
-  define_libfunc("finite?", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return (ar[0] != Infinity) && (ar[0] != -Infinity) && !isNaN(ar[0]);
-  })
-  define_libfunc("infinite?", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return (ar[0] == Infinity) || (ar[0] == -Infinity);
-  })
-  define_libfunc("nan?", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return isNaN(ar[0]);
-  })
-  define_libfunc("max", 2, null, function(ar){
-    for(var i=0; i<ar.length; i++)
-      assert_number(ar[i]);
-
-    return Math.max.apply(null, ar)
-  });
-  define_libfunc("min", 2, null, function(ar){
-    for(var i=0; i<ar.length; i++)
-      assert_number(ar[i]);
-
-    return Math.min.apply(null, ar);
-  });
-
-  var complex_or_real = function(real,imag){
-    if(imag === 0) return real;
-    return new Complex(real,imag);
-  }
-  var polar_or_real = function(magnitude, angle){
-      if(angle === 0) return magnitude;
-      return Complex.from_polar(magnitude, angle);
-  }
-  define_libfunc("+", 0,null, function(ar){
-    var real = 0;
-    var imag = 0;
-    for(var i=0; i<ar.length; i++){
-      assert_number(ar[i]);
-      real+=real_part(ar[i]);
-      imag+=imag_part(ar[i]);
-    }
-    return complex_or_real(real,imag);
-  });
-  var the_magnitude = function(n) {
-      if(n instanceof Complex) return n.magnitude();
-      return n;
-  }
-  var the_angle = function(n) {
-      if(n instanceof Complex) return n.angle();
-      return 0;
-  }
-  define_libfunc("*", 0,null, function(ar){
-    var magnitude = 1;
-    var angle = 0;
-    for(var i=0; i<ar.length; i++){
-      assert_number(ar[i]);
-      magnitude*=the_magnitude(ar[i]);
-      angle+=the_angle(ar[i]);
-    }
-    return polar_or_real(magnitude, angle);
-  });
-  define_libfunc("-", 1,null, function(ar){
-    var len = ar.length;
-    assert_number(ar[0]);
-
-    if(len == 1) {
-      if(ar[0] instanceof Complex) return new Complex(-real_part(ar[0]),-imag_part(ar[0]));
-      return -ar[0];
-    }
-    else{
-      var real = real_part(ar[0]);
-      var imag = imag_part(ar[0]);
-      for(var i=1; i<len; i++){
-        assert_number(ar[i]);
-        real-=real_part(ar[i]);
-        imag-=imag_part(ar[i]);
-      }
-      return complex_or_real(real,imag);
-    }
-  });
-  //for r6rs specification, (/ 0 0) or (/ 3 0) raises '&assertion exception'
-  define_libfunc("/", 1,null, function(ar){
-    var len = ar.length;
-    assert_number(ar[0]);
-
-    if(len == 1){
-      if (ar[0] instanceof Complex) return Complex.from_polar(1/the_magnitude(ar[0]), -the_angle(ar[0]));
-      return 1/ar[0];
-    }
-    else{
-      var magnitude = the_magnitude(ar[0]);
-      var angle = the_angle(ar[0]);
-      for(var i=1; i<len; i++){
-        assert_number(ar[i]);
-        magnitude/=the_magnitude(ar[i]);
-        angle-=the_angle(ar[i]);
-      }
-      return polar_or_real(magnitude, angle);
-    }
-  });
-
-  define_libfunc("abs", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.abs(ar[0]);
-  });
-
-  var div = function(n, m){
-    return Math.floor(n / m);
-  }
-  var mod = function(n, m){
-    return n - Math.floor(n / m) * m;
-  }
-  var div0 = function(n, m){
-    return (n > 0) ? Math.floor(n / m) : Math.ceil(n / m);
-  }
-  var mod0 = function(n, m){
-    return (n > 0) ? n - Math.floor(n / m) * m
-                   : n - Math.ceil(n / m) * m;
-  }
-  define_libfunc("div0-and-mod0", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return new Values([div(ar[0], ar[1]), mod(ar[0], ar[1])]);
-  })
-  define_libfunc("div", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return div(ar[0], ar[1]);
-  })
-  define_libfunc("mod", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return mod(ar[0], ar[1]);
-  })
-  define_libfunc("div0-and-mod0", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return new Values([div0(ar[0], ar[1]), mod0(ar[0], ar[1])]);
-  })
-  define_libfunc("div0", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return div0(ar[0], ar[1]);
-  })
-  define_libfunc("mod0", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return mod0(ar[0], ar[1]);
-  })
-
-//(gcd n1 ...)    procedure
-//(lcm n1 ...)    procedure
-
-  define_libfunc("numerator", 1, 1, function(ar){
-    assert_number(ar[0]);
-    if(ar[0] instanceof Rational)
-      return ar[0].numerator;
-    else
-      throw new Bug("todo");
-  })
-  define_libfunc("denominator", 1, 1, function(ar){
-    assert_number(ar[0]);
-    if(ar[0] instanceof Rational)
-      return ar[0].denominator;
-    else
-      throw new Bug("todo");
-  })
-  define_libfunc("floor", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.floor(ar[0]);
-  })
-  define_libfunc("ceiling", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.ceil(ar[0]);
-  })
-  define_libfunc("truncate", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return (ar[0] < 0) ? Math.ceil(ar[0]) : Math.floor(ar[0]);
-  })
-  define_libfunc("round", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.round(ar[0]);
-  })
-
-//(rationalize x1 x2)    procedure
-
-  define_libfunc("exp", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.exp(ar[0]);
-  })
-  define_libfunc("log", 1, 2, function(ar){
-    var num = ar[0], base = ar[1];
-    assert_number(num);
-
-    if(base){ // log b num == log e num / log e b
-      assert_number(base);
-      return Math.log(num) / Math.log(b)
-    }
-    else
-      return Math.log(num);
-  })
-  define_libfunc("sin", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.sin(ar[0]);
-  })
-  define_libfunc("cos", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.cos(ar[0]);
-  })
-  define_libfunc("tan", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.tan(ar[0]);
-  })
-  define_libfunc("asin", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.asin(ar[0]);
-  })
-  define_libfunc("acos", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.acos(ar[0]);
-  })
-  define_libfunc("atan", 1, 2, function(ar){
-    assert_number(ar[0]);
-    if(ar.length == 2){
-      assert_number(ar[1]);
-      return Math.atan2(ar[0], ar[1]);
-    }
-    else
-      return Math.atan(ar[0]);
-  })
-  define_libfunc("sqrt", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Math.sqrt(ar[0]);
-  })
-  define_libfunc("exact-integer-sqrt", 1, 1, function(ar){
-    assert_number(ar[0]);
-    var sqrt_f = Math.sqrt(ar[0]);
-    var sqrt_i = sqrt_f - (sqrt_f % 1);
-    var rest   = ar[0] - sqrt_i * sqrt_i;
-
-    return new Values([sqrt_i, rest]);
-  })
-  define_libfunc("expt", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return Math.pow(ar[0], ar[1]);
-  })
-  define_libfunc("make-rectangular", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return new Complex(ar[0], ar[1]);
-  })
-  define_libfunc("make-polar", 2, 2, function(ar){
-    assert_number(ar[0]);
-    assert_number(ar[1]);
-    return Complex.from_polar(ar[0], ar[1]);
-  })
-  var real_part = function(n) {
-    return Complex.assure(n).real;
-  }
-  var imag_part = function(n) {
-    return Complex.assure(n).imag;
-  }
-  define_libfunc("real-part", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return real_part(ar[0]);
-  })
-  define_libfunc("imag-part", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Complex.assure(ar[0]).imag;
-  })
-  define_libfunc("magnitude", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Complex.assure(ar[0]).magnitude();
-  })
-  define_libfunc("angle", 1, 1, function(ar){
-    assert_number(ar[0]);
-    return Complex.assure(ar[0]).angle();
-  })
-
-  //
-  //                11.7.4.4  Numerical Input and Output
-  //
-  define_libfunc("number->string", 1, 3, function(ar){
-    var z = ar[0], radix = ar[1], precision = ar[2];
-    if(precision)
-      throw new Bug("number->string: precision is not yet implemented");
-
-    radix = radix || 10;  //TODO: check radix is 2, 8, 10, or 16.
-    return z.toString(radix);
-  })
-  define_libfunc("string->number", 1, 3, function(ar){
-    var s = ar[0], radix = ar[1] || 10;
-    switch(s){
-      case "+inf.0": return Infinity;
-      case "-inf.0": return -Infinity;
-      case "+nan.0": return NaN;
-      default:       if(s.match(/[eE.]/))
-                       return parseFloat(s);
-                     else
-                       return parseInt(s, radix);
-
-    }
-  })
-
-  //
-  //        11.8  Booleans
-  //
-
-  define_libfunc("not", 1, 1, function(ar){
-    return (ar[0] === false) ? true : false;
-  });
-  define_libfunc("boolean?", 1, 1, function(ar){
-    return (ar[0] === false || ar[0] === true) ? true : false;
-  });
-  define_libfunc("boolean=?", 2, null, function(ar){
-    var len = ar.length;
-    for(var i=1; i<len; i++){
-      if(ar[i] != ar[0]) return false;
-    }
-    return true;
-  });
-
-  //        11.9  Pairs and lists
-
-  define_libfunc("pair?", 1, 1, function(ar){
-    return (ar[0] instanceof Pair) ? true : false;
-  });
-  define_libfunc("cons", 2, 2, function(ar){
-    return new Pair(ar[0], ar[1]);
-  });
-  define_libfunc("car", 1, 1, function(ar){
-    //should raise &assertion for '()...
-    if(!(ar[0] instanceof Pair)) throw new Error("Attempt to apply car on " + ar[0]);
-    return ar[0].car;
-  });
-  define_libfunc("cdr", 1, 1, function(ar){
-    //should raise &assertion for '()...
-    if(!(ar[0] instanceof Pair)) throw new Error("Attempt to apply cdr on " + ar[0]);
-    return ar[0].cdr;
-  });
-  define_libfunc("set-car!", 2, 2, function(ar){
-    if(!(ar[0] instanceof Pair)) throw new Error("Attempt to apply set-car! on " + ar[0]);
-    ar[0].car = ar[1];
-    return BiwaScheme.undef;
-  });
-  define_libfunc("set-cdr!", 2, 2, function(ar){
-    if(!(ar[0] instanceof Pair)) throw new Error("Attempt to apply set-cdr! on " + ar[0]);
-    ar[0].cdr = ar[1];
-    return BiwaScheme.undef;
-  });
-
-  // cadr, caddr, cadddr, etc.
-  (function(){
-    // To traverse into pair and raise error
-    var get = function(funcname, spec, obj){
-      var ret = obj;
-      _.each(spec, function(is_cdr){
-        if(ret instanceof Pair){
-          ret = (is_cdr ? ret.cdr : ret.car);
-        }
-        else{
-          throw new Error(funcname+": attempt to get "+(is_cdr ? "cdr" : "car")+" of "+ret);
-        }
-      });
-      return ret;
-    };
-    define_libfunc("caar", 1, 1, function(ar){ return get("caar", [0, 0], ar[0]); });
-    define_libfunc("cadr", 1, 1, function(ar){ return get("cadr", [1, 0], ar[0]); });
-    define_libfunc("cdar", 1, 1, function(ar){ return get("cadr", [0, 1], ar[0]); });
-    define_libfunc("cddr", 1, 1, function(ar){ return get("cadr", [1, 1], ar[0]); });
-
-    define_libfunc("caaar", 1, 1, function(ar){ return get("caaar", [0, 0, 0], ar[0]); });
-    define_libfunc("caadr", 1, 1, function(ar){ return get("caadr", [1, 0, 0], ar[0]); });
-    define_libfunc("cadar", 1, 1, function(ar){ return get("cadar", [0, 1, 0], ar[0]); });
-    define_libfunc("caddr", 1, 1, function(ar){ return get("caddr", [1, 1, 0], ar[0]); });
-    define_libfunc("cdaar", 1, 1, function(ar){ return get("cdaar", [0, 0, 1], ar[0]); });
-    define_libfunc("cdadr", 1, 1, function(ar){ return get("cdadr", [1, 0, 1], ar[0]); });
-    define_libfunc("cddar", 1, 1, function(ar){ return get("cddar", [0, 1, 1], ar[0]); });
-    define_libfunc("cdddr", 1, 1, function(ar){ return get("cdddr", [1, 1, 1], ar[0]); });
-
-    define_libfunc("caaaar", 1, 1, function(ar){ return get("caaaar", [0, 0, 0, 0], ar[0]); });
-    define_libfunc("caaadr", 1, 1, function(ar){ return get("caaadr", [1, 0, 0, 0], ar[0]); });
-    define_libfunc("caadar", 1, 1, function(ar){ return get("caadar", [0, 1, 0, 0], ar[0]); });
-    define_libfunc("caaddr", 1, 1, function(ar){ return get("caaddr", [1, 1, 0, 0], ar[0]); });
-    define_libfunc("cadaar", 1, 1, function(ar){ return get("cadaar", [0, 0, 1, 0], ar[0]); });
-    define_libfunc("cadadr", 1, 1, function(ar){ return get("cadadr", [1, 0, 1, 0], ar[0]); });
-    define_libfunc("caddar", 1, 1, function(ar){ return get("caddar", [0, 1, 1, 0], ar[0]); });
-    define_libfunc("cadddr", 1, 1, function(ar){ return get("cadddr", [1, 1, 1, 0], ar[0]); });
-    define_libfunc("cdaaar", 1, 1, function(ar){ return get("cdaaar", [0, 0, 0, 1], ar[0]); });
-    define_libfunc("cdaadr", 1, 1, function(ar){ return get("cdaadr", [1, 0, 0, 1], ar[0]); });
-    define_libfunc("cdadar", 1, 1, function(ar){ return get("cdadar", [0, 1, 0, 1], ar[0]); });
-    define_libfunc("cdaddr", 1, 1, function(ar){ return get("cdaddr", [1, 1, 0, 1], ar[0]); });
-    define_libfunc("cddaar", 1, 1, function(ar){ return get("cddaar", [0, 0, 1, 1], ar[0]); });
-    define_libfunc("cddadr", 1, 1, function(ar){ return get("cddadr", [1, 0, 1, 1], ar[0]); });
-    define_libfunc("cdddar", 1, 1, function(ar){ return get("cdddar", [0, 1, 1, 1], ar[0]); });
-    define_libfunc("cddddr", 1, 1, function(ar){ return get("cddddr", [1, 1, 1, 1], ar[0]); });
-  })();
-
-  define_libfunc("null?", 1, 1, function(ar){
-    return (ar[0] === nil);
-  });
-  define_libfunc("list?", 1, 1, function(ar){
-    return isList(ar[0]);
-  });
-  define_libfunc("list", 0, null, function(ar){
-    var l = nil;
-    for(var i=ar.length-1; i>=0; i--)
-      l = new Pair(ar[i], l);
-    return l;
-  });
-  define_libfunc("length", 1, 1, function(ar){
-    assert_list(ar[0]);
-    var n = 0;
-    for(var o=ar[0]; o!=nil; o=o.cdr)
-      n++;
-    return n;
-  });
-  define_libfunc("append", 2, null, function(ar){
-    var k = ar.length
-    var ret = ar[--k];
-    while(k--){
-      _.each(ar[k].to_array().reverse(), function(item){
-        ret = new Pair(item, ret);
-      });
-    }
-    return ret;
-  });
-  define_libfunc("reverse", 1, 1, function(ar){
-    // (reverse '()) => '()
-    if(ar[0] == nil)
-      return nil;
-    assert_pair(ar[0]);
-
-    var l = nil;
-    for(var o=ar[0]; o!=nil; o=o.cdr)
-      l = new Pair(o.car, l);
-    return l;
-  });
-  define_libfunc("list-tail", 2, 2, function(ar){
-    assert_pair(ar[0]);
-    assert_integer(ar[1]);
-    if(ar[1] < 0)
-      throw new Error("list-tail: index out of range ("+ar[1]+")");
-
-    var o = ar[0];
-    for(var i=0; i<ar[1]; i++){
-      if(!(o instanceof Pair)) throw new Error("list-tail: the list is shorter than " + ar[1]);
-      o = o.cdr;
-    }
-    return o;
-  });
-  define_libfunc("list-ref", 2, 2, function(ar){
-    assert_pair(ar[0]);
-    assert_integer(ar[1]);
-    if(ar[1] < 0)
-      throw new Error("list-tail: index out of range ("+ar[1]+")");
-
-    var o = ar[0];
-    for(var i=0; i<ar[1]; i++){
-      if(!(o instanceof Pair)) throw new Error("list-ref: the list is shorter than " + ar[1]);
-      o = o.cdr;
-    }
-    return o.car;
-  });
-  define_libfunc("map", 2, null, function(ar){
-    var proc = ar.shift(), lists = ar;
-    _.each(lists, assert_list);
-
-    var a = [];
-    return Call.multi_foreach(lists, {
-      // Called for each element
-      // input: the element (or the elements, if more than one list is given)
-      // output: a Call request of proc and args
-      call: function(xs){
-        return new Call(proc, _.map(xs, function(x){ return x.car }));
-      },
-
-      // Called when each Call request is finished
-      // input: the result of Call request,
-      //   the element(s) of the Call request (which is not used here)
-      // output: `undefined' to continue,
-      //   some value to terminate (the value will be the result)
-      result: function(res){ a.push(res); },
-
-      // Called when reached to the end of the list(s)
-      // input: none
-      // output: the resultant value
-      finish: function(){ return array_to_list(a); }
-    })
-  })
-  define_libfunc("for-each", 2, null, function(ar){
-    var proc = ar.shift(), lists = ar;
-    _.each(lists, assert_list);
-
-    return Call.multi_foreach(lists, {
-      call: function(xs){
-        return new Call(proc, _.map(xs, function(x){ return x.car }));
-      },
-      finish: function(){ return BiwaScheme.undef; }
-    })
-  })
-
-  //        11.10  Symbols
-
-  define_libfunc("symbol?", 1, 1, function(ar){
-    return (ar[0] instanceof Symbol) ? true : false;
-  });
-  define_libfunc("symbol->string", 1, 1, function(ar){
-    assert_symbol(ar[0]);
-    return ar[0].name;
-  });
-  define_libfunc("symbol=?", 2, null, function(ar){
-    assert_symbol(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_symbol(ar[i]);
-      if(ar[i] != ar[0]) return false;
-    }
-    return true;
-  });
-  define_libfunc("string->symbol", 1, 1, function(ar){
-    assert_string(ar[0]);
-    return Sym(ar[0]);
-  });
-
-<<<<<<< HEAD
-  //
-  //        11.11  Characters
-  //
-  define_libfunc('char?', 1, 1, function(ar){
-    return (ar[0] instanceof Char);
-  });
-  define_libfunc('char->integer', 1, 1, function(ar){
-    assert_char(ar[0]);
-    return ar[0].value.charCodeAt(0);
-  })
-  define_libfunc('integer->char', 1, 1, function(ar){
-    assert_integer(ar[0]);
-    return Char.get(String.fromCharCode(ar[0]));
-  })
-=======
-/***/ }),
-/* 41 */
-/***/ (function(module, exports) {
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
-
-  var make_char_compare_func = function(test){
-    return function(ar){
-      assert_char(ar[0]);
-      for(var i=1; i<ar.length; i++){
-        assert_char(ar[i]);
-        if(!test(ar[i-1].value, ar[i].value))
-          return false;
-      }
-      return true;
-    }
-  }
-  define_libfunc('char=?', 2, null,
-    make_char_compare_func(function(a, b){ return a == b }))
-  define_libfunc('char<?', 2, null,
-    make_char_compare_func(function(a, b){ return a < b }))
-  define_libfunc('char>?', 2, null,
-    make_char_compare_func(function(a, b){ return a > b }))
-  define_libfunc('char<=?', 2, null,
-    make_char_compare_func(function(a, b){ return a <= b }))
-  define_libfunc('char>=?', 2, null,
-    make_char_compare_func(function(a, b){ return a >= b }))
-
-  //
-  //        11.12  Strings
-  //
-  define_libfunc("string?", 1, 1, function(ar){
-    return (typeof(ar[0]) == "string");
-  })
-  define_libfunc("make-string", 1, 2, function(ar){
-    assert_integer(ar[0]);
-    var c = " ";
-    if(ar[1]){
-      assert_char(ar[1]);
-      c = ar[1].value;
-    }
-    var out = "";
-    _.times(ar[0], function() { out += c; });
-    return out;
-  })
-  define_libfunc("string", 1, null, function(ar){
-    for(var i=0; i<ar.length; i++)
-      assert_char(ar[i]);
-    return _.map(ar, function(c){ return c.value }).join("");
-  })
-  define_libfunc("string-length", 1, 1, function(ar){
-    assert_string(ar[0]);
-    return ar[0].length;
-  })
-  define_libfunc("string-ref", 2, 2, function(ar){
-    assert_string(ar[0]);
-    assert_between(ar[1], 0, ar[0].length-1);
-    return Char.get(ar[0].charAt([ar[1]]));
-  })
-  define_libfunc("string=?", 2, null, function(ar){
-    assert_string(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_string(ar[i]);
-      if(ar[0] != ar[i]) return false;
-    }
-    return true;
-  })
-  define_libfunc("string<?", 2, null, function(ar){
-    assert_string(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_string(ar[i]);
-      if(!(ar[i-1] < ar[i])) return false;
-    }
-    return true;
-  })
-  define_libfunc("string>?", 2, null, function(ar){
-    assert_string(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_string(ar[i]);
-      if(!(ar[i-1] > ar[i])) return false;
-    }
-    return true;
-  })
-  define_libfunc("string<=?", 2, null, function(ar){
-    assert_string(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_string(ar[i]);
-      if(!(ar[i-1] <= ar[i])) return false;
-    }
-    return true;
-  })
-  define_libfunc("string>=?", 2, null, function(ar){
-    assert_string(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      assert_string(ar[i]);
-      if(!(ar[i-1] >= ar[i])) return false;
-    }
-    return true;
-  })
-
-  define_libfunc("substring", 3, 3, function(ar){
-    assert_string(ar[0]);
-    assert_integer(ar[1]);
-    assert_integer(ar[2]);
-
-    if(ar[1] < 0) throw new Error("substring: start too small: "+ar[1]);
-    if(ar[2] < 0) throw new Error("substring: end too small: "+ar[2]);
-    if(ar[0].length+1 <= ar[1]) throw new Error("substring: start too big: "+ar[1]);
-    if(ar[0].length+1 <= ar[2]) throw new Error("substring: end too big: "+ar[2]);
-    if(!(ar[1] <= ar[2])) throw new Error("substring: not start <= end: "+ar[1]+", "+ar[2]);
-
-    return ar[0].substring(ar[1], ar[2]);
-  })
-
-  define_libfunc("string-append", 0, null, function(ar){
-    for(var i=0; i<ar.length; i++)
-      assert_string(ar[i]);
-
-    return ar.join("");
-  })
-  define_libfunc("string->list", 1, 1, function(ar){
-    assert_string(ar[0]);
-    return array_to_list(_.map(ar[0].split(""), function(s){ return Char.get(s[0]); }));
-  })
-  define_libfunc("list->string", 1, 1, function(ar){
-    assert_list(ar[0]);
-    return _.map(ar[0].to_array(), function(c){ return c.value; }).join("");
-  })
-  define_libfunc("string-for-each", 2, null, function(ar){
-    var proc = ar.shift(), strs = ar;
-    _.each(strs, assert_string);
-
-    return Call.multi_foreach(strs, {
-      call: function(chars){ return new Call(proc, chars); },
-      finish: function(){ return BiwaScheme.undef; }
-    })
-  })
-  define_libfunc("string-copy", 1, 1, function(ar){
-    // note: this is useless, because javascript strings are immutable
-    assert_string(ar[0]);
-    return ar[0];
-  })
-
-
-  //
-  //        11.13  Vectors
-  //
-  define_libfunc("vector?", 1, 1, function(ar){
-    return (ar[0] instanceof Array) && (ar[0].closure_p !== true)
-  })
-  define_libfunc("make-vector", 1, 2, function(ar){
-    assert_integer(ar[0]);
-    var vec = new Array(ar[0]);
-
-    if(ar.length == 2){
-      for(var i=0; i<ar[0]; i++)
-        vec[i] = ar[1];
-    }
-    return vec;
-  })
-  define_libfunc("vector", 1, null, function(ar){
-    return ar;
-  })
-  define_libfunc("vector-length", 1, 1, function(ar){
-    assert_vector(ar[0]);
-    return ar[0].length;
-  })
-  define_libfunc("vector-ref", 2, 2, function(ar){
-    assert_vector(ar[0]);
-    assert_integer(ar[1]);
-    assert_between(ar[1], 0, ar[0].length-1);
-
-    return ar[0][ar[1]];
-  })
-  define_libfunc("vector-set!", 3, 3, function(ar){
-    assert_vector(ar[0]);
-    assert_integer(ar[1]);
-
-    ar[0][ar[1]] = ar[2];
-    return BiwaScheme.undef;
-  })
-  define_libfunc("vector->list", 1, 1, function(ar){
-    assert_vector(ar[0]);
-    return array_to_list(ar[0]);
-  })
-  define_libfunc("list->vector", 1, 1, function(ar){
-    assert_list(ar[0]);
-    return ar[0].to_array();
-  })
-  define_libfunc("vector-fill!", 2, 2, function(ar){
-    assert_vector(ar[0]);
-    var vec = ar[0], obj = ar[1];
-
-    for(var i=0; i<vec.length; i++)
-      vec[i] = obj;
-    return vec;
-  })
-  define_libfunc("vector-map", 2, null, function(ar){
-    var proc = ar.shift(), vecs = ar;
-    _.each(vecs, assert_vector);
-
-    var a = [];
-    return Call.multi_foreach(vecs, {
-      call: function(objs){ return new Call(proc, objs); },
-      result: function(res){ a.push(res); },
-      finish: function(){ return a; }
-    })
-  })
-  define_libfunc("vector-for-each", 2, null, function(ar){
-    var proc = ar.shift(), vecs = ar;
-    _.each(vecs, assert_vector);
-
-    return Call.multi_foreach(vecs, {
-      call: function(objs){ return new Call(proc, objs); },
-      finish: function(){ return BiwaScheme.undef; }
-    })
-  })
-
-  //
-  //        11.14  Errors and violations
-  //
-//(error who message irritant1 ...)    procedure
-//(assertion-violation who message irritant1 ...)    procedure
-//(assert <expression>)    syntax
-
-  //
-  //        11.15  Control features
-  //
-  define_libfunc("apply", 2, null, function(ar){
-    var proc = ar.shift(), rest_args = ar.pop(), args = ar;
-    args = args.concat(rest_args.to_array());
-
-    return new Call(proc, args);
-  })
-  define_syntax("call-with-current-continuation", function(x){
-    return new Pair(Sym("call/cc"),
-             x.cdr);
-  })
-  define_libfunc("values", 0, null, function(ar){
-    if (ar.length == 1) // eg. (values 3)
-      return ar[0];
-    else
-      return new Values(ar);
-  })
-  define_libfunc("call-with-values", 2, 2, function(ar){
-    var producer = ar[0], consumer = ar[1];
-    assert_procedure(producer);
-    assert_procedure(consumer);
-    return new Call(producer, [], function(ar){
-      var result = ar[0];
-      if(result instanceof Values){
-        return new Call(consumer, result.content);
-      }
-      else{
-        // eg. (call-with-values (lambda () 3)
-        //                       (lambda (x) x))
-        return new Call(consumer, [result]);
-      }
-    })
-  })
-
-  //
-  //dynamic-wind
-
-  //        11.16  Iteration
-  //named let
-
-  //        11.17  Quasiquotation
-  //quasiquote
-  var expand_qq = function(f, lv){
-    if(f instanceof Symbol || f === nil){
-      return List(Sym("quote"), f);
-    }
-    else if(f instanceof Pair){
-      var car = f.car;
-      if(car instanceof Pair && car.car === Sym("unquote-splicing")){
-        var lv = lv-1;
-        if(lv == 0)
-          return List(Sym("append"),
-                      f.car.cdr.car,
-                      expand_qq(f.cdr, lv+1));
-        else
-          return List(Sym("cons"),
-                      List(Sym("list"), Sym("unquote-splicing"), expand_qq(f.car.cdr.car, lv)),
-                      expand_qq(f.cdr, lv+1));
-      }
-      else if(car === Sym("unquote")){
-        var lv = lv-1;
-        if(lv == 0)
-          return f.cdr.car;
-        else
-          return List(Sym("list"),
-                      List(Sym("quote"), Sym("unquote")),
-                      expand_qq(f.cdr.car, lv));
-      }
-      else if(car === Sym("quasiquote"))
-        return List(Sym("list"),
-                    Sym("quasiquote"),
-                    expand_qq(f.cdr.car, lv+1));
-      else
-        return List(Sym("cons"),
-                    expand_qq(f.car, lv),
-                    expand_qq(f.cdr, lv));
-    }
-    else if(f instanceof Array){
-      throw new Bug("vector quasiquotation is not implemented yet");
-    }
-//      // `#(1 2 (unquote f))
-//      // (vector 1 2 f)
-//      // `#(1 2 (unquote-splicing f) 3)
-//      // (vector-append
-//      //   (vector 1 2)
-//      //   f
-//      //   (vector 3))
-//      // `#(1 2 `#(3 ,,f) 4)
-//      // (vector 1 2 `#(3 ,g) 4)
-//      var len = f.length;
-//      if(len == 0) return f;
-//
-//      var vecs = [[]];
-//      for(var i=0; i<len; i++){
-//        if(f[i] instanceof Pair){
-//          if(f[i].car === Sym("unquote")){
-//            var lv = lv - 1;
-//            if(lv == 0)
-//              vecs.last().push(f[i]);
-//            else
-//              vecs.push()
-//          }
-//      }
-//
-//      var car = f[0];
-//      if(car === Sym("unquote")){
-//        var lv = lv - 1;
-//        if(lv == 0)
-//          return f.cdr.car;
-//        else
-//          return List(Sym("vector"),
-//                      List(Sym("quote"), Sym("unquote")),
-//                      expand_qq(f.cdr.car, lv));
-//      }
-//      else{
-////        return [ Sym("vector"),
-////                 expand_qq(
-//      }
-//    }
-//  }
-    else
-      return f;
-  }
-  define_syntax("quasiquote", function(x){
-    return expand_qq(x.cdr.car, 1);
-  })
-  //unquote
-  define_syntax("unquote", function(x){
-    throw new Error("unquote(,) must be inside quasiquote(`)");
-  })
-  //unquote-splicing
-  define_syntax("unquote-splicing", function(x){
-    throw new Error("unquote-splicing(,@) must be inside quasiquote(`)");
-  })
-
-  //        11.18  Binding constructs for syntactic keywords
-  //let-syntax
-  //letrec-syntax
-
-  //        11.19  Macro transformers
-  //syntax-rules
-  //identifier-syntax
-  //
-
-  //        11.20  Tail calls and tail contexts
-  //(no library function introduced)
-
-
-  ///
-  /// R6RS Standard Libraries
-  ///
-
-  //
-  // Chapter 1 Unicode
-  //
-//(char-upcase char)    procedure
-//(char-downcase char)    procedure
-//(char-titlecase char)    procedure
-//(char-foldcase char)    procedure
-//
-//(char-ci=? char1 char2 char3 ...)    procedure
-//(char-ci<? char1 char2 char3 ...)    procedure
-//(char-ci>? char1 char2 char3 ...)    procedure
-//(char-ci<=? char1 char2 char3 ...)    procedure
-//(char-ci>=? char1 char2 char3 ...)    procedure
-//
-//(char-alphabetic? char)    procedure
-//(char-numeric? char)    procedure
-//(char-whitespace? char)    procedure
-//(char-upper-case? char)    procedure
-//(char-lower-case? char)    procedure
-//(char-title-case? char)    procedure
-//
-//(char-general-category char)    procedure
-
-  //(string-upcase string)    procedure
-  define_libfunc("string-upcase", 1, 1, function(ar){
-    assert_string(ar[0]);
-    return ar[0].toUpperCase();
-  });
-  //(string-downcase string)    procedure
-  define_libfunc("string-downcase", 1, 1, function(ar){
-    assert_string(ar[0]);
-    return ar[0].toLowerCase();
-  });
-//(string-titlecase string)    procedure
-//(string-foldcase string)    procedure
-
-  BiwaScheme.make_string_ci_function = function(compare){
-    return function(ar){
-      assert_string(ar[0]);
-      var str = ar[0].toUpperCase();
-
-      for(var i=1; i<ar.length; i++){
-        assert_string(ar[i]);
-        if (!compare(str, ar[i].toUpperCase()))
-          return false;
-      }
-      return true;
-    }
-  };
-  //(string-ci=? string1 string2 string3 ...)    procedure
-  define_libfunc("string-ci=?", 2, null,
-    make_string_ci_function(function(a, b){ return a == b; }));
-  //(string-ci<? string1 string2 string3 ...)    procedure
-  define_libfunc("string-ci<?", 2, null,
-    make_string_ci_function(function(a, b){ return a < b; }));
-  //(string-ci>? string1 string2 string3 ...)    procedure
-  define_libfunc("string-ci>?", 2, null,
-    make_string_ci_function(function(a, b){ return a > b; }));
-  //(string-ci<=? string1 string2 string3 ...)    procedure
-  define_libfunc("string-ci<=?", 2, null,
-    make_string_ci_function(function(a, b){ return a <= b; }));
-  //(string-ci>=? string1 string2 string3 ...)    procedure
-  define_libfunc("string-ci>=?", 2, null,
-    make_string_ci_function(function(a, b){ return a >= b; }));
-
-//(string-normalize-nfd string)    procedure
-//(string-normalize-nfkd string)    procedure
-//(string-normalize-nfc string)    procedure
-//(string-normalize-nfkc string)    procedure
-
-  //
-  // Chapter 2 Bytevectors
-  //
-
-  //
-  // Chapter 3 List utilities
-  //
-  define_libfunc("find", 2, 2, function(ar){
-    var proc = ar[0], ls = ar[1];
-    assert_list(ls);
-    return Call.foreach(ls, {
-      call: function(x){ return new Call(proc, [x.car]) },
-      result: function(res, x){ if(res) return x.car; },
-      finish: function(){ return false }
-    })
-  })
-  define_libfunc("for-all", 2, null, function(ar){
-    var proc = ar.shift();
-    var lists = ar;
-    _.each(lists, assert_list);
-
-    var last = true; //holds last result which proc returns
-    return Call.multi_foreach(lists, {
-      call: function(pairs){
-        return new Call(proc, _.map(pairs, function(x){ return x.car }));
-      },
-      result: function(res, pairs){
-        if(res === false) return false;
-        last = res;
-      },
-      finish: function(){ return last; }
-    })
-  })
-  define_libfunc("exists", 2, null, function(ar){
-    var proc = ar.shift();
-    var lists = ar;
-    _.each(lists, assert_list);
-
-    return Call.multi_foreach(lists, {
-      call: function(pairs){
-        return new Call(proc, _.map(pairs, function(x){ return x.car }));
-      },
-      result: function(res, pairs){
-        if(res !== false) return res;
-      },
-      finish: function(){ return false; }
-    })
-  })
-  define_libfunc("filter", 2, 2, function(ar){
-    var proc = ar[0], ls = ar[1];
-    assert_list(ls);
-
-    var a = [];
-    return Call.foreach(ls, {
-      call: function(x){ return new Call(proc, [x.car]) },
-      result: function(res, x){ if(res) a.push(x.car); },
-      finish: function(){ return array_to_list(a) }
-    })
-  })
-//  define_scmfunc("partition+", 2, 2,
-//    "(lambda (proc ls)  \
-//       (define (partition2 proc ls t f) \
-//         (if (null? ls) \
-//           (values (reverse t) (reverse f)) \
-//           (if (proc (car ls)) \
-//             (partition2 proc (cdr ls) (cons (car ls) t) f) \
-//             (partition2 proc (cdr ls) t (cons (car ls) f))))) \
-//       (partition2 proc ls '() '()))");
-
-  define_libfunc("partition", 2, 2, function(ar){
-    var proc = ar[0], ls = ar[1];
-    assert_list(ls);
-
-    var t = [], f = [];
-    return Call.foreach(ls, {
-      call: function(x){ return new Call(proc, [x.car]) },
-      result: function(res, x){
-        if(res) t.push(x.car);
-        else    f.push(x.car);
-      },
-      finish: function(){
-        return new Values([array_to_list(t), array_to_list(f)]);
-      }
-    })
-  })
-  define_libfunc("fold-left", 3, null, function(ar){
-    var proc = ar.shift(), accum = ar.shift(), lists = ar;
-    _.each(lists, assert_list);
-
-    return Call.multi_foreach(lists, {
-      call: function(pairs){
-        var args = _.map(pairs, function(x){ return x.car });
-        args.unshift(accum);
-        return new Call(proc, args);
-      },
-      result: function(res, pairs){ accum = res; },
-      finish: function(){ return accum; }
-    })
-  })
-  define_libfunc("fold-right", 3, null, function(ar){
-    var proc = ar.shift(), accum = ar.shift();
-    var lists = _.map(ar, function(ls){
-      // reverse each list
-      assert_list(ls);
-      return array_to_list(ls.to_array().reverse());
-    })
-
-    return Call.multi_foreach(lists, {
-      call: function(pairs){
-        var args = _.map(pairs, function(x){ return x.car });
-        args.push(accum);
-        return new Call(proc, args);
-      },
-      result: function(res, pairs){ accum = res; },
-      finish: function(){ return accum; }
-    })
-  })
-  define_libfunc("remp", 2, 2, function(ar){
-    var proc = ar[0], ls = ar[1];
-    assert_list(ls);
-
-    var ret = [];
-    return Call.foreach(ls, {
-      call: function(x){ return new Call(proc, [x.car]) },
-      result: function(res, x){ if(!res) ret.push(x.car); },
-      finish: function(){ return array_to_list(ret); }
-    })
-  })
-  var make_remover = function(key){
-    return function(ar){
-      var obj = ar[0], ls = ar[1];
-      assert_list(ls);
-
-      var ret = [];
-      return Call.foreach(ls, {
-        call: function(x){
-          return new Call(TopEnv[key] || CoreEnv[key], [obj, x.car])
-        },
-        result: function(res, x){ if(!res) ret.push(x.car); },
-        finish: function(){ return array_to_list(ret); }
-      })
-    }
-  }
-  define_libfunc("remove", 2, 2, make_remover("equal?"));
-  define_libfunc("remv", 2, 2, make_remover("eqv?"));
-  define_libfunc("remq", 2, 2, make_remover("eq?"));
-
-  define_libfunc("memp", 2, 2, function(ar){
-    var proc = ar[0], ls = ar[1];
-    assert_list(ls);
-
-    var ret = [];
-    return Call.foreach(ls, {
-      call: function(x){ return new Call(proc, [x.car]) },
-      result: function(res, x){ if(res) return x; },
-      finish: function(){ return false; }
-    })
-  })
-  var make_finder = function(key){
-    return function(ar){
-      var obj = ar[0], ls = ar[1];
-      assert_list(ls);
-
-      var ret = [];
-      return Call.foreach(ls, {
-        call: function(x){
-          return new Call(TopEnv[key] || CoreEnv[key], [obj, x.car])
-        },
-        result: function(res, x){ if(res) return x; },
-        finish: function(){ return false; }
-      })
-    }
-  }
-  define_libfunc("member", 2, 2, make_finder("equal?"));
-  define_libfunc("memv", 2, 2, make_finder("eqv?"));
-  define_libfunc("memq", 2, 2, make_finder("eq?"));
-
-  define_libfunc("assp", 2, 2, function(ar){
-    var proc = ar[0], als = ar[1];
-    assert_list(als);
-
-    var ret = [];
-    return Call.foreach(als, {
-      call: function(x){
-        if(x.car.car)
-          return new Call(proc, [x.car.car]);
-        else
-          throw new Error("ass*: pair required but got "+to_write(x.car));
-      },
-      result: function(res, x){ if(res) return x.car; },
-      finish: function(){ return false; }
-    })
-  })
-  var make_assoc = function(func_name, eq_func_name){
-    return function(ar){
-      var obj = ar[0], list = ar[1];
-      assert_list(list);
-
-      var ret = [];
-      return Call.foreach(list, {
-        call: function(ls){
-          if(!BiwaScheme.isPair(ls.car))
-            throw new Error(func_name+": pair required but got "+to_write(ls.car));
-
-          var equality = (TopEnv[eq_func_name] || CoreEnv[eq_func_name]);
-          return new Call(equality, [obj, ls.car.car]);
-        },
-        result: function(was_equal, ls){ if(was_equal) return ls.car; },
-        finish: function(){ return false; }
-      })
-    }
-  }
-  define_libfunc("assoc", 2, 2, make_assoc("assoc", "equal?"));
-  define_libfunc("assv", 2, 2, make_assoc("assv", "eqv?"));
-  define_libfunc("assq", 2, 2, make_assoc("assq", "eq?"));
-
-  define_libfunc("cons*", 1, null, function(ar){
-    if(ar.length == 1)
-      return ar[0];
-    else{
-      var ret = null;
-      _.each(ar.reverse(), function(x){
-        if(ret){
-          ret = new Pair(x, ret);
-        }
-        else
-          ret = x;
-      })
-      return ret;
-    }
-  });
-
-  //
-  // Chapter 4 Sorting
-  //
-  (function(){
-    // Destructively sort the given array
-    // with scheme function `proc` as comparator
-    var mergeSort = function(ary, proc, finish) {
-      if (ary.length <= 1) return finish(ary);
-      return mergeSort_(ary, proc, finish, [[0, ary.length, false]], false);
-    };
-
-    var mergeSort_ = function(ary, proc, finish, stack, up) {
-      while(true) {
-        var start = stack[stack.length-1][0],
-            end   = stack[stack.length-1][1],
-            left  = stack[stack.length-1][2];
-        var len = end - start;
-        //console.debug("mergeSort_", ary, stack.join(' '), up?"u":"d", ""+start+".."+(end-1))
-
-        if (len >= 2 && !up) {
-          // There are parts to be sorted
-          stack.push([start, start+(len>>1), true]); continue;
-        }
-        else if (left) {
-          // Left part sorted. Continue to the right one
-          stack.pop();
-          var rend = stack[stack.length-1][1];
-          stack.push([end, rend, false]); up = false; continue;
-        }
-        else {
-          // Right part sorted. Merge left and right
-          stack.pop();
-          var lstart = stack[stack.length-1][0];
-          var ary1 = ary.slice(lstart, start),
-              ary2 = ary.slice(start, end);
-          return merge_(ary1, ary2, proc, [], 0, 0, function(ret) {
-            //console.debug("mergeSortd", ary, stack.join(' '), up?"u":"d", ary1, ary2, ret, ""+start+".."+(start+len-1));
-            for (var i = 0; i < ret.length; i++) {
-              ary[lstart + i] = ret[i];
-            }
-
-            if (stack.length == 1) {
-              return finish(ary);
-            }
-            else {
-              return mergeSort_(ary, proc, finish, stack, true);
-            }
-          });
-        }
-      }
-    };
-
-    var merge_ = function(ary1, ary2, proc, ret, i, j, cont) {
-      //console.debug("merge_", ary1, ary2, ret, i, j);
-      var len1 = ary1.length, len2 = ary2.length;
-      if (i < len1 && j < len2) {
-        return new Call(proc, [ary2[j], ary1[i]], function(ar) {
-          //console.debug("comp", [ary2[j], ary1[i]], ar[0]);
-          if (ar[0]) {
-            ret.push(ary2[j]); j+=1;
-          }
-          else {
-            ret.push(ary1[i]); i+=1;
-          }
-          return merge_(ary1, ary2, proc, ret, i, j, cont);
-        });
-      }
-      else {
-        while (i < len1) { ret.push(ary1[i]); i+=1; }
-        while (j < len2) { ret.push(ary2[j]); j+=1; }
-        return cont(ret)
-      }
-    };
-
-    var compareFn = function(a,b){
-      return BiwaScheme.lt(a, b) ? -1 :
-             BiwaScheme.lt(b, a) ? 1 : 0;
-    };
-
-    define_libfunc("list-sort", 1, 2, function(ar){
-      if(ar[1]){
-        assert_procedure(ar[0]);
-        assert_list(ar[1]);
-        return mergeSort(ar[1].to_array(), ar[0], function(ret) {
-          return array_to_list(ret);
-        });
-      }
-      else {
-        assert_list(ar[0]);
-        return array_to_list(ar[0].to_array().sort(compareFn));
-      }
-    });
-
-    //(vector-sort proc vector)    procedure
-    define_libfunc("vector-sort", 1, 2, function(ar){
-      if(ar[1]){
-        assert_procedure(ar[0]);
-        assert_vector(ar[1]);
-        return mergeSort(_.clone(ar[1]), ar[0], function(ret){
-          return ret;
-        });
-      }
-      else {
-        assert_vector(ar[0]);
-        return _.clone(ar[0]).sort(compareFn);
-      }
-    });
-
-    //(vector-sort! proc vector)    procedure
-    define_libfunc("vector-sort!", 1, 2, function(ar){
-      if(ar[1]){
-        assert_procedure(ar[0]);
-        assert_vector(ar[1]);
-        return mergeSort(ar[1], ar[0], function(ret) {
-          return BiwaScheme.undef;
-        });
-      }
-      else {
-        assert_vector(ar[0]);
-        ar[0].sort(compareFn);
-        return BiwaScheme.undef;
-      }
-    });
-  })();
-
-  //
-  // Chapter 5 Control Structures
-  //
-  define_syntax("when", function(x){
-    //(when test body ...)
-    //=> (if test (begin body ...) #<undef>)
-    var test = x.cdr.car, body = x.cdr.cdr;
-
-    return new Pair(Sym("if"),
-             new Pair(test,
-               new Pair(new Pair(Sym("begin"), body),
-                 new Pair(BiwaScheme.undef, nil))));
-  });
-
-  define_syntax("unless", function(x){
-    //(unless test body ...)
-    //=> (if (not test) (begin body ...) #<undef>)
-    var test = x.cdr.car, body = x.cdr.cdr;
-
-    return new Pair(Sym("if"),
-             new Pair(new Pair(Sym("not"), new Pair(test, nil)),
-               new Pair(new Pair(Sym("begin"), body),
-                 new Pair(BiwaScheme.undef, nil))));
-  });
-
-  define_syntax("do", function(x){
-    //(do ((var1 init1 step1)
-    //     (var2 init2 step2) ...)
-    //    (test expr1 expr2 ...)
-    //  body1 body2 ...)
-    //=> (let loop` ((var1 init1) (var2 init2) ...)
-    //     (if test
-    //       (begin expr1 expr2 ...)
-    //       (begin body1 body2 ...
-    //              (loop` step1 step2 ...)))))
-
-    // parse arguments
-    if(!BiwaScheme.isPair(x.cdr))
-      throw new Error("do: no variables of do");
-    var varsc = x.cdr.car;
-    if(!BiwaScheme.isPair(varsc))
-      throw new Error("do: variables must be given as a list");
-    if(!BiwaScheme.isPair(x.cdr.cdr))
-      throw new Error("do: no resulting form of do");
-    var resultc = x.cdr.cdr.car;
-    var bodyc = x.cdr.cdr.cdr;
-
-    // construct subforms
-    var loop = BiwaScheme.gensym();
-
-    var init_vars = array_to_list(varsc.map(function(var_def){
-      var a = var_def.to_array();
-      return List(a[0], a[1]);
-    }));
-
-    var test = resultc.car;
-    var result_exprs = new Pair(Sym("begin"), resultc.cdr);
-
-    var next_loop = new Pair(loop, array_to_list(varsc.map(function(var_def){
-      var a = var_def.to_array();
-      return a[2] || a[0];
-    })));
-    var body_exprs = new Pair(Sym("begin"), bodyc).concat(List(next_loop));
-
-    // combine subforms
-    return List(Sym("let"),
-                loop,
-                init_vars,
-                List(Sym("if"),
-                     test,
-                     result_exprs,
-                     body_exprs));
-  });
-
-  //(case-lambda <case-lambda clause> ...)    syntax
-  define_syntax("case-lambda", function(x){
-    if(!BiwaScheme.isPair(x.cdr))
-      throw new Error("case-lambda: at least 1 clause required");
-    var clauses = x.cdr.to_array();
-    
-    var args_ = BiwaScheme.gensym();
-    var exec = List(Sym("raise"), "case-lambda: no matching clause found");
-
-    clauses.reverse().forEach(function(clause) {
-      if(!BiwaScheme.isPair(clause))
-        throw new Error("case-lambda: clause must be a pair: "+
-                        BiwaScheme.to_write(clause));
-      var formals = clause.car, clause_body = clause.cdr;
-
-      if (formals === BiwaScheme.nil) {
-        exec = List(Sym("if"),
-                    List(Sym("null?"), args_),
-                    new Pair(Sym("begin"), clause_body),
-                    exec);
-      }
-      else if (BiwaScheme.isPair(formals)) {
-        var len = formals.length(), last_cdr = formals.last_cdr();
-        var pred = (last_cdr === BiwaScheme.nil ? Sym("=") : Sym(">="));
-        var lambda = new Pair(Sym("lambda"),
-                       new Pair(formals,
-                         clause_body));
-        exec = List(Sym("if"),
-                    List(pred, List(Sym("length"), args_), len),
-                    List(Sym("apply"), lambda, args_),
-                    exec);
-      }
-      else if (BiwaScheme.isSymbol(formals)) {
-        exec = new Pair(Sym("let1"),
-                 new Pair(formals,
-                   new Pair(args_,
-                     clause_body)));
-        // Note: previous `exec` is just discarded because this is a wildcard pattern.
-      }
-      else {
-        throw new Error("case-lambda: invalid formals: "+
-                        BiwaScheme.to_write(formals));
-      }
-    });
-
-    return List(Sym("lambda"), args_, exec);
-  });
-
-  //
-  // Chapter 6 Records
-  // see also: src/system/record.js
-  //
-
-  // 6.2 Records: Syntactic layer
-  //eqv, eq
-
-  //(define-record-type <name spec> <record clause>*)    syntax
-  define_syntax("define-record-type", function(x){
-    // (define-record-type <name spec> <record clause>*)
-    var name_spec = x.cdr.car;
-    var record_clauses = x.cdr.cdr;
-
-    // 1. parse name spec
-    // <name spec>: either
-    // - <record name> eg: point
-    // - (<record name> <constructor name> <predicate name>)
-    //   eg: (point make-point point?)
-    if(BiwaScheme.isSymbol(name_spec)){
-      var record_name = name_spec;
-      var constructor_name = Sym("make-"+name_spec.name);
-      var predicate_name = Sym(name_spec.name+"?");
-    }
-    else{
-      assert_list(name_spec);
-      var record_name = name_spec.car;
-      var constructor_name = name_spec.cdr.car;
-      var predicate_name = name_spec.cdr.cdr.car;
-      assert_symbol(record_name);
-      assert_symbol(constructor_name);
-      assert_symbol(predicate_name);
-    }
-
-    // 2. parse record clauses
-    var sealed = false;
-    var opaque = false;
-    var nongenerative = false;
-    var uid = false;
-    var parent_name;
-    var parent_rtd = false;
-    var parent_cd = false;
-    var protocol = false;
-    var fields = [];
-
-    // <record clause>:
-    _.each(record_clauses.to_array(), function(clause){
-      switch(clause.car){
-        // - (fields <field spec>*)
-        case Sym("fields"):
-          fields = _.map(clause.cdr.to_array(), function(field_spec, idx){
-            if(BiwaScheme.isSymbol(field_spec)){
-              // - <field name>
-              return {name: field_spec, idx: idx, mutable: false,
-                      accessor_name: null, mutator_name: null};
-            }
-            else{
-              assert_list(field_spec);
-              assert_symbol(field_spec.car);
-              switch(field_spec.car){
-                case Sym("immutable"):
-                  // - (immutable <field name>)
-                  // - (immutable <field name> <accessor name>)
-                  var field_name = field_spec.cdr.car;
-                  assert_symbol(field_name);
-
-                  if(BiwaScheme.isNil(field_spec.cdr.cdr))
-                    return {name: field_name, idx: idx, mutable: false};
-                  else
-                    return {name: field_name, idx: idx, mutable: false,
-                            accessor_name: field_spec.cdr.cdr.car};
-                  break;
-
-                case Sym("mutable"):
-                  // - (mutable <field name>)
-                  // - (mutable <field name> <accessor name> <mutator name>)
-                  var field_name = field_spec.cdr.car;
-                  assert_symbol(field_name);
-
-                  if(BiwaScheme.isNil(field_spec.cdr.cdr))
-                    return {name: field_name, idx: idx, mutable: true}
-                  else
-                    return {name: field_name, idx: idx, mutable: true,
-                            accessor_name: field_spec.cdr.cdr.car,
-                            mutator_name:  field_spec.cdr.cdr.cdr.car};
-                  break;
-                default:
-                  throw new Error("define-record-type: field definition "+
-                              "must start with `immutable' or `mutable' "+
-                              "but got "+BiwaScheme.inspect(field_spec.car));
-              }
-            }
-          });
-          break;
-        // - (parent <name>)
-        case Sym("parent"):
-          parent_name = clause.cdr.car;
-          assert_symbol(parent_name);
-          break;
-        // - (protocol <expr>)
-        case Sym("protocol"):
-          protocol = clause.cdr.car;
-          break;
-        // - (sealed <bool>)
-        case Sym("sealed"):
-          sealed = !!clause.cdr.car;
-          break;
-        // - (opaque <bool>)
-        case Sym("opaque"):
-          opaque = !!clause.cdr.car;
-          break;
-        // - (nongenerative <uid>?)
-        case Sym("nongenerative"):
-          nongenerative = true;
-          uid = clause.cdr.car;
-          break;
-        // - (parent-rtd <rtd> <cd>)
-        case Sym("parent-rtd"):
-          parent_rtd = clause.cdr.car;
-          parent_cd = clause.cdr.cdr.car;
-          break;
-        default:
-          throw new BiwaScheme.Error("define-record-type: unknown clause `"+
-                                     BiwaScheme.to_write(clause.car)+"'");
-      }
-    });
-
-    if(parent_name){
-      parent_rtd = [Sym("record-type-descriptor"), parent_name];
-      parent_cd  = [Sym("record-constructor-descriptor"), parent_name];
-    }
-
-    // 3. build the definitions
-    // Note: In this implementation, rtd and cd are not bound to symbols.
-    // They are referenced through record name by record-type-descriptor
-    // and record-constructor-descriptor. These relation are stored in
-    // the hash BiwaScheme.Record._DefinedTypes.
-    var rtd = [Sym("record-type-descriptor"), record_name];
-    var cd  = [Sym("record-constructor-descriptor"), record_name];
-
-    // registration
-    var rtd_fields = _.map(fields, function(field){
-      return List(Sym(field.mutable ? "mutable" : "immutable"), field.name);
-    });
-    rtd_fields.is_vector = true; //tell List not to convert
-    var rtd_def = [Sym("make-record-type-descriptor"),
-                    [Sym("quote"), record_name], parent_rtd, uid,
-                    sealed, opaque, rtd_fields];
-    var cd_def = [Sym("make-record-constructor-descriptor"),
-                    Sym("__rtd"), parent_cd, protocol];
-    var registration =
-      [Sym("let*"), [[Sym("__rtd"), rtd_def],
-                    [Sym("__cd"), cd_def]],
-        [Sym("_define-record-type"),
-          [Sym("quote"), record_name], Sym("__rtd"), Sym("__cd")]];
-
-    // accessors and mutators
-    var accessor_defs = _.map(fields, function(field){
-      var name = field.accessor_name ||
-                   Sym(record_name.name+"-"+field.name.name);
-
-      return [Sym("define"), name, [Sym("record-accessor"), rtd, field.idx]];
-    });
-
-    var mutator_defs = _.filter(fields, function(field){
-      return field.mutable;
-    });
-    mutator_defs = _.map(mutator_defs, function(field){
-      var name = field.mutator_name ||
-                   Sym(record_name.name+"-"+field.name.name+"-set!");
-
-      return [Sym("define"), name, [Sym("record-mutator"), rtd, field.idx]];
-    });
-
-    // Wrap the definitions with `begin'
-    // Example:
-    //   (begin
-    //     (let* ((__rtd (make-record-type-descriptor 'square
-    //                     (record-type-descriptor rect)
-    //                     #f #f #f
-    //                     #((mutable w) (mutable h))))
-    //            (__cd (make-record-constructor-descriptor __rtd
-    //                    (record-constructor-descriptor rect)
-    //                    (lambda (n) ...))))
-    //       (_define-record-type 'square __rtd __cd))
-    //
-    //     (define make-square
-    //       (record-constructor
-    //         (record-constructor-descriptor square)))
-    //     (define square?
-    //       (record-predicate (record-type-descriptor square)))
-    //     (define square-w
-    //       (record-accessor (record-type-descriptor square) 0))
-    //     (define square-h
-    //       (record-accessor (record-type-descriptor square) 1))
-    //     (define set-square-w!
-    //       (record-mutator (record-type-descriptor square) 0))
-    //     (define set-square-h!
-    //       (record-mutator (record-type-descriptor square) 1)))
-    //
-    return deep_array_to_list(
-      [Sym("begin"),
-        registration,
-        [Sym("define"), constructor_name, [Sym("record-constructor"), cd]],
-        [Sym("define"), predicate_name, [Sym("record-predicate"), rtd]],
-        ].concat(accessor_defs).
-          concat(mutator_defs)
-    );
-  });
-
-  define_libfunc("_define-record-type", 3, 3, function(ar){
-    assert_symbol(ar[0]);
-    assert_record_td(ar[1]);
-    assert_record_cd(ar[2]);
-    BiwaScheme.Record.define_type(ar[0].name, ar[1], ar[2]);
-    return BiwaScheme.undef;
-  });
-
-  //(record-type-descriptor <record name>)    syntax
-  define_syntax("record-type-descriptor", function(x){
-    return deep_array_to_list([Sym("_record-type-descriptor"), [Sym("quote"), x.cdr.car]]);
-  });
-  define_libfunc("_record-type-descriptor", 1, 1, function(ar){
-    assert_symbol(ar[0]);
-    var type = BiwaScheme.Record.get_type(ar[0].name);
-    if(type)
-      return type.rtd;
-    else
-      throw new Error("record-type-descriptor: unknown record type "+ar[0].name);
-  });
-
-  //(record-constructor-descriptor <record name>)    syntax
-  define_syntax("record-constructor-descriptor", function(x){
-    return deep_array_to_list([Sym("_record-constructor-descriptor"), [Sym("quote"), x.cdr.car]]);
-  });
-  define_libfunc("_record-constructor-descriptor", 1, 1, function(ar){
-    assert_symbol(ar[0]);
-    var type = BiwaScheme.Record.get_type(ar[0].name);
-    if(type)
-      return type.cd;
-    else
-      throw new Error("record-constructor-descriptor: unknown record type "+ar[0].name);
-  });
-
-  // 6.3  Records: Procedural layer
-  //(make-record-type-descriptor name    procedure
-  define_libfunc("make-record-type-descriptor", 6, 6, function(ar){
-    var name = ar[0], parent_rtd = ar[1], uid = ar[2],
-        sealed = ar[3], opaque = ar[4], fields = ar[5];
-
-    assert_symbol(name);
-    if(parent_rtd) assert_record_td(parent_rtd);
-    if(uid){
-      assert_symbol(uid);
-      var _rtd = BiwaScheme.Record.RTD.NongenerativeRecords[uid.name];
-      if(_rtd){
-        // the record type is already defined.
-        return _rtd;
-        // should check equality of other arguments..
-      }
-    }
-    sealed = !!sealed;
-    opaque = !!opaque;
-    assert_vector(fields);
-    for(var i=0; i<fields.length; i++){
-      var list = fields[i];
-      assert_symbol(list.car, "mutability");
-      assert_symbol(list.cdr.car, "field name");
-      fields[i] = [list.cdr.car.name, (list.car == Sym("mutable"))];
-    };
-
-    var rtd = new BiwaScheme.Record.RTD(name, parent_rtd, uid,
-                                     sealed, opaque, fields);
-    if(uid)
-      BiwaScheme.Record.RTD.NongenerativeRecords[uid.name] = rtd;
-
-    return rtd;
-  });
-
-  //(record-type-descriptor? obj)    procedure
-  define_libfunc("record-type-descriptor?", 1, 1, function(ar){
-    return (ar[0] instanceof BiwaScheme.Record.RTD);
-  });
-
-  //(make-record-constructor-descriptor rtd    procedure
-  define_libfunc("make-record-constructor-descriptor", 3, 3, function(ar){
-    var rtd = ar[0], parent_cd = ar[1], protocol = ar[2];
-
-    assert_record_td(rtd);
-    if(parent_cd) assert_record_cd(parent_cd);
-    if(protocol) assert_procedure(protocol);
-
-    return new BiwaScheme.Record.CD(rtd, parent_cd, protocol);
-  });
-
-  //(record-constructor constructor-descriptor)    procedure
-  define_libfunc("record-constructor", 1, 1, function(ar){
-    var cd = ar[0];
-    assert_record_cd(cd);
-
-    return cd.record_constructor();
-  });
-
-  //(record-predicate rtd)    procedure
-  define_libfunc("record-predicate", 1, 1, function(ar){
-    var rtd = ar[0];
-    assert_record_td(rtd);
-
-    return function(args){
-      var obj = args[0];
-
-      return (obj instanceof BiwaScheme.Record) &&
-             (obj.rtd === rtd);
-    };
-  });
-
-  //(record-accessor rtd k)    procedure
-  define_libfunc("record-accessor", 2, 2, function(ar){
-    var rtd = ar[0], k = ar[1];
-    assert_record_td(rtd);
-    assert_integer(k);
-    for(var _rtd = rtd.parent_rtd; _rtd; _rtd = _rtd.parent_rtd)
-      k += _rtd.fields.length;
-
-    return function(args){
-      var record = args[0];
-      var error_msg = rtd.name.name+"-"+rtd.field_name(k)+": "+
-                      BiwaScheme.to_write(record)+
-                      " is not a "+rtd.name.name;
-      assert(BiwaScheme.isRecord(record), error_msg);
-
-      var descendant = false;
-      for(var _rtd = record.rtd; _rtd; _rtd = _rtd.parent_rtd){
-        if(_rtd == rtd) descendant = true;
-      }
-      assert(descendant, error_msg);
-
-      return record.get(k);
-    };
-  });
-
-  //(record-mutator rtd k)    procedure
-  define_libfunc("record-mutator", 2, 2, function(ar){
-    var rtd = ar[0], k = ar[1];
-    assert_record_td(rtd);
-    assert_integer(k);
-    for(var _rtd = rtd.parent_rtd; _rtd; _rtd = _rtd.parent_rtd)
-      k += _rtd.fields.length;
-
-    return function(args){
-      var record = args[0], val = args[1];
-      var func_name = rtd.field_name(k);
-
-      assert_record(record);
-      assert(record.rtd === rtd,
-            func_name+": "+BiwaScheme.to_write(record)+
-            " is not a "+rtd.name.name);
-      assert(!record.rtd.sealed,
-            func_name+": "+rtd.name.name+" is sealed (can't mutate)");
-
-      record.set(k, val);
-    };
-  });
-
-  // 6.4  Records: Inspection
-  //(record? obj)    procedure
-  define_libfunc("record?", 1, 1, function(ar){
-    var obj = ar[0];
-    if(BiwaScheme.isRecord(obj)){
-      if(obj.rtd.opaque)
-        return false; // opaque records pretend as if it is not a record.
-      else
-        return true;
-    }
-    else
-      return false;
-  });
-
-  //(record-rtd record)    procedure
-  define_libfunc("record-rtd", 1, 1, function(ar){
-    assert_record(ar[0]);
-    return ar[0].rtd;
-  });
-
-  //(record-type-name rtd)    procedure
-  define_libfunc("record-type-name", 1, 1, function(ar){
-    assert_record_td(ar[0]);
-    return ar[0].name;
-  });
-
-  //(record-type-parent rtd)    procedure
-  define_libfunc("record-type-parent", 1, 1, function(ar){
-    assert_record_td(ar[0]);
-    return ar[0].parent_rtd;
-  });
-
-  //(record-type-uid rtd)    procedure
-  define_libfunc("record-type-uid", 1, 1, function(ar){
-    assert_record_td(ar[0]);
-    return ar[0].uid;
-  });
-
-  //(record-type-generative? rtd)    procedure
-  define_libfunc("record-type-generative?", 1, 1, function(ar){
-    assert_record_td(ar[0]);
-    return ar[0].generative;
-  });
-
-  //(record-type-sealed? rtd)    procedure
-  define_libfunc("record-type-sealed?", 1, 1, function(ar){
-    assert_record_td(ar[0]);
-    return ar[0].sealed;
-  });
-
-  //(record-type-opaque? rtd)    procedure
-  define_libfunc("record-type-opaque?", 1, 1, function(ar){
-    assert_record_td(ar[0]);
-    return ar[0].opaque;
-  });
-
-  //(record-type-field-names rtd)    procedure
-  define_libfunc("record-type-field-names", 1, 1, function(ar){
-    assert_record_td(ar[0]);
-    return _.map(ar[0].fields, function(field){ return field.name; });
-  });
-
-  //(record-field-mutable? rtd k)    procedure
-  define_libfunc("record-field-mutable?", 2, 2, function(ar){
-    var rtd = ar[0], k = ar[1];
-    assert_record_td(ar[0]);
-    assert_integer(k);
-
-    for(var _rtd = rtd.parent_rtd; _rtd; _rtd = _rtd.parent_rtd)
-      k += _rtd.fields.length;
-
-    return ar[0].fields[k].mutable;
-  });
-
-  //
-  // Chapter 7 Exceptions and conditions
-  //
-//(with-exception-handler handler thunk)    procedure
-//(guard (<variable>    syntax
-  //(raise obj)    procedure
-  define_libfunc("raise", 1, 1, function(ar){
-    throw new BiwaScheme.UserError(BiwaScheme.to_write(ar[0]));
-  });
-//(raise-continuable obj)    procedure
-//
-//&condition    condition type
-//(condition condition1 ...)    procedure
-//(simple-conditions condition)    procedure
-//(condition? obj)    procedure
-//(condition-predicate rtd)    procedure
-//(condition-accessor rtd proc)    procedure
-//
-//&message    condition type
-//&warning    condition type
-//&serious    condition type
-//&error    condition type
-//&violation    condition type
-//&assertion    condition type
-//&irritants    condition type
-//&who    condition type
-//&non-continuable    condition type
-//&implementation-restriction    condition type
-//&lexical    condition type
-//&syntax    condition type
-//&undefined    condition type
-
-  //
-  // Chapter 8 I/O
-  //
-//  //    8  I/O
-//  //        8.1  Condition types
-//&i/o    condition type
-//&i/o-read    condition type
-//&i/o-write    condition type
-//&i/o-invalid-position    condition type
-//&i/o-filename    condition type
-//&i/o-file-protection    condition type
-//&i/o-file-is-read-only    condition type
-//&i/o-file-already-exists    condition type
-//&i/o-file-does-not-exist    condition type
-//&i/o-port    condition type
-//
-//  //        8.2  Port I/O
-//  //            8.2.1  File names
-//  //(no function introduced)
-//
-//  //            8.2.2  File options
-//(file-options <file-options symbol> ...)    syntax
-//
-//  //            8.2.3  Buffer modes
-//(buffer-mode <buffer-mode symbol>)    syntax
-//(buffer-mode? obj)    procedure
-//
-//  //            8.2.4  Transcoders
-//(latin-1-codec)    procedure
-//(utf-8-codec)    procedure
-//(utf-16-codec)    procedure
-//(eol-style <eol-style symbol>)    syntax
-//(native-eol-style)    procedure
-//&i/o-decoding    condition type
-//&i/o-encoding    condition type
-//(error-handling-mode <error-handling-mode symbol>)    syntax
-//(make-transcoder codec)    procedure
-//(make-transcoder codec eol-style)    procedure
-//(make-transcoder codec eol-style handling-mode)    procedure
-//(native-transcoder)    procedure
-//(transcoder-codec transcoder)    procedure
-//(transcoder-eol-style transcoder)    procedure
-//(transcoder-error-handling-mode transcoder)    procedure
-//(bytevector->string bytevector transcoder)    procedure
-//(string->bytevector string transcoder)    procedure
-//
-  //            8.2.5  End-of-file object
-  //-> 8.3 (eof-object)    procedure
-  //-> 8.3 (eof-object? obj)    procedure
-
-  //            8.2.6  Input and output ports
-  define_libfunc("port?", 1, 1, function(ar){
-    return (ar[0] instanceof Port);
-  })
-//(port-transcoder port)    procedure
-  define_libfunc("textual-port?", 1, 1, function(ar){
-    assert_port(ar[0]);
-    return !ar[0].is_binary;
-  })
-  define_libfunc("binary-port?", 1, 1, function(ar){
-    assert_port(ar[0]);
-    return ar[0].is_binary;
-  })
-//(transcoded-port binary-port transcoder)    procedure
-//(port-has-port-position? port)    procedure
-//(port-position port)    procedure
-//(port-has-set-port-position!? port)    procedure
-//(set-port-position! port pos)    procedure
-  define_libfunc("close-port", 1, 1, function(ar){
-    assert_port(ar[0]);
-    ar[0].close();
-    return BiwaScheme.undef;
-  })
-  //(call-with-port port proc)    procedure
-  define_libfunc("call-with-port", 2, 2, function(ar){
-    var port = ar[0], proc = ar[1];
-    assert_port(port);
-    assert_closure(proc);
-
-    return new Call(proc, [port], function(ar){
-      // Automatically close the port
-      port.close();
-      return ar[0]; // TODO: values
-    });
-  });
-
-  //            8.2.7  Input ports
-  //8.3 (input-port? obj)    procedure
-//(port-eof? input-port)    procedure
-//(open-file-input-port filename)    procedure
-//(open-bytevector-input-port bytevector)    procedure
-//(open-string-input-port string)    procedure
-//(standard-input-port)    procedure
-//8.3 (current-input-port)    procedure
-//(make-custom-binary-input-port id read!    procedure
-//(make-custom-textual-input-port id read!    procedure
-//
-//  //            8.2.8  Binary input
-//(get-u8 binary-input-port)    procedure
-//(lookahead-u8 binary-input-port)    procedure
-//(get-bytevector-n binary-input-port count)    procedure
-//(get-bytevector-n! binary-input-port    procedure
-//(get-bytevector-some binary-input-port)    procedure
-//(get-bytevector-all binary-input-port)    procedure
-//
-//  //            8.2.9  Textual input
-//(get-char textual-input-port)    procedure
-//(lookahead-char textual-input-port)    procedure
-//(get-string-n textual-input-port count)    procedure
-//(get-string-n! textual-input-port string start count)    procedure
-//(get-string-all textual-input-port)    procedure
-//(get-line textual-input-port)    procedure
-//(get-datum textual-input-port)    procedure
-//
-  //            8.2.10  Output ports
-  //8.3 (output-port? obj)    procedure
-//(flush-output-port output-port)    procedure
-//(output-port-buffer-mode output-port)    procedure
-//(open-file-output-port filename)    procedure
-//(open-bytevector-output-port)    procedure
-//(call-with-bytevector-output-port proc)    procedure
-//(open-string-output-port)    procedure
-  //(call-with-string-output-port proc)    procedure
-  define_libfunc("call-with-string-output-port", 1, 1, function(ar){
-    var proc = ar[0];
-    assert_procedure(proc);
-
-    var port = new BiwaScheme.Port.StringOutput();
-
-    return new Call(proc, [port], function(ar){
-      port.close();
-      return port.output_string();
-    });
-  });
-
-//(standard-output-port)    procedure
-//(standard-error-port)    procedure
-//8.3 (current-output-port)    procedure
-//8.3 (current-error-port)    procedure
-//(make-custom-binary-output-port id    procedure
-  //(make-custom-textual-output-port id write! get-position set-position! close)
-//  define_libfunc("make-custom-textual-output-port", 5, 5, function(ar){
-//    assert_string(ar[0]);
-//    assert_closure(ar[1]);
-//    assert_closure(ar[2]);
-//    assert_closure(ar[3]);
-//    assert_closure(ar[4]);
-//    return new Port(ar[0], ar[1], ar[2], ar[3], ar[4]);
-//  })
-//
-//  //            8.2.11  Binary output
-//(put-u8 binary-output-port octet)    procedure
-//(put-bytevector binary-output-port bytevector)    procedure
-//
-  //            8.2.12  Textual output
-  define_libfunc("put-char", 2, 2, function(ar){
-    assert_port(ar[0]);
-    assert_char(ar[1]);
-    ar[0].put_string(ar[1].value);
-    return BiwaScheme.undef;
-  })
-  define_libfunc("put-string", 2, 2, function(ar){
-    assert_port(ar[0]);
-    assert_string(ar[1]);
-    ar[0].put_string(ar[1]);
-    return BiwaScheme.undef;
-  })
-  define_libfunc("put-datum", 2, 2, function(ar){
-    assert_port(ar[0]);
-    ar[0].put_string(to_write(ar[1]));
-    return BiwaScheme.undef;
-  })
-//
-//  //            8.2.13  Input/output ports
-//(open-file-input/output-port filename)    procedure
-//(make-custom-binary-input/output-port    procedure
-//(make-custom-textual-input/output-port    procedure
-//
-//  //        8.3  Simple I/O
-  define_libfunc("eof-object", 0, 0, function(ar){
-    return eof;
-  })
-  define_libfunc("eof-object?", 1, 1, function(ar){
-    return ar[0] === eof;
-  })
-//(call-with-input-file filename proc)    procedure
-//(call-with-output-file filename proc)    procedure
-  define_libfunc("input-port?", 1, 1, function(ar){
-    assert_port(ar[0]);
-    return ar[0].is_input;
-  })
-  define_libfunc("output-port?", 1, 1, function(ar){
-    assert_port(ar[0]);
-    return ar[0].is_output;
-  })
-  define_libfunc("current-input-port", 0, 0, function(ar){
-    return Port.current_input;
-  })
-  define_libfunc("current-output-port", 0, 0, function(ar){
-    return Port.current_output;
-  })
-  define_libfunc("current-error-port", 0, 0, function(ar){
-    return Port.current_error;
-  })
-//(with-input-from-file filename thunk)    procedure
-//(with-output-to-file filename thunk)    procedure
-//(open-input-file filename)    procedure
-//(open-output-file filename)    procedure
-  define_libfunc("close-input-port", 1, 1, function(ar){
-    assert_port(ar[0]);
-    if(!ar[0].is_input)
-      throw new Error("close-input-port: port is not input port");
-    ar[0].close();
-    return BiwaScheme.undef;
-  });
-  define_libfunc("close-output-port", 1, 1, function(ar){
-    assert_port(ar[0]);
-    if(!ar[0].is_output)
-      throw new Error("close-output-port: port is not output port");
-    ar[0].close();
-    return BiwaScheme.undef;
-  });
-//(read-char)    procedure
-//(peek-char)    procedure
-  define_libfunc("read", 0, 1, function(ar){
-    var port = ar[0] || Port.current_input;
-    assert_port(port);
-
-    return port.get_string(function(str){
-	    return Interpreter.read(str);
-    });
-  })
-
-  define_libfunc("write-char", 1, 2, function(ar){
-    var port = ar[1] || Port.current_output;
-    assert_char(ar[0]);
-    port.put_string(ar[0].value);
-    return BiwaScheme.undef;
-  });
-  define_libfunc("newline", 0, 1, function(ar){
-    var port = ar[0] || Port.current_output;
-    port.put_string("\n");
-    return BiwaScheme.undef;
-  });
-  define_libfunc("display", 1, 2, function(ar){
-    var port = ar[1] || Port.current_output;
-    port.put_string(to_display(ar[0]));
-    return BiwaScheme.undef;
-  });
-  define_libfunc("write", 1, 2, function(ar){
-    var port = ar[1] || Port.current_output;
-    assert_port(port);
-    port.put_string(to_write(ar[0]));
-    return BiwaScheme.undef;
-  });
-
-  //
-  // Chapter 9 File System
-  // Chapter 10 Command-line access and exit values
-  //
-  // see src/library/node_functions.js
-
-  //
-  // Chapter 11 Arithmetic
-  //
-////        11.1  Bitwise operations
-////        11.2  Fixnums
-//(fixnum? obj)    procedure
-//(fixnum-width)    procedure
-//(least-fixnum)    procedure
-//(greatest-fixnum)    procedure
-//(fx=? fx1 fx2 fx3 ...)    procedure
-//(fx>? fx1 fx2 fx3 ...)    procedure
-//(fx<? fx1 fx2 fx3 ...)    procedure
-//(fx>=? fx1 fx2 fx3 ...)    procedure
-//(fx<=? fx1 fx2 fx3 ...)    procedure
-//(fxzero? fx)    procedure
-//(fxpositive? fx)    procedure
-//(fxnegative? fx)    procedure
-//(fxodd? fx)    procedure
-//(fxeven? fx)    procedure
-//(fxmax fx1 fx2 ...)    procedure
-//(fxmin fx1 fx2 ...)    procedure
-//(fx+ fx1 fx2)    procedure
-//(fx* fx1 fx2)    procedure
-//(fx- fx1 fx2)    procedure
-//(fxdiv-and-mod fx1 fx2)    procedure
-//(fxdiv fx1 fx2)    procedure
-//(fxmod fx1 fx2)    procedure
-//(fxdiv0-and-mod0 fx1 fx2)    procedure
-//(fxdiv0 fx1 fx2)    procedure
-//(fxmod0 fx1 fx2)    procedure
-//(fx+/carry fx1 fx2 fx3)    procedure
-//(fx-/carry fx1 fx2 fx3)    procedure
-//(fx*/carry fx1 fx2 fx3)    procedure
-//(fxnot fx)    procedure
-//(fxand fx1 ...)    procedure
-//(fxior fx1 ...)    procedure
-//(fxxor fx1 ...)    procedure
-//(fxif fx1 fx2 fx3)    procedure
-//(fxbit-count fx)    procedure
-//(fxlength fx)    procedure
-//(fxfirst-bit-set fx)    procedure
-//(fxbit-set? fx1 fx2)    procedure
-//(fxcopy-bit fx1 fx2 fx3)    procedure
-//(fxbit-field fx1 fx2 fx3)    procedure
-//(fxcopy-bit-field fx1 fx2 fx3 fx4)    procedure
-//(fxarithmetic-shift fx1 fx2)    procedure
-//(fxarithmetic-shift-left fx1 fx2)    procedure
-//(fxarithmetic-shift-right fx1 fx2)    procedure
-//(fxrotate-bit-field fx1 fx2 fx3 fx4)    procedure
-//(fxreverse-bit-field fx1 fx2 fx3)    procedure
-//
-////        11.3  Flonums
-//(flonum? obj)    procedure
-//(real->flonum x)    procedure
-//(fl=? fl1 fl2 fl3 ...)    procedure
-//(fl<? fl1 fl2 fl3 ...)    procedure
-//(fl<=? fl1 fl2 fl3 ...)    procedure
-//(fl>? fl1 fl2 fl3 ...)    procedure
-//(fl>=? fl1 fl2 fl3 ...)    procedure
-//(flinteger? fl)    procedure
-//(flzero? fl)    procedure
-//(flpositive? fl)    procedure
-//(flnegative? fl)    procedure
-//(flodd? ifl)    procedure
-//(fleven? ifl)    procedure
-//(flfinite? fl)    procedure
-//(flinfinite? fl)    procedure
-//(flnan? fl)    procedure
-//(flmax fl1 fl2 ...)    procedure
-//(flmin fl1 fl2 ...)    procedure
-//(fl+ fl1 ...)    procedure
-//(fl* fl1 ...)    procedure
-//(fl- fl1 fl2 ...)    procedure
-//(fl- fl)    procedure
-//(fl/ fl1 fl2 ...)    procedure
-//(fl/ fl)    procedure
-//(flabs fl)    procedure
-//(fldiv-and-mod fl1 fl2)    procedure
-//(fldiv fl1 fl2)    procedure
-//(flmod fl1 fl2)    procedure
-//(fldiv0-and-mod0 fl1 fl2)    procedure
-//(fldiv0 fl1 fl2)    procedure
-//(flmod0 fl1 fl2)    procedure
-//(flnumerator fl)    procedure
-//(fldenominator fl)    procedure
-//(flfloor fl)    procedure
-//(flceiling fl)    procedure
-//(fltruncate fl)    procedure
-//(flround fl)    procedure
-//(flexp fl)    procedure
-//(fllog fl)    procedure
-//(fllog fl1 fl2)    procedure
-//(flsin fl)    procedure
-//(flcos fl)    procedure
-//(fltan fl)    procedure
-//(flasin fl)    procedure
-//(flacos fl)    procedure
-//(flatan fl)    procedure
-//(flatan fl1 fl2)    procedure
-//(flsqrt fl)    procedure
-//(flexpt fl1 fl2)    procedure
-//&no-infinities    condition type
-//&no-nans    condition type
-//(fixnum->flonum fx)    procedure
-
-  ////        11.4  Exact bitwise arithmetic
-  //(bitwise-not ei)    procedure
-  define_libfunc("bitwise-not", 1, 1, function(ar){
-    return ~(ar[0]);
-  });
-
-  //(bitwise-and ei1 ...)    procedure
-  define_libfunc("bitwise-and", 1, null, function(ar){
-    return _.reduce(ar, function(ret, item){ return ret & item; });
-  });
-
-  //(bitwise-ior ei1 ...)    procedure
-  define_libfunc("bitwise-ior", 1, null, function(ar){
-    return _.reduce(ar, function(ret, item){ return ret | item; });
-  });
-
-  //(bitwise-xor ei1 ...)    procedure
-  define_libfunc("bitwise-xor", 1, null, function(ar){
-    return _.reduce(ar, function(ret, item){ return ret ^ item; });
-  });
-
-  //(bitwise-if ei1 ei2 ei3)    procedure
-  define_libfunc("bitwise-if", 3, 3, function(ar){
-    return (ar[0] & ar[1]) | (~ar[0] & ar[2]);
-  });
-
-  //(bitwise-bit-count ei)    procedure
-  define_libfunc("bitwise-bit-count", 1, 1, function(ar){
-    var e = Math.abs(ar[0]), ret = 0;
-    for (; e != 0; e >>= 1) {
-      if(e & 1) ret++;
-    }
-    return ret;
-  });
-
-  //(bitwise-length ei)    procedure
-  define_libfunc("bitwise-length", 1, 1, function(ar){
-    var e = Math.abs(ar[0]), ret = 0;
-    for (; e != 0; e >>= 1) {
-      ret++;
-    }
-    return ret;
-  });
-
-  //(bitwise-first-bit-set ei)    procedure
-  define_libfunc("bitwise-first-bit-set", 1, 1, function(ar){
-    var e = Math.abs(ar[0]), ret = 0;
-    if (e == 0) return -1;
-    for (; e != 0; e >>= 1) {
-      if (e & 1) return ret;
-      ret++;
-    }
-  });
-
-  //(bitwise-bit-set? ei1 ei2)    procedure
-  define_libfunc("bitwise-bit-set?", 2, 2, function(ar){
-    return !!(ar[0] & (1 << ar[1]));
-  });
-
-  //(bitwise-copy-bit ei1 n b)    procedure
-  define_libfunc("bitwise-copy-bit", 3, 3, function(ar){
-    var mask = (1 << ar[1]);
-    return (mask & (ar[2] << ar[1])) |   // Set n-th bit to b
-           (~mask & ar[0]);              // and use ei1 for rest of the bits
-  });
-
-  //(bitwise-bit-field ei1 start end)    procedure
-  define_libfunc("bitwise-bit-field", 3, 3, function(ar){
-    var mask = ~(-1 << ar[2]);  // Has 1 at 0...end
-    return (mask & ar[0]) >> ar[1];
-  });
-
-  //(bitwise-copy-bit-field dst start end src)    procedure
-  define_libfunc("bitwise-copy-bit-field", 4, 4, function(ar){
-    var dst=ar[0], start=ar[1], end=ar[2], src=ar[3];
-    var mask = ~(-1 << end) &   // Has 1 at 0...end
-                (-1 << start)   // Clear 0...start
-    return (mask & (src << start)) |
-           (~mask & dst);
-  });
-
-  //(bitwise-arithmetic-shift ei1 ei2)    procedure
-  define_libfunc("bitwise-arithmetic-shift", 2, 2, function(ar){
-    return (ar[1] >= 0) ? (ar[0] << ar[1]) : (ar[0] >> -ar[1]);
-  });
-
-  //(bitwise-arithmetic-shift-left ei1 ei2)    procedure
-  define_libfunc("bitwise-arithmetic-shift-left", 2, 2, function(ar){
-    return ar[0] << ar[1];
-  });
-
-  //(bitwise-arithmetic-shift-right ei1 ei2)    procedure
-  define_libfunc("bitwise-arithmetic-shift-right", 2, 2, function(ar){
-    return ar[0] >> ar[1];
-  });
-
-  //(bitwise-rotate-bit-field ei1 start end count)    procedure
-  define_libfunc("bitwise-rotate-bit-field", 4, 4, function(ar){
-    var n=ar[0], start=ar[1], end=ar[2], count=ar[3];
-    var width = end - start;
-    if (width <= 0) return n;
-
-    count %= width;
-    var orig_field = (~(-1 << end) & n) >> start;
-    var rotated_field = (orig_field << count) |
-                        (orig_field >> (width - count))
-
-    var mask = ~(-1 << end) & (-1 << start);
-    return (mask & (rotated_field << start)) |
-           (~mask & n);
-  });
-
-  //(bitwise-reverse-bit-field ei1 ei2 ei3)    procedure
-  define_libfunc("bitwise-reverse-bit-field", 3, 3, function(ar){
-    var ret=n=ar[0], start=ar[1], end=ar[2];
-    var orig_field = ((~(-1 << end) & n) >> start);
-    for (var i=0; i<(end-start); i++, orig_field>>=1) {
-      var bit = orig_field & 1;
-      var setpos = end - 1 - i;
-      var mask = (1 << setpos);
-      ret = (mask & (bit << setpos)) | (~mask & ret);
-    }
-    return ret;
-  });
-
-  //
-  // Chapter 12 syntax-case
-  //
-
-  //
-  // Chapter 13 Hashtables
-  //
-
-  //13.1  Constructors
-  //(define h (make-eq-hashtale)
-  //(define h (make-eq-hashtable 1000))
-  define_libfunc("make-eq-hashtable", 0, 1, function(ar){
-    // Note: ar[1] (hashtable size) is just ignored
-    return new Hashtable(Hashtable.eq_hash, Hashtable.eq_equiv);
-  });
-  //(make-eqv-hashtable)    procedure
-  //(make-eqv-hashtable k)    procedure
-  define_libfunc("make-eqv-hashtable", 0, 1, function(ar){
-    return new Hashtable(Hashtable.eqv_hash, Hashtable.eqv_equiv);
-  });
-  //(make-hashtable hash-function equiv)    procedure
-  //(make-hashtable hash-function equiv k)    procedure
-  define_libfunc("make-hashtable", 2, 3, function(ar){
-    assert_procedure(ar[0]);
-    assert_procedure(ar[1]);
-    return new Hashtable(ar[0], ar[1]);
-  });
-
-  //13.2  Procedures
-  // (hashtable? hash)
-  define_libfunc("hashtable?", 1, 1, function(ar){
-    return ar[0] instanceof Hashtable;
-  });
-  //(hashtable-size hash)
-  define_libfunc("hashtable-size", 1, 1, function(ar){
-    assert_hashtable(ar[0]);
-    return ar[0].keys().length;
-  });
-
-  // Find a pair from a hashtable with given key.
-  //
-  // hash      - a BiwaScheme.Hashtable
-  // key       - an object
-  // callbacks - an object contains callback functions
-  //             .on_found     - function(pair, hashed)
-  //               pair   - [Object key, Object value]
-  //               hashed - Object hashed
-  //             .on_not_found - function(hashed)
-  //               hashed - Object hashed
-  //
-  // Returns an instance of BiwaScheme.Call.
-  BiwaScheme.find_hash_pair = function(hash, key, callbacks){
-    // invoke hash proc
-    return new Call(hash.hash_proc, [key], function(ar){
-      var hashed = ar[0];
-      var candidate_pairs = hash.candidate_pairs(hashed);
-
-      if (!candidate_pairs){ // shortcut: obviously not found
-        return callbacks.on_not_found(hashed);
-      }
-
-      // search the exact key from candidates
-      return Call.foreach(candidate_pairs, {
-        call: function(pair){
-          // invoke the equivalence proc
-          return new Call(hash.equiv_proc, [key, pair[0]]);
-        },
-        result: function(equal, pair){
-          if(equal) {       // found
-            return callbacks.on_found(pair, hashed);
-          }
-        },
-        finish: function(){ // not found
-          return callbacks.on_not_found(hashed);
-        }
-      });
-    });
-  };
-
-  //(hashtable-ref hash "foo" #f)
-  define_libfunc("hashtable-ref", 3, 3, function(ar){
-    var hash = ar[0], key = ar[1], ifnone = ar[2];
-    assert_hashtable(hash);
-
-    return BiwaScheme.find_hash_pair(hash, key, {
-      on_found: function(pair){
-        return pair[1];
-      },
-      on_not_found: function(hashed){
-        return ifnone;
-      }
-    });
-  });
-
-  //(hashtable-set! hash "foo" '(1 2))
-  define_libfunc("hashtable-set!", 3, 3, function(ar){
-    var hash = ar[0], key = ar[1], value = ar[2];
-    assert_hashtable(hash);
-    assert(hash.mutable, "hashtable is not mutable");
-
-    return BiwaScheme.find_hash_pair(hash, key, {
-      on_found: function(pair){
-        pair[1] = value;
-        return BiwaScheme.undef;
-      },
-      on_not_found: function(hashed){
-        hash.add_pair(hashed, key, value);
-        return BiwaScheme.undef;
-      }
-    });
-  });
-
-  //(hashtable-delete! hash "foo")
-  define_libfunc("hashtable-delete!", 2, 2, function(ar){
-    var hash = ar[0], key = ar[1];
-    assert_hashtable(hash);
-    assert(hash.mutable, "hashtable is not mutable");
-
-    return BiwaScheme.find_hash_pair(hash, key, {
-      on_found: function(pair, hashed){
-        hash.remove_pair(hashed, pair);
-        return BiwaScheme.undef;
-      },
-      on_not_found: function(hashed){
-        return BiwaScheme.undef;
-      }
-    });
-  });
-
-  //(hashtable-contains? hash "foo")
-  define_libfunc("hashtable-contains?", 2, 2, function(ar){
-    var hash = ar[0], key = ar[1];
-    assert_hashtable(hash);
-
-    return BiwaScheme.find_hash_pair(hash, key, {
-      on_found: function(pair){
-        return true;
-      },
-      on_not_found: function(hashed){
-        return false;
-      }
-    });
-  });
-
-  //(hashtable-update! hashtable key proc default)    procedure
-  define_libfunc("hashtable-update!", 4, 4, function(ar){
-    var hash = ar[0], key = ar[1], proc = ar[2], ifnone = ar[3];
-    assert_hashtable(hash);
-    assert(hash.mutable, "hashtable is not mutable");
-    assert_procedure(proc);
-
-    return BiwaScheme.find_hash_pair(hash, key, {
-      on_found: function(pair, hashed){
-        // invoke proc and get new value
-        return new Call(proc, [pair[1]], function(ar){
-          // replace the value
-          pair[1] = ar[0];
-          return BiwaScheme.undef;
-        });
-      },
-      on_not_found: function(hashed){
-        // invoke proc and get new value
-        return new Call(proc, [ifnone], function(ar){
-          // create new pair
-          hash.add_pair(hashed, key, ar[0]);
-          return BiwaScheme.undef;
-        });
-      }
-    });
-  });
-  //(hashtable-copy hashtable)    procedure
-  //(hashtable-copy hashtable mutable)    procedure
-  define_libfunc("hashtable-copy", 1, 2, function(ar){
-    var mutable = (ar[1]===undefined) ? false : !!ar[1];
-    assert_hashtable(ar[0]);
-    return ar[0].create_copy(mutable);
-  });
-  //(hashtable-clear! hashtable)    procedure
-  //(hashtable-clear! hashtable k)    procedure
-  define_libfunc("hashtable-clear!", 0, 1, function(ar){
-    assert_hashtable(ar[0]);
-    assert(ar[0].mutable, "hashtable is not mutable");
-    ar[0].clear();
-    return BiwaScheme.undef;
-  });
-  //(hashtable-keys hash)  ; => vector
-  define_libfunc("hashtable-keys", 1, 1, function(ar){
-    assert_hashtable(ar[0]);
-    return ar[0].keys();
-  });
-  //(hashtable-entries hash)  ; => two vectors (keys, values)
-  define_libfunc("hashtable-entries", 1, 1, function(ar){
-    assert_hashtable(ar[0]);
-    return new Values([ar[0].keys(), ar[0].values()]);
-  });
-
-  //13.3  Inspection
-
-  //(hashtable-equivalence-function hashtable)    procedure
-  define_libfunc("hashtable-equivalence-function", 1, 1, function(ar){
-    assert_hashtable(ar[0]);
-    return ar[0].equiv_proc;
-  });
-  //(hashtable-hash-function hashtable)    procedure
-  define_libfunc("hashtable-hash-function", 1, 1, function(ar){
-    assert_hashtable(ar[0]);
-    return ar[0].hash_proc;
-  });
-  //(hashtable-mutable? hashtable)    procedure
-  define_libfunc("hashtable-mutable?", 1, 1, function(ar){
-    assert_hashtable(ar[0]);
-    return ar[0].mutable;
-  });
-
-  //13.4  Hash functions
-
-  //(equal-hash obj)    procedure
-  define_libfunc("equal-hash", 0, 0, function(ar){
-    return Hashtable.equal_hash;
-  });
-  //(string-hash string)    procedure
-  define_libfunc("string-hash", 0, 0, function(ar){
-    return Hashtable.string_hash;
-  });
-  //(string-ci-hash string)    procedure
-  define_libfunc("string-ci-hash", 0, 0, function(ar){
-    return Hashtable.string_ci_hash;
-  });
-  //(symbol-hash symbol)    procedure
-  define_libfunc("symbol-hash", 0, 0, function(ar){
-    return Hashtable.symbol_hash;
-  });
-
-  //
-  // Chapter 14 Enumerators
-  //
-  //(make-enumeration symbol-list) -> enum-set(new type)
-  define_libfunc("make-enumeration", 1, 1, function(ar){
-    assert_list(ar[0]);
-    var members = ar[0].to_array();
-    var enum_type = new BiwaScheme.Enumeration.EnumType(members);
-    return enum_type.universe();
-  });
-
-  //(enum-set-universe enum-set) -> enum-set(same type as the argument)
-  define_libfunc("enum-set-universe", 1, 1, function(ar){
-    assert_enum_set(ar[0]);
-    return ar[0].enum_type.universe();
-  });
-
-  //(enum-set-indexer enum-set) -> (lambda (sym)) -> integer or #f
-  define_libfunc("enum-set-indexer", 1, 1, function(ar){
-    assert_enum_set(ar[0]);
-    return ar[0].enum_type.indexer();
-  });
-
-  //(enum-set-constructor enum-set) -> (lambda (syms)) -> enum-set(same type as the argument)
-  define_libfunc("enum-set-constructor", 1, 1, function(ar){
-    assert_enum_set(ar[0]);
-    return ar[0].enum_type.constructor();
-  });
-
-  //(enum-set->list enum-set) -> symbol-list
-  define_libfunc("enum-set->list", 1, 1, function(ar){
-    assert_enum_set(ar[0]);
-    return ar[0].symbol_list();
-  });
-
-  //(enum-set-member? symbol enum-set) -> bool
-  define_libfunc("enum-set-member?", 2, 2, function(ar){
-    assert_symbol(ar[0]);
-    assert_enum_set(ar[1]);
-    return ar[1].is_member(ar[0]);
-  });
-
-  //(enum-set-subset? esa esb) -> bool
-  define_libfunc("enum-set-subset?", 2, 2, function(ar){
-    assert_enum_set(ar[0]);
-    assert_enum_set(ar[1]);
-    return ar[0].is_subset(ar[1]);
-  });
-
-  //(enum-set=? esa esb) -> bool
-  define_libfunc("enum-set=?", 2, 2, function(ar){
-    assert_enum_set(ar[0]);
-    assert_enum_set(ar[1]);
-    return ar[0].equal_to(ar[1]);
-  });
-
-  //(enum-set-union es1 es2) -> enum-set
-  define_libfunc("enum-set-union", 2, 2, function(ar){
-    assert_enum_set(ar[0]);
-    assert_enum_set(ar[1]);
-    assert(ar[0].enum_type === ar[1].enum_type,
-           "two enum-sets must be the same enum-type", "enum-set-union");
-    return ar[0].union(ar[1]);
-  });
-
-  //(enum-set-intersection es1 es2) -> enum-set
-  define_libfunc("enum-set-intersection", 2, 2, function(ar){
-    assert_enum_set(ar[0]);
-    assert_enum_set(ar[1]);
-    return ar[0].intersection(ar[1]);
-  });
-
-  //(enum-set-difference es1 es2) -> enum-set
-  define_libfunc("enum-set-difference", 2, 2, function(ar){
-    assert_enum_set(ar[0]);
-    assert_enum_set(ar[1]);
-    return ar[0].difference(ar[1]);
-  });
-
-  //(enum-set-complement enum-set) -> enum-set
-  define_libfunc("enum-set-complement", 1, 1, function(ar){
-    assert_enum_set(ar[0]);
-    return ar[0].complement();
-  });
-
-  //(enum-set-projection esa esb) -> enum-set
-  define_libfunc("enum-set-projection", 2, 2, function(ar){
-    assert_enum_set(ar[0]);
-    assert_enum_set(ar[1]);
-    return ar[0].projection(ar[1]);
-  });
-
-  //(define-enumeration <type-name> (<symbol> ...) <constructor-syntax>)
-  // Example:
-  //   (define-enumeration color (red green black white) color-set)
-  //   this defines:
-  //     - an EnumType
-  //     - (color red) ;=> 'red
-  //     - (color-set red black) ;=> #<enum-set (red black)>
-  define_syntax("define-enumeration", function(x){
-    // Extract parameters
-    var type_name = x.cdr.car;
-    assert(BiwaScheme.isSymbol(type_name),
-           "expected symbol for type_name", "define-enumeration");
-    type_name = type_name.name;
-
-    var members = x.cdr.cdr.car;
-    assert(BiwaScheme.isList(members),
-           "expected list of symbol for members", "define-enumeration");
-    members = members.to_array();
-
-    var constructor_name = x.cdr.cdr.cdr.car;
-    assert(BiwaScheme.isSymbol(constructor_name),
-           "expected symbol for constructor_name", "define-enumeration");
-    constructor_name = constructor_name.name;
-
-    // Define EnumType
-    var enum_type = new BiwaScheme.Enumeration.EnumType(members);
-
-    // Define (color red)
-    define_syntax(type_name, function(x){
-      // (color)
-      assert(!BiwaScheme.isNil(x.cdr),
-             "an argument is needed", type_name);
-
-      var arg = x.cdr.car;
-      assert_symbol(arg, type_name);
-
-      // Check arg is included in the universe
-      assert(_.include(enum_type.members, arg),
-        arg.name+" is not included in the universe: "+
-          BiwaScheme.to_write(enum_type.members),
-        type_name);
-
-      return BiwaScheme.List(Sym("quote"), arg);
-    });
-
-    // Define (color-set red black)
-    define_syntax(constructor_name, function(x){
-      assert_list(x.cdr, constructor_name);
-
-      var symbols = x.cdr.to_array();
-
-      // Check each argument is included in the universe
-      _.each(symbols, function(arg){
-        assert_symbol(arg, constructor_name);
-        assert(_.include(enum_type.members, arg),
-          arg.name+" is not included in the universe: "+
-            BiwaScheme.to_write(enum_type.members),
-          constructor_name);
-      });
-
-      // Create an EnumSet
-      return new BiwaScheme.Enumeration.EnumSet(enum_type, symbols);
-    });
-  });
-
-  //
-  // Chapter 15 Composite library
-  //
-  //(rnrs 6) = all - eval - mutable pairs - mutable strings - r5rs compatibility
-
-  //
-  // Chapter 16 eval
-  //
-  //(eval expression environment)    procedure
-  define_libfunc("eval", 1, 1, function(ar, intp){
-    //TODO: environment
-    //TODO: this implementation has a bug that
-    //  expressions which contains #<undef>, etc. cannot be evaluated.
-    var expr = ar[0];
-    var intp2 = new Interpreter(intp);
-    return intp2.evaluate(BiwaScheme.to_write(expr));
-  });
-//(environment import-spec ...)    procedure
-
-  //
-  // Chapter 17 Mutable pairs
-  //
-//(set-car! pair obj)    procedure
-//(set-cdr! pair obj)    procedure
-
-  //
-  // Chapter 18 Mutable strings
-  //
-  //(string-set! string k char)    procedure
- // (string-fill! string char)    procedure
-
-  //
-  // Chapter 19 R5RS compatibility
-  //
-//(exact->inexact z)    procedure
-//(inexact->exact z)    procedure
-//
-//(quotient n1 n2)    procedure
-//(remainder n1 n2)    procedure
-//(modulo n1 n2)    procedure
-//
-//(null-environment n)    procedure
-//(scheme-report-environment n)    procedure
-
-  //
-  // R7RS (TODO: split file?)
-  //
-
-  // R7RS Promise
-  //
-  // (delay expression)
-  define_syntax("delay", function(x){
-    if (x.cdr === BiwaScheme.nil) {
-      throw new Error("malformed delay: no argument");
-    }
-    if (x.cdr.cdr !== nil) {
-      throw new Error("malformed delay: too many arguments: "+
-                      BiwaScheme.to_write_ss(x));
-    }
-    var expr = x.cdr.car;
-    // Expand into call of internal function
-    // ( procedure->promise (lambda () (make-promise expr)))
-    return new Pair(Sym(" procedure->promise"),
-             new Pair(new Pair(Sym("lambda"),
-                        new Pair(BiwaScheme.nil,
-                          new Pair(new Pair(Sym("make-promise"),
-                                     new Pair(expr, BiwaScheme.nil)),
-                            BiwaScheme.nil)))));
-  });
-
-  // (delay-force promise-expr)
-  define_syntax("delay-force", function(x){
-    if (x.cdr === BiwaScheme.nil) {
-      throw new Error("malformed delay-force: no argument");
-    }
-    if (x.cdr.cdr !== nil) {
-      throw new Error("malformed delay-force: too many arguments: "+
-                      BiwaScheme.to_write_ss(x));
-    }
-    var expr = x.cdr.car;
-    // Expand into call of internal function
-    // ( procedure->promise (lambda () expr))
-    return new Pair(Sym(" procedure->promise"),
-             new Pair(new Pair(Sym("lambda"),
-                        new Pair(BiwaScheme.nil,
-                          new Pair(expr, BiwaScheme.nil))), BiwaScheme.nil));
-  });
-
-  // (force promise)
-  var force = function(promise) {
-    if (promise.is_done()) {
-      return promise.value();
-    }
-    return new Call(promise.thunk(), [], function(ar) {
-      assert_promise(ar[0]);
-      var new_promise = ar[0];
-      if (promise.is_done()) {  // reentrant!
-        return promise.value();
-      }
-      else {
-        promise.update_with(new_promise);
-        return force(new_promise);
-      }
-    });
-  };
-  define_libfunc("force", 1, 1, function(ar, intp){
-    assert_promise(ar[0]);
-    return force(ar[0]);
-  });
-
-  // (promise? obj)
-  define_libfunc("promise?", 1, 1, function(ar, intp){
-    return (ar[0] instanceof BiwaScheme.Promise);
-  });
-
-  // (make-promise obj)
-  define_libfunc("make-promise", 1, 1, function(ar, intp){
-    var obj = ar[0];
-    if (obj instanceof BiwaScheme.Promise) {
-      return obj;
-    }
-    else {
-      return BiwaScheme.Promise.done(obj);
-    }
-  });
-
-  // internal function
-  // ( procedure->promise proc)
-  // proc must be a procedure with no argument and return a promise
-  define_libfunc(" procedure->promise", 1, 1, function(ar, intp){
-    assert_procedure(ar[0]);
-    return BiwaScheme.Promise.fresh(ar[0]);
-  });
-}
-if( typeof(BiwaScheme)!='object' ) BiwaScheme={}; with(BiwaScheme) {
-
-  //
-  // interface to javascript
-  //
-  define_libfunc("js-eval", 1, 1, function(ar){
-    return eval(ar[0]);
-  });
-  define_libfunc("js-ref", 2, 2, function(ar){
-    if(_.isString(ar[1])){
-      return ar[0][ar[1]];
-    }
-    else{
-      assert_symbol(ar[1]);
-      return ar[0][ar[1].name];
-    }
-  });
-  define_libfunc("js-set!", 3, 3, function(ar){
-    assert_string(ar[1]);
-    ar[0][ar[1]] = ar[2];
-    return BiwaScheme.undef;
-  });
-
-  // (js-call (js-eval "Math.pow") 2 4)
-  define_libfunc("js-call", 1, null, function(ar){
-    var js_func = ar.shift();
-    assert_function(js_func);
-
-    var receiver = null;
-    return js_func.apply(receiver, ar);
-  });
-  // (js-invoke (js-new "Date") "getTime")
-  define_libfunc("js-invoke", 2, null, function(ar){
-    var js_obj = ar.shift();
-    var func_name = ar.shift();
-    if(!_.isString(func_name)){
-      assert_symbol(func_name);
-      func_name = func_name.name;
-    }
-    if(js_obj[func_name])
-      return js_obj[func_name].apply(js_obj, ar);
-    else
-      throw new Error("js-invoke: function "+func_name+" is not defined");
-  });
-
-  // Short hand for JavaScript method call.
-  //
-  // (js-invocation obj '(foo 1 2 3))  ;=> obj.foo(1,2,3)
-  // (js-invocation obj '(foo 1 2 3)   ;=> obj.foo(1,2,3)
-  //                    'bar           ;      .bar
-  //                    '(baz 4 5))    ;      .baz(4,5)
-  // (js-invocation 'Math '(pow 2 3))  ;=> Math.pow(2,3)
-  //
-  // It also converts
-  //   (lambda (e) ...) to
-  //   (js-closure (lambda (e) ...))
-  //   and
-  //   '((a . b) (c . 4)) to
-  //   {a: "b", c: 4}
-  //
-  define_libfunc("js-invocation", 2, null, function(ar, intp){
-    var receiver = ar.shift();
-    // TODO: convert lambdas by js-closure 
-    if(BiwaScheme.isSymbol(receiver)){
-      receiver = eval(receiver.name); //XXX: is this ok?
-    }
-
-    var v = receiver;
-
-    // Process each method call
-    _.each(ar, function(callspec){
-        if(BiwaScheme.isSymbol(callspec)){
-          // Property access
-          v = v[callspec.name];
-        }
-        else if(BiwaScheme.isList(callspec)){
-          // Method call
-          var args = callspec.to_array();
-
-          assert_symbol(args[0]);
-          var method = args.shift().name;
-
-          // Convert arguments
-          args = _.map(args, function(arg){
-              if(BiwaScheme.isClosure(arg)){
-                // closure -> JavaScript funciton
-                return BiwaScheme.js_closure(arg, intp);
-              }
-              else if(BiwaScheme.isList(arg)){
-                // alist -> JavaScript Object
-                var o = {};
-                arg.foreach(function(pair){
-                    assert_symbol(pair.car);
-                    o[pair.car.name] = pair.cdr;
-                  });
-                return o;
-              }
-              else
-                return arg;
-            });
-
-          // Call the method
-          if(!_.isFunction(v[method])){
-            throw new BiwaScheme.Error("js-invocation: the method `"+method+"' not found");
-          }
-          v = v[method].apply(v, args);
-        }
-        else{
-          // (wrong argument)
-          throw new BiwaScheme.Error("js-invocation: expected list or symbol for callspec but got " + BiwaScheme.inspect(callspec));
-        }
-      });
-
-    return v;
-  });
-
-  // TODO: provide corresponding macro ".." 
-  define_syntax("..", function(x){
-    if (x.cdr == nil) {
-      throw new Error("malformed ..");
-    }
-    return new Pair(Sym("js-invocation"), x.cdr);
-  });
-
-  // (js-new (js-eval "Date") 2005 1 1)
-  // (js-new (js-eval "Draggable") elem 'onEnd (lambda (drg) ...))
-  //   If symbol is given, following arguments are converted to 
-  //   an js object. If any of them is a scheme closure,
-  //   it is converted to js function which invokes that closure.
-  //
-  // (js-new "Date" 2005 1 1)
-  //   You can pass javascript program string for constructor.
-  define_libfunc("js-new", 1, null, function(ar, intp){
-    // make js object from key-value pair
-    var array_to_obj = function(ary){
-      if((ary.length % 2) != 0)
-        throw new Error("js-new: odd number of key-value pair");
-
-      var obj = {};
-      for(var i=0; i<ary.length; i+=2){
-        var key = ary[i], value = ary[i+1];
-        assert_symbol(key);
-        if(value.closure_p === true)
-          value = BiwaScheme.js_closure(value, intp);
-
-        obj[key.name] = value;
-      }
-      return obj;
-    };
-
-    var ctor = ar.shift();
-    if (_.isString(ctor)) ctor = eval(ctor);
-
-    if(ar.length == 0){
-      return new ctor();
-    }
-    else{
-      // pack args to js object, if symbol appears
-      var args = [];
-      for(var i=0; i<ar.length; i++){
-        if(ar[i] instanceof Symbol){
-          args.push(array_to_obj(ar.slice(i)));
-          break;
-        }
-        else{
-          args.push(ar[i]);
-        }
-      }
-      // Run `new ctor(...args)`;
-      return new (Function.prototype.bind.apply(ctor, [null].concat(args)))();
-    }
-  });
-
-  // (js-obj "foo" 1 "bar" 2)
-  // -> {"foo": 1, "bar": 2}
-  define_libfunc("js-obj", 0, null, function(ar){
-    if(ar.length % 2 != 0){
-      throw new Error("js-obj: number of arguments must be even");
-    }
-
-    var obj = {};
-    for(i=0; i<ar.length/2; i++){
-      assert_string(ar[i*2]);
-      obj[ar[i*2]] = ar[i*2+1];
-    }
-    return obj;
-  });
-
-  BiwaScheme.js_closure = function(proc, intp){
-    var intp2 = new Interpreter(intp);
-    return function(/*args*/){
-      return intp2.invoke_closure(proc, _.toArray(arguments));
-    };
-  };
-  // (js-closure (lambda (event) ..))
-  // Returns a js function which executes the given procedure.
-  //
-  // Example
-  //   (add-handler! ($ "#btn") "click" (js-closure on-click))
-  define_libfunc("js-closure", 1, 1, function(ar, intp){
-    assert_closure(ar[0]);
-    return BiwaScheme.js_closure(ar[0], intp);
-  });
-
-  define_libfunc("js-null?", 1, 1, function(ar){
-    return ar[0] === null;
-  });
-
-  define_libfunc("js-undefined?", 1, 1, function(ar){
-    return ar[0] === undefined;
-  });
-
-  define_libfunc("js-function?", 1, 1, function(ar){
-    return _.isFunction(ar[0]);
-  });
-
-  define_libfunc("js-array-to-list", 1, 1, function(ar){
-    BiwaScheme.deprecate("js-array-to-list", "1.0", "js-array->list");
-    return BiwaScheme.array_to_list(ar[0]);
-  });
-
-  define_libfunc("js-array->list", 1, 1, function(ar){
-    return BiwaScheme.array_to_list(ar[0]);
-  });
-
-  define_libfunc("list-to-js-array", 1, 1, function(ar){
-    BiwaScheme.deprecate("list-to-js-array", "1.0", "list->js-array");
-    return ar[0].to_array();
-  });
-
-  define_libfunc("list->js-array", 1, 1, function(ar){
-    return ar[0].to_array();
-  });
-
-  BiwaScheme.alist_to_js_obj = function(alist) {
-    if (alist === nil) {
-      return {} ;
-    }
-    assert_list(alist);
-    var obj = {};
-    alist.foreach(function(item){
-      assert_string(item.car);
-      obj[item.car] = item.cdr;
-    });
-    return obj;
-  };
-  define_libfunc("alist-to-js-obj", 1, 1, function(ar) {
-    BiwaScheme.deprecate("alist-to-js-obj", "1.0", "alist->js-obj");
-    return BiwaScheme.alist_to_js_obj(ar[0]);
-  });
-
-  define_libfunc("alist->js-obj", 1, 1, function(ar) {
-    return BiwaScheme.alist_to_js_obj(ar[0]);
-  });
-
-  BiwaScheme.js_obj_to_alist = function(obj) {
-    if (obj === undefined) {
-      return BiwaScheme.nil;
-    }
-    var arr = [];
-    _.each(obj, function(val, key) {
-      arr.push(new Pair(key, val));
-    });
-    var alist = BiwaScheme.array_to_list(arr);
-    return alist;
-  };
-  define_libfunc("js-obj-to-alist", 1, 1, function(ar) {
-    BiwaScheme.deprecate("js-obj-to-alist", "1.0", "js-obj->alist");
-    return BiwaScheme.js_obj_to_alist(ar[0]);
-  });
-  define_libfunc("js-obj->alist", 1, 1, function(ar) {
-    return BiwaScheme.js_obj_to_alist(ar[0]);
-  });
-
-  //
-  // timer, sleep
-  //
-  define_libfunc("timer", 2, 2, function(ar, intp){
-    var proc = ar[0], sec = ar[1];
-    assert_closure(proc);
-    assert_real(sec);
-    var intp2 = new Interpreter(intp);
-    setTimeout(function(){ intp2.invoke_closure(proc); }, sec * 1000);
-    return BiwaScheme.undef;
-  });
-  define_libfunc("set-timer!", 2, 2, function(ar, intp){
-    var proc = ar[0], sec = ar[1];
-    assert_closure(proc);
-    assert_real(sec);
-    var intp2 = new Interpreter(intp);
-    return setInterval(function(){ intp2.invoke_closure(proc); }, sec * 1000);
-  });
-  define_libfunc("clear-timer!", 1, 1, function(ar){
-    var timer_id = ar[0];
-    clearInterval(timer_id);
-    return BiwaScheme.undef;
-  });
-  define_libfunc("sleep", 1, 1, function(ar){
-    var sec = ar[0];
-    assert_real(sec);
-    return new BiwaScheme.Pause(function(pause){
-      setTimeout(function(){ pause.resume(nil); }, sec * 1000);
-    });
-  });
-
-  //
-  // console
-  //
-  // (console-debug obj1 ...)
-  // (console-log obj1 ...)
-  // (console-info obj1 ...)
-  // (console-warn obj1 ...)
-  // (console-error obj1 ...)
-  //   Put objects to console, if window.console is defined.
-  //   Returns obj1.
-  //
-  // Example:
-  //     (some-func arg1 (console-debug arg2) arg3)
-  var define_console_func = function(name){
-    define_libfunc("console-"+name, 1, null, function(ar){
-      var con = window.console;
-      if(con){
-        var vals = _.map(ar, function(item){
-          return BiwaScheme.inspect(item, {fallback: item});
-        });
-
-        con[name].apply(con, vals);
-      }
-      return ar[0];
-    });
-  };
-  define_console_func("debug");
-  define_console_func("log");
-  define_console_func("info");
-  define_console_func("warn");
-  define_console_func("error");
-
-}
-
-if( typeof(BiwaScheme)!='object' ) BiwaScheme={}; with(BiwaScheme) {
-  define_libfunc("html-escape", 1, 1, function(ar){
-    assert_string(ar[0]);
-    return _.escape(ar[0]);
-  });
-  BiwaScheme.inspect_objs = function(objs){
-    return _.map(objs, BiwaScheme.inspect).join(", ");
-  };
-  define_libfunc("inspect", 1, null, function(ar){
-    return BiwaScheme.inspect_objs(ar);
-  });
-  define_libfunc("inspect!", 1, null, function(ar){
-    Console.puts(BiwaScheme.inspect_objs(ar));
-    return BiwaScheme.undef;
-  });
-
-  //
-  // json
-  //
-  // json->sexp
-  // Array -> list
-  // Object -> alist
-  // (number, boolean, string, 
-  //
-  BiwaScheme.json2sexp = function(json){
-    switch(true){
-    case _.isNumber(json) ||
-         _.isString(json) ||
-         json === true || json === false:
-      return json;
-    case _.isArray(json):
-      return array_to_list(_.map(json, json2sexp));
-    case typeof(json) == "object":
-      var ls = nil;
-      for(key in json){
-        ls = new Pair(new Pair(key, json2sexp(json[key])),
-               ls);
-      }
-      return ls;
-    default:
-      throw new Error("json->sexp: detected invalid value for json: "+BiwaScheme.inspect(json));
-    }
-    throw new Bug("must not happen");
-  }
-  define_libfunc("json->sexp", 1, 1, function(ar){
-    return json2sexp(ar[0]);
-  })
-
-  // (vector-push! v item1 item2 ...)
-  define_libfunc("vector-push!", 2, null, function(ar){
-    assert_vector(ar[0]);
-    for(var i=1; i<ar.length; i++){
-      ar[0].push(ar[i]);
-    }
-    return ar[0];
-  });
-
-  //
-  //from Gauche
-  //
-
-  // (identity obj)
-  // Returns obj.
-  define_libfunc("identity", 1, 1, function(ar){
-    return ar[0];
-  });
-
-  // (inc! i)
-  // = (begin (set! i (+ i 1)) i)
-  // Increments i (i.e., set i+1 to i).
-  define_syntax("inc!", function(x){
-    var target = x.cdr.car;
-    return List(Sym("begin"),
-                List(Sym("set!"),
-                     target, 
-                     List(Sym("+"), target, 1)),
-                target);
-  });
-  
-  // (dec! i)
-  // = (begin (set! i (- i 1)) i)
-  // Decrements i (i.e., set i-1 to i).
-  define_syntax("dec!", function(x){
-    var target = x.cdr.car;
-    return List(Sym("begin"),
-                List(Sym("set!"),
-                     target, 
-                     List(Sym("-"), target, 1)),
-                target);
-  });
-
-  // string
-  
-  define_libfunc("string-concat", 1, 1, function(ar){
-    assert_list(ar[0]);
-    return ar[0].to_array().join("");
-  })
-
-  define_libfunc("string-split", 2, 2, function(ar){
-    assert_string(ar[0]);
-    assert_string(ar[1]);
-    return array_to_list(ar[0].split(ar[1]));
-  })
-
-  define_libfunc("string-join", 1, 2, function(ar){
-    assert_list(ar[0]);
-    var delim = ""
-    if(ar[1]){
-      assert_string(ar[1]);
-      delim = ar[1];
-    }
-    return ar[0].to_array().join(delim);
-  })
-  
-  // lists
-
-  define_libfunc("intersperse", 2, 2, function(ar){
-    var item = ar[0], ls = ar[1];
-    assert_list(ls);
-
-    var ret = [];
-    _.each(ls.to_array().reverse(),function(x){
-      ret.push(x);
-      ret.push(item);
-    });
-    ret.pop();
-    return array_to_list(ret);
-  });
-
-  define_libfunc("map-with-index", 2, null, function(ar){
-    var proc = ar.shift(), lists = ar;
-    _.each(lists, assert_list);
-
-    var results = [], i = 0;
-    return Call.multi_foreach(lists, {
-      call: function(xs){ 
-        var args = _.map(xs, function(x){ return x.car });
-        args.unshift(i);
-        i++;
-        return new Call(proc, args);
-      },
-      result: function(res){ results.push(res); },
-      finish: function(){ return array_to_list(results); }
-    });
-  });
-
-  // loop
-
-  // (dotimes (variable limit result) body ...)
-  // Iterate with variable 0 to limit-1.
-  // ->
-  //    (do ((tlimit limit)
-  //         (variable 0 (+ variable 1)))
-  //        ((>= variable tlimit) result)
-  //      body ...)
-  define_syntax("dotimes", function(x){
-    var spec = x.cdr.car,
-        bodies = x.cdr.cdr;
-    var variable = spec.car,
-        limit = spec.cdr.car,
-        result = spec.cdr.cdr.car;
-    var tlimit = BiwaScheme.gensym();
-
-    var do_vars = deep_array_to_list([[tlimit, limit],
-                                      [variable, 0, [Sym("+"), variable, 1]]]);
-    var do_check = deep_array_to_list([[Sym(">="), variable, tlimit], result]);
-
-    return new Pair(Sym("do"),
-             new Pair(do_vars,
-               new Pair(do_check,
-                 bodies)));
-  });
-
-  // sorting (Obsolete: use list-sort, etc. instead of these.)
-
-  // utility function. takes a JS Array and a Scheme procedure,
-  // returns sorted array
-  var sort_with_comp = function(ary, proc, intp){
-    return ary.sort(function(a, b){
-        var intp2 = new BiwaScheme.Interpreter(intp);
-        return intp2.invoke_closure(proc, [a, b]);
-      });
-  };
-
-  define_libfunc("list-sort/comp", 1, 2, function(ar, intp){
-    assert_procedure(ar[0]);
-    assert_list(ar[1]);
-
-    return array_to_list(sort_with_comp(ar[1].to_array(), ar[0], intp));
-  });
-  define_libfunc("vector-sort/comp", 1, 2, function(ar, intp){
-    assert_procedure(ar[0]);
-    assert_vector(ar[1]);
-
-    return sort_with_comp(_.clone(ar[1]), ar[0], intp);
-  });
-  define_libfunc("vector-sort/comp!", 1, 2, function(ar, intp){
-    assert_procedure(ar[0]);
-    assert_vector(ar[1]);
-
-    sort_with_comp(ar[1], ar[0], intp);
-    return BiwaScheme.undef;
-  });
-  
-  // macros
-
-  //(define-macro (foo x y) body ...)
-  //(define-macro foo lambda)
-
-  var rearrange_args = function (expected, given) {
-    var args = [];
-    var dotpos = (new Compiler).find_dot_pos(expected);
-    if (dotpos == -1)
-      args = given;
-    else {
-      for (var i = 0; i < dotpos; i++) {
-        args[i] = given[i];
-      }
-      args[i] = array_to_list(given.slice(i));
-    }
-    return args;
-  }
-  define_syntax("define-macro", function(x){
-    var head = x.cdr.car;
-    var expected_args;
-    if(head instanceof Pair){
-      var name = head.car;
-      expected_args = head.cdr;
-      var body = x.cdr.cdr;
-      var lambda = new Pair(Sym("lambda"),
-                     new Pair(expected_args,
-                       body))
-    }
-    else{
-      var name = head;
-      var lambda = x.cdr.cdr.car;
-      expected_args = lambda.cdr.car;
-    }
-
-    //[close, n_frees, do_body, next]
-    var opc = Compiler.compile(lambda);
-    if(opc[1] != 0)
-      throw new Bug("you cannot use free variables in macro expander (or define-macro must be on toplevel)")
-    var cls = [opc[2]];
-
-    TopEnv[name.name] = new Syntax(name.name, function(sexp){
-      var given_args = sexp.to_array();
-
-      given_args.shift();
-      
-      var intp = new Interpreter();
-      var args = rearrange_args(expected_args, given_args);
-      var result = intp.invoke_closure(cls, args);
-      return result;
-    });
-
-    return BiwaScheme.undef;
-  })
-
-  var macroexpand_1 = function(x){
-    if(x instanceof Pair){
-      if(x.car instanceof Symbol && TopEnv[x.car.name] instanceof Syntax){
-        var transformer = TopEnv[x.car.name];
-        x = transformer.transform(x);
-      }
-      else
-        throw new Error("macroexpand-1: `" + to_write_ss(x) + "' is not a macro");
-    }
-    return x;
-  }
-  define_syntax("%macroexpand", function(x){
-    var expanded = BiwaScheme.Interpreter.expand(x.cdr.car);
-    return List(Sym("quote"), expanded);
-  });
-  define_syntax("%macroexpand-1", function(x){
-    var expanded = macroexpand_1(x.cdr.car);
-    return List(Sym("quote"), expanded);
-  });
-
-  define_libfunc("macroexpand", 1, 1, function(ar){
-    return BiwaScheme.Interpreter.expand(ar[0]);
-  });
-  define_libfunc("macroexpand-1", 1, 1, function(ar){
-    return macroexpand_1(ar[0]);
-  });
-
-  define_libfunc("gensym", 0, 0, function(ar){
-    return BiwaScheme.gensym();
-  });
-  
-  // i/o
-
-  define_libfunc("print", 1, null, function(ar){
-    _.map(ar, function(item){
-      Console.puts(to_display(item), true);
-    })
-    Console.puts(""); //newline
-    return BiwaScheme.undef;
-  })
-  define_libfunc("write-to-string", 1, 1, function(ar){
-    return to_write(ar[0]);
-  });
-  define_libfunc("read-from-string", 1, 1, function(ar){
-    assert_string(ar[0]);
-    return Interpreter.read(ar[0]);
-  });
-  define_libfunc("port-closed?", 1, 1, function(ar){
-    assert_port(ar[0]);
-    return !(ar[0].is_open);
-  });
-  //define_libfunc("with-input-from-port", 2, 2, function(ar){
-  //define_libfunc("with-error-to-port", 2, 2, function(ar){
-  define_libfunc("with-output-to-port", 2, 2, function(ar){
-    var port = ar[0], proc = ar[1];
-    assert_port(port);
-    assert_procedure(proc);
-
-    var original_port = BiwaScheme.Port.current_output;
-    BiwaScheme.Port.current_output = port
-
-    return new Call(proc, [port], function(ar){
-      port.close();
-      BiwaScheme.Port.current_output = original_port;
-
-      return ar[0];
-    });
-  });
-  
-  // syntax
-  
-  define_syntax("let1", function(x){
-    //(let1 vari expr body ...) 
-    //=> ((lambda (var) body ...) expr)
-    var vari = x.cdr.car; 
-    var expr = x.cdr.cdr.car;
-    var body = x.cdr.cdr.cdr;
-
-    return new Pair(new Pair(Sym("lambda"),
-                      new Pair(new Pair(vari, nil),
-                        body)),
-             new Pair(expr, nil));
-  })
-
-  //
-  // Regular Expression
-  //
-  var assert_regexp = function(obj, fname){
-    if(!(obj instanceof RegExp))
-      throw new Error(fname + ": regexp required, but got " + to_write(obj));
-  }
-
-  //Function: string->regexp string &keyword case-fold 
-  define_libfunc("string->regexp", 1, 1, function(ar){
-    assert_string(ar[0], "string->regexp");
-    return new RegExp(ar[0]); //todo: case-fold
-  })
-  //Function: regexp? obj 
-  define_libfunc("regexp?", 1, 1, function(ar){
-    return (ar[0] instanceof RegExp);
-  })
-  //Function: regexp->string regexp 
-  define_libfunc("regexp->string", 1, 1, function(ar){
-    assert_regexp(ar[0], "regexp->string");
-    return ar[0].toString().slice(1, -1); //cut '/' 
-  })
-
-  define_libfunc("regexp-exec", 2, 2, function(ar){
-    var rexp = ar[0];
-    if(_.isString(ar[0])){
-      rexp = new RegExp(ar[0]);
-    }
-    assert_regexp(rexp, "regexp-exec");
-    assert_string(ar[1], "regexp-exec");
-    var ret = rexp.exec(ar[1])
-    return (ret === null) ? false : array_to_list(ret);
-  })
-
-//  //Function: rxmatch regexp string 
-//  define_libfunc("rxmatch", 1, 1, function(ar){
-//    assert_regexp(ar[0], "rxmatch");
-//    assert_string(ar[1], "rxmatch");
-//    return ar[0].match(ar[1]);
-//  });
-  //Function: rxmatch-start match &optional (i 0) 
-  //Function: rxmatch-end match &optional (i 0) 
-  //Function: rxmatch-substring match &optional (i 0) 
-  //Function: rxmatch-num-matches match   
-  //Function: rxmatch-after match &optional (i 0) 
-  //Function: rxmatch-before match &optional (i 0) 
-  //Generic application: regmatch &optional index 
-  //Generic application: regmatch 'before &optional index 
-  //Generic application: regmatch 'after &optional index 
-  //Function: regexp-replace regexp string substitution 
-  
-  // regexp-replace-all regexp string substitution 
-  define_libfunc("regexp-replace-all", 3, 3, function(ar){
-    var pat = ar[0];
-    if(_.isString(pat)){
-      var rexp = new RegExp(pat, "g")
-    }
-    else{
-      assert_regexp(pat);
-      var rexp = new RegExp(pat.source, "g")
-    }
-    assert_string(ar[1]);
-    assert_string(ar[2]);
-    return ar[1].replace(rexp, ar[2])
-  })
-  //Function: regexp-replace* string rx1 sub1 rx2 sub2 ... 
-  //Function: regexp-replace-all* string rx1 sub1 rx2 sub2 ... 
-  //Function: regexp-quote string 
-  //Macro: rxmatch-let match-expr (var ...) form ... 
-  //Macro: rxmatch-if match-expr (var ...) then-form else-form 
-  //Macro: rxmatch-cond clause ... 
-  //Macro: rxmatch-case string-expr clause ... 
-
-}
-
-
-//
-// Library functions only work on Node.js
-// see also: test/node_functions.js
-//
-
-(function(){
-  if(BiwaScheme.on_node){
-    var node = {
-      fs: __webpack_require__(0),
-      path: __webpack_require__(7),
-      process: process
-    };
-  }
-
-  // Defines library functions which only works on Node.
-  // - On Node: same as define_libfunc
-  // - On Browser: defines a stub libfunc which just raises Error
-  var define_node_libfunc = function(/*arguments*/){
-    var args = _.toArray(arguments);
-
-    if(BiwaScheme.on_node){
-      BiwaScheme.define_libfunc.apply(null, args);
-    }
-    else{
-      var func_name = args[0];
-      var func = function(ar){
-        throw new BiwaScheme.Error("the function '"+func_name+"' "+
-          "is not supported in the browser "+
-          "(works only on Node.js).");
-      };
-      args.pop();
-      args.push(func);
-      BiwaScheme.define_libfunc.apply(null, args);
-    }
-  };
-
-  //
-  // Chapter 9 File System
-  //
-
-  //(file-exists? filename)    procedure 
-  define_node_libfunc("file-exists?", 1, 1, function(ar){
-    BiwaScheme.assert_string(ar[0]);
-    return node.fs.existsSync(ar[0]);
-  });
-
-  //(delete-file filename)    procedure 
-  define_node_libfunc("delete-file", 1, 1, function(ar){
-    BiwaScheme.assert_string(ar[0]);
-    node.fs.unlinkSync(ar[0]);
-    return BiwaScheme.undef;
-  });
-
-  //
-  // Chapter 10 Command-line access and exit values
-  //
-  
-  //(command-line)    procedure
-  define_node_libfunc("command-line", 0, 0, function(ar){
-    return BiwaScheme.List.apply(null, node.process.argv);
-  });
-
-  //(exit)    procedure 
-  //(exit obj)    procedure
-  define_node_libfunc("exit", 0, 1, function(ar){
-    var obj = ar[0];
-    var code = _.isUndefined(obj) ? 0 :
-               (obj === false)    ? 1 :
-               Number(obj);
-
-    node.process.exit(code);
-  });
-
-  //
-  // srfi-98 (get-environment-variable)
-  //
-
-  // (get-environment-variable name) -> string or #f
-  define_node_libfunc("get-environment-variable", 1, 1, function(ar){
-    BiwaScheme.assert_string(ar[0]);
-    var val = node.process.env[ar[0]];
-    return _.isUndefined(val) ? false : val;
-  });
-
-  // (get-environment-variables) -> alist of string (("key" . "value"))
-  define_node_libfunc("get-environment-variables", 0, 0, function(ar){
-    return BiwaScheme.js_obj_to_alist(node.process.env);
-  });
-
-})();
-//
-// srfi.js - SRFI libraries
-//
-// should be src/library/srfi/1.js, etc (in the future).
-//
-
-with(BiwaScheme) {
-  
-  //
-  // srfi-1 (list)
-  //
-  // (iota count start? step?)
-  define_libfunc("iota", 1, 3, function(ar){
-    var count = ar[0];
-    var start = ar[1] || 0;
-    var step = (ar[2]===undefined) ? 1 : ar[2];
-    assert_integer(count);
-    assert_number(start);
-    assert_number(step);
-
-    var a = [], n = start;
-    for(var i=0; i<count; i++){
-      a.push(n);
-      n += step;
-    }
-    return array_to_list(a);
-  });
-
-  var copy_pair = function(pair){
-    var car = BiwaScheme.isPair(pair.car) ? copy_pair(pair.car)
-                                          : pair.car;
-    var cdr = BiwaScheme.isPair(pair.cdr) ? copy_pair(pair.cdr)
-                                          : pair.cdr;
-    return new Pair(car, cdr);
-  };
-  // (list-copy list)
-  define_libfunc("list-copy", 1, 1, function(ar){
-    if(BiwaScheme.isPair(ar[0])){
-      return copy_pair(ar[0]);
-    }
-    else{
-      return BiwaScheme.nil;
-    }
-  });
-
-  //
-  // srfi-6 & Gauche (string port)
-  // 
-  define_libfunc("open-input-string", 1, 1, function(ar){
-    assert_string(ar[0]);
-    return new Port.StringInput(ar[0]);
-  })
-  define_libfunc("open-output-string", 0, 0, function(ar){
-    return new Port.StringOutput();
-  })
-  define_libfunc("get-output-string", 1, 1, function(ar){
-    assert_port(ar[0]);
-    if(!(ar[0] instanceof Port.StringOutput))
-      throw new Error("get-output-string: port must be made by 'open-output-string'");
-    return ar[0].output_string();
-  })
-
-  //
-  // srfi-8 (receive)
-  //
-
-  // (receive <formals> <expression> <body>...)
-  // -> (call-with-values (lambda () expression)
-  //                        (lambda formals body ...))
-  define_syntax("receive", function(x){
-    assert(BiwaScheme.isPair(x.cdr),
-           "missing formals", "receive");
-    var formals = x.cdr.car;
-    assert(BiwaScheme.isPair(x.cdr.cdr),
-           "missing expression", "receive");
-    var expression = x.cdr.cdr.car;
-    var body       = x.cdr.cdr.cdr;
-    
-    return deep_array_to_list([Sym("call-with-values"),
-      [Sym("lambda"), BiwaScheme.nil, expression],
-      new BiwaScheme.Pair(Sym("lambda"),
-        new BiwaScheme.Pair(formals, body))]);
-  });
-
-  // srfi-19 (time)
-  //
-//  // constants
-//time-duration
-//time-monotonic
-//time-process
-//time-tai
-//time-thread
-//time-utc
-  // Current time and clock resolution
-  // (current-date [tz-offset])
-  define_libfunc("current-date", 0, 1, function(ar){
-    //todo: tz-offset (ar[1])
-    return new Date();
-  })
-//
-//current-julian-day -> jdn
-//current-modified-julian-day -> mjdn
-//current-time [time-type] -> time
-//time-resolution [time-type] -> integer
-//  // Time object and accessors
-//make-time type nanosecond second -> time
-//time? object -> boolean
-//time-type time -> time-type
-//time-nanosecond time -> integer
-//time-second time -> integer
-//set-time-type! time time-type
-//set-time-nanosecond! time integer
-//set-time-second! time integer
-//copy-time time1 -> time2 
-//  // Time comparison procedures
-//time<=? time1 time2 -> boolean
-//time<? time1 time2 -> boolean
-//time=? time1 time2 -> boolean
-//time>=? time1 time2 -> boolean
-//time>? time1 time2 -> boolean
-//  // Time arithmetic procedures
-//time-difference time1 time2 -> time-duration
-//time-difference! time1 time2 -> time-duration
-//add-duration time1 time-duration -> time
-//add-duration! time1 time-duration -> time
-//subtract-duration time1 time-duration -> time
-//subtract-duration! time1 time-duration -> time
-  // Date object and accessors
-  // make-date
-  define_libfunc("date?", 1, 1, function(ar){
-    return (ar[0] instanceof Date);
-  })
-  define_libfunc("date-nanosecond", 1, 1, function(ar){
-    assert_date(ar[0]);
-    return ar[0].getMilliseconds() * 1000000;
-  })
-  define_libfunc("date-millisecond", 1, 1, function(ar){ // not srfi-19
-    assert_date(ar[0]);
-    return ar[0].getMilliseconds();
-  })
-  define_libfunc("date-second", 1, 1, function(ar){
-    assert_date(ar[0]);
-    return ar[0].getSeconds();
-  })
-  define_libfunc("date-minute", 1, 1, function(ar){
-    assert_date(ar[0]);
-    return ar[0].getMinutes();
-  })
-  define_libfunc("date-hour", 1, 1, function(ar){
-    assert_date(ar[0]);
-    return ar[0].getHours();
-  })
-  define_libfunc("date-day", 1, 1, function(ar){
-    assert_date(ar[0]);
-    return ar[0].getDate();
-  })
-  define_libfunc("date-month", 1, 1, function(ar){
-    assert_date(ar[0]);
-    return ar[0].getMonth() + 1; //Jan = 0 in javascript..
-  })
-  define_libfunc("date-year", 1, 1, function(ar){
-    assert_date(ar[0]);
-    return ar[0].getFullYear();
-  })
-  //date-zone-offset
-  //date-year-day
-  define_libfunc("date-week-day", 1, 1, function(ar){
-    assert_date(ar[0]);
-    return ar[0].getDay();
-  })
-  //date-week-number
-
-  // Time/Date/Julian Day/Modified Julian Day Converters
-  // (snipped)
-  
-  // Date to String/String to Date Converters
-  // TODO: support locale
-  //   * date_names
-  //   * ~f 5.2 sec
-  //   * ~p AM/PM
-  //   * ~X 2007/01/01
-  BiwaScheme.date_names = {
-    weekday: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-    full_weekday: ["Sunday", "Monday", "Tuesday", 
-      "Wednesday", "Thursday", "Friday", "Saturday"],
-    month: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-    full_month: ["January", "February", "March", "April",
-      "May", "June", "July", "August", "September", 
-      "Octorber", "November", "December"]
-  }
-
-  BiwaScheme.date2string = function(date, format){
-    var zeropad  = function(n){ return n<10 ? "0"+n : ""+n }; 
-    var spacepad = function(n){ return n<10 ? " "+n : ""+n }; 
-    
-    var getter = {
-      a: function(x){ return date_names.weekday[x.getDay()] },
-      A: function(x){ return date_names.full_weekday[x.getDay()] },
-      b: function(x){ return date_names.month[x.getMonth()] },
-      B: function(x){ return date_names.full_month[x.getMonth()] },
-      c: function(x){ return x.toString() },
-      d: function(x){ return zeropad(x.getDate()) },
-      D: function(x){ return getter.d(x) + getter.m(x) + getter.y(x); },
-      e: function(x){ return spacepad(x.getDate()) },
-      f: function(x){ return x.getSeconds() + x.getMilliseconds()/1000; },
-      h: function(x){ return date_names.month[x.getMonth()] },
-      H: function(x){ return zeropad(x.getHours()) },
-      I: function(x){ var h = x.getHours(); return zeropad(h<13 ? h : h-12) },
-      j: function(x){ throw new Bug("not implemented: day of year") },
-      k: function(x){ return spacepad(x.getHours()) },
-      l: function(x){ var h = x.getHours(); return spacepad(h<13 ? h : h-12) },
-      m: function(x){ return zeropad(x.getMonth()+1) },
-      M: function(x){ return zeropad(x.getMinutes()) },
-      n: function(x){ return "\n" },
-      N: function(x){ throw new Bug("not implemented: nanoseconds") },
-      p: function(x){ return x.getHours()<13 ? "AM" : "PM" },
-      r: function(x){ return getter.I(x) + ":" + getter.M(x) + ":" + getter.S(x) + " " + getter.p(x) },
-      s: function(x){ return Math.floor(x.getTime() / 1000) },
-      S: function(x){ return zeropad(x.getSeconds()) },
-      t: function(x){ return "\t" },
-      T: function(x){ return getter.H(x) + ":" + getter.M(x) + ":" + getter.S(x) },
-      U: function(x){ throw new Bug("not implemented: weeknum(0~, Sun)") },
-      V: function(x){ throw new Bug("not implemented: weeknum(1~, Sun?)") },
-      w: function(x){ return x.getDay() },
-      W: function(x){ throw new Bug("not implemented: weeknum(0~, Mon)") },
-      x: function(x){ throw new Bug("not implemented: weeknum(1~, Mon)") },
-      X: function(x){ return getter.Y(x) + "/" + getter.m(x) + "/" + getter.d(x) },
-      y: function(x){ return x.getFullYear() % 100 },
-      Y: function(x){ return x.getFullYear() },
-      z: function(x){ throw new Bug("not implemented: time-zone") },
-      Z: function(x){ throw new Bug("not implemented: symbol time zone") },
-      1: function(x){ throw new Bug("not implemented: ISO-8601 year-month-day format") },
-      2: function(x){ throw new Bug("not implemented: ISO-8601 hour-minute-second-timezone format") },
-      3: function(x){ throw new Bug("not implemented: ISO-8601 hour-minute-second format") },
-      4: function(x){ throw new Bug("not implemented: ISO-8601 year-month-day-hour-minute-second-timezone format") },
-      5: function(x){ throw new Bug("not implemented: ISO-8601 year-month-day-hour-minute-second format") }
-    }
-
-    return format.replace(/~([\w1-5~])/g, function(str, x){
-      var func = getter[x];
-      if(func)
-        return func(date);
-      else if(x == "~")
-        return "~";
-      else
-        return x;
-    })
-  }
-  
-  // date->string date template
-  define_libfunc("date->string", 1, 2, function(ar){
-    assert_date(ar[0]);
-
-    if(ar[1]){
-      assert_string(ar[1]);
-      return date2string(ar[0], ar[1]);
-    }
-    else
-      return ar[0].toString();
-  })
-  // string->date
-
-  // parse-date date
-  define_libfunc("parse-date", 1, 1, function(ar){ // not srfi-19
-    assert_string(ar[0]);
-    return new Date(Date.parse(ar[0]));
-  })
-
-  //
-  // srfi-27
-  //
-  define_libfunc("random-integer", 1, 1, function(ar){
-    var n = ar[0];
-    assert_integer(n);
-    if (n < 0)
-      throw new Error("random-integer: the argument must be >= 0");
-    else
-      return Math.floor(Math.random() * ar[0]);
-  });
-  define_libfunc("random-real", 0, 0, function(ar){
-    return Math.random();
-  });
-
-  //
-  // srfi-28 (format)
-  //
-
-  // (format format-str obj1 obj2 ...) -> string
-  // (format #f format-str ...) -> string
-  // (format #t format-str ...) -> output to current port 
-  // (format port format-str ...) -> output to the port 
-  //   ~a: display
-  //   ~s: write
-  //   ~%: newline
-  //   ~~: tilde
-  define_libfunc("format", 1, null, function(ar){
-    if (_.isString(ar[0])) {
-      var port = null, format_str = ar.shift();
-    }
-    else if (ar[0] === false) {
-      ar.shift();
-      var port = null, format_str = ar.shift();
-    }
-    else if (ar[0] === true) {
-      ar.shift();
-      var port = BiwaScheme.Port.current_output,
-          format_str = ar.shift();
-    }
-    else {
-      var port = ar.shift(), format_str = ar.shift();
-      assert_port(port);
-    }
-
-    var str = format_str.replace(/~[as]/g, function(matched){
-                 assert(ar.length > 0,
-                        "insufficient number of arguments", "format");
-                 if (matched == "~a")
-                   return BiwaScheme.to_display(ar.shift());
-                 else
-                   return BiwaScheme.to_write(ar.shift());
-              }).replace(/~%/, "\n")
-                .replace(/~~/, "~");
-    if (port) {
-      port.put_string(str);
-      return BiwaScheme.undef;
-    }
-    else {
-      return str;
-    }
-  });
-  
-  //
-  // srfi-38 (write/ss)
-  //
-  var user_write_ss = function(ar){
-    Console.puts(write_ss(ar[0]), true);
-    return BiwaScheme.undef;
-  }
-  define_libfunc("write/ss", 1, 2, user_write_ss);
-  define_libfunc("write-with-shared-structure", 1, 2, user_write_ss);
-  define_libfunc("write*", 1, 2, user_write_ss); //from Gauche(STklos)
-
-  //
-  // srfi-43 (vector library)
-  //
-  define_libfunc("vector-append", 2, null, function(ar){
-    var vec = [];
-    return vec.concat.apply(vec, ar);
-  });
-
-  // (vector-copy vector)
-  define_libfunc("vector-copy", 1, 1, function(ar){
-    assert_vector(ar[0]);
-    return _.clone(ar[0]);
-  });
-
-  //
-  // see src/library/node_functions.js for:
-  // - srfi-98 (get-environment-variable)
-  //
-}
-BiwaScheme.run = function(code, opts) {
-  opts = opts || {};
-  var intp = new BiwaScheme.Interpreter(function(e){
-    if(!opts["no_print"]) {
-      if(e.stack){
-        console.error(e.stack);
-      }
-      else{
-        console.error(e.toString ? e.toString() : e);
-      }
-    }
-
-    throw e;
-  });
-  return intp.evaluate(code);
-};
-
-BiwaScheme.run_file = function(filename, encoding/*optional*/) {
-  var enc = encoding || 'utf8';
-  var src = __webpack_require__(0).readFileSync(filename, enc);
-  return BiwaScheme.run(src);
-};
-
-// (load scm-path)
-BiwaScheme.define_libfunc("load", 1, 1, function(ar) {
-  var path = ar[0];
-  BiwaScheme.assert_string(path);
-
-  var fullpath;
-  if (path[0] == "/" || /^\w:/.test(path))
-    fullpath = path;
-  else
-    fullpath = process.cwd() + "/" + path;
-
-  var code = __webpack_require__(0).readFileSync(fullpath, "utf8");
-  return BiwaScheme.run(code);
-});
-
-// (js-load js-path)
-BiwaScheme.define_libfunc("js-load", 1, 1, function(ar) {
-  var path = ar[0];
-  BiwaScheme.assert_string(path);
-
-  var fullpath;
-  if (path[0] == "/" || /^\w:/.test(path))
-    fullpath = path;
-  else
-    fullpath = process.cwd() + "/" + path;
-
-  return !(function webpackMissingModule() { var e = new Error("Cannot find module \".\""); e.code = 'MODULE_NOT_FOUND'; throw e; }());
-});
-
-BiwaScheme.Port.current_error =
-BiwaScheme.Port.current_output = new BiwaScheme.Port.CustomOutput(
-  function (str) {
-    process.stdout.write(str)
-  }
-);
-
-var readline = __webpack_require__(8);
-BiwaScheme.Port.current_input = new BiwaScheme.Port.CustomInput(
-  function (callback) {
-    var rl = readline.createInterface({
-      input: process.stdin
-    });
-    rl.on('line', function (line) {
-      rl.close();
-      callback(line);
-    });
-    rl.setPrompt('', 0);
-    rl.prompt()
-  }
-);
-
-for(x in BiwaScheme){
-  exports[x] = BiwaScheme[x];
-}
-
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2)))
-
-/***/ }),
-<<<<<<< HEAD
-/* 44 */
-/***/ (function(module, exports) {
-
-function webpackEmptyContext(req) {
-	throw new Error("Cannot find module '" + req + "'.");
-}
-webpackEmptyContext.keys = function() { return []; };
-webpackEmptyContext.resolve = webpackEmptyContext;
-module.exports = webpackEmptyContext;
-webpackEmptyContext.id = 44;
-=======
-/* 42 */
-/***/ (function(module, exports) {
-
-"use strict";
-throw new Error("Module build failed: SyntaxError: /Users/mikeheaton/Code/vambda/src/parse.js: Unexpected token (119:7)\n  117 |    */\n  118 | \n> 119 |    NAW MOVE THIS INTO THE NODES CODE\n      |        ^\n  120 |   constructor (cytoscapeObj) {\n  121 |     this._cytoscapeObj = cytoscapeObj\n  122 |     this.head = createNodeObject(cytoscapeObj.leaves())\n    at Parser.raise (/Users/mikeheaton/Code/vambda/node_modules/babylon/lib/index.js:830:15)\n    at Parser.unexpected (/Users/mikeheaton/Code/vambda/node_modules/babylon/lib/index.js:2210:16)\n    at Parser.parseClassMemberWithIsStatic (/Users/mikeheaton/Code/vambda/node_modules/babylon/lib/index.js:5151:12)\n    at Parser.parseClassMember (/Users/mikeheaton/Code/vambda/node_modules/babylon/lib/index.js:5025:10)\n    at Parser.parseClassBody (/Users/mikeheaton/Code/vambda/node_modules/babylon/lib/index.js:4978:12)\n    at Parser.parseClass (/Users/mikeheaton/Code/vambda/node_modules/babylon/lib/index.js:4925:10)\n    at Parser.parseStatementContent (/Users/mikeheaton/Code/vambda/node_modules/babylon/lib/index.js:4235:21)\n    at Parser.parseStatement (/Users/mikeheaton/Code/vambda/node_modules/babylon/lib/index.js:4204:17)\n    at Parser.parseBlockOrModuleBlockBody (/Users/mikeheaton/Code/vambda/node_modules/babylon/lib/index.js:4760:23)\n    at Parser.parseBlockBody (/Users/mikeheaton/Code/vambda/node_modules/babylon/lib/index.js:4746:10)\n    at Parser.parseTopLevel (/Users/mikeheaton/Code/vambda/node_modules/babylon/lib/index.js:4172:10)\n    at Parser.parse (/Users/mikeheaton/Code/vambda/node_modules/babylon/lib/index.js:5608:17)\n    at parse (/Users/mikeheaton/Code/vambda/node_modules/babylon/lib/index.js:10527:38)\n    at parser (/Users/mikeheaton/Code/vambda/node_modules/@babel/core/lib/transformation/normalize-file.js:104:33)\n    at normalizeFile (/Users/mikeheaton/Code/vambda/node_modules/@babel/core/lib/transformation/normalize-file.js:51:11)\n    at runSync (/Users/mikeheaton/Code/vambda/node_modules/@babel/core/lib/transformation/index.js:34:41)\n    at transformSync (/Users/mikeheaton/Code/vambda/node_modules/@babel/core/lib/transform-sync.js:15:38)\n    at Object.transform (/Users/mikeheaton/Code/vambda/node_modules/@babel/core/lib/transform.js:20:65)\n    at transpile (/Users/mikeheaton/Code/vambda/node_modules/babel-loader/lib/index.js:55:20)\n    at Object.module.exports (/Users/mikeheaton/Code/vambda/node_modules/babel-loader/lib/index.js:179:20)");
->>>>>>> 32cf3b0a0f930676e144ba3b156a70737de96e19
 
 /***/ })
 /******/ ]);
