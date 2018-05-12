@@ -67,3 +67,11 @@ The package should /probably/ use
   var elesfn = Element.prototype = Collection.prototype;
 and then define/redefine elesfn.foo like in cytoscape.js.
 But I'm not exactly sure how packages work, look at another eg.
+
+
+BUGS
+> Comment text (what about drawing?) don't disappear when resetting the page.
+> After making comment text, the program is still in comment mode.
+> Make comment text and lines bigger.
+> Colours have stopped matching existing colours, also string and int colourings.
+> What happens to input variables inside defines? Do they pass through to the nearest function scope, or no?
