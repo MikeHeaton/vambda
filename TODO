@@ -75,3 +75,7 @@ BUGS
 > Make comment text and lines bigger.
 > Colours have stopped matching existing colours, also string and int colourings.
 > What happens to input variables inside defines? Do they pass through to the nearest function scope, or no?
+
+
+
+> Looking for variables in a lambda should look 'through' define bubbles

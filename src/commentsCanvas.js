@@ -7,6 +7,9 @@ var currentShape
 var thisThing
 var oldX, oldY
 var haveAddedText = false
+var PENCOLOUR = createjs.Graphics.getRGB(100, 100, 100)
+var PENSIZE = 20
+var TEXTFONT = '60px Helvetica'
 
 function CommentsCanvas (cyObj) {
   /* ******************\
@@ -72,8 +75,7 @@ function CommentsCanvas (cyObj) {
     currentShape = new createjs.Shape()
     var g = currentShape.graphics
     addPointListeners(currentShape)
-    g.setStrokeStyle(50, 'round', 'round')
-    g.beginStroke(createjs.Graphics.getRGB(0,0,0))
+    g.beginStroke(PENCOLOUR)
     stage.addChild(currentShape)
     cy.on('mousemove', addPoint, false)
   }
@@ -105,7 +107,7 @@ var addText = function (evt, inpText = null) {
   }
   if (inpText !== null) {
     haveAddedText = true
-    var text = new createjs.Text(inpText, '20px Arial', 'black')
+    var text = new createjs.Text(inpText, TEXTFONT, 'black')
     text.x = 2 * evt.position.x
     text.y = 2 * evt.position.y
     addTextListeners(text)
@@ -119,6 +121,8 @@ var addPoint = function (evt) {
     var x = 2 * evt.position.x
     var y = 2 * evt.position.y
     currentShape.graphics.lineTo(x, y)
+    .setStrokeStyle(PENSIZE, "round", "round")
+    .moveTo(x, y)
     stage.update()
   }
 }

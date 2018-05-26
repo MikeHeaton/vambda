@@ -60,7 +60,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 6);
+/******/ 	return __webpack_require__(__webpack_require__.s = 7);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -292,7 +292,7 @@ process.umask = function() { return 0; };
 
 /* WEBPACK VAR INJECTION */(function(setImmediate, clearImmediate) {(function webpackUniversalModuleDefinition(root, factory) {
 	if(true)
-		module.exports = factory(__webpack_require__(10), __webpack_require__(12));
+		module.exports = factory(__webpack_require__(11), __webpack_require__(13));
 	else if(typeof define === 'function' && define.amd)
 		define(["heap", "lodash.debounce"], factory);
 	else if(typeof exports === 'object')
@@ -29877,1658 +29877,13 @@ exports._unrefActive = exports.active = function(item) {
 };
 
 // setimmediate attaches itself to the global object
-__webpack_require__(9);
+__webpack_require__(10);
 exports.setImmediate = setImmediate;
 exports.clearImmediate = clearImmediate;
 
 
 /***/ }),
 /* 5 */
-/***/ (function(module, exports) {
-
-function getText() {
-  var newName = window.prompt('name:', '');
-  keysPressed = new Set();
-  return newName;
-}
-
-module.exports = {
-  getText: getText
-};
-
-/***/ }),
-/* 6 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _editor = _interopRequireDefault(__webpack_require__(7));
-
-var _parse = _interopRequireDefault(__webpack_require__(42));
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function displayResult(result, compiledLisp) {
-  var newHtml = '>> ' + result + '<br />' + compiledLisp;
-  document.getElementById('lispOutput').innerHTML = newHtml;
-}
-
-var c = (0, _editor.default)();
-window.loadState = c['loadState'];
-window.saveState = c['saveState'];
-window.resetGraph = c['resetGraph'];
-
-window.parseButton = function () {
-  var cy = c['cy'];
-  var results = (0, _parse.default)(cy.$('node:orphan'));
-  displayResult.apply(this, results);
-};
-
-/***/ }),
-/* 7 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _cytoscape_init = _interopRequireDefault(__webpack_require__(8));
-
-var _newRemove = _interopRequireDefault(__webpack_require__(27));
-
-var _cytoscapeUndoRedo = _interopRequireDefault(__webpack_require__(28));
-
-var _cytoscape = _interopRequireDefault(__webpack_require__(3));
-
-var _mousetrap = _interopRequireDefault(__webpack_require__(29));
-
-var _colormap = _interopRequireDefault(__webpack_require__(30));
-
-var _cytoscapeCanvas = _interopRequireDefault(__webpack_require__(33));
-
-var comments = _interopRequireWildcard(__webpack_require__(34));
-
-var utils = _interopRequireWildcard(__webpack_require__(5));
-
-function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = Object.defineProperty && Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : {}; if (desc.get || desc.set) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } } newObj.default = obj; return newObj; } }
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function buildEditor() {
-  var cy = (0, _cytoscape_init.default)();
-  (0, _cytoscapeUndoRedo.default)(_cytoscape.default);
-  (0, _cytoscapeCanvas.default)(_cytoscape.default); // Register undo/redo, and other imported functions
-
-  var ur = cy.undoRedo();
-  (0, _cytoscape.default)('collection', 'delete', _newRemove.default);
-  ur.action('deleteEles', function (eles) {
-    eles.delete();
-    return eles;
-  }, function (eles) {
-    eles.restore();
-  });
-  var commentPoints = new comments.CommentsCanvas(cy);
-  var commentMode = false; // =====================
-  // || GRAPH FUNCTIONS ||
-  // =====================
-
-  function setType(ele, newtype) {
-    ele.data('type', newtype);
-  }
-
-  (0, _cytoscape.default)('collection', 'setType', function (newType) {
-    setType(this, newType);
-  });
-
-  function newNode(pos) {
-    var color = getColor();
-    var createdNode = cy.add({
-      group: 'nodes',
-      position: pos,
-      data: {
-        'variable': false,
-        'name': '',
-        'type': 'Free',
-        'defaultColor': color
-      }
-    });
-    return createdNode;
-  }
-
-  function newEdge(origins, dest) {
-    var newEdges = origins.map(function (source) {
-      cy.add({
-        group: 'edges',
-        style: {
-          'target-arrow-shape': 'triangle'
-        },
-        data: {
-          source: source.id(),
-          target: dest.id(),
-          name: ''
-        },
-        selectable: true
-      });
-    });
-    return newEdges;
-  }
-
-  function getColor() {
-    var name = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
-    var node = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
-
-    // Method to generate a color for the node that the method is called on.
-    function isString(name) {
-      function matchBrackets(bra, n) {
-        return n[0] === bra && n[n.length - 1] === bra;
-      }
-
-      return matchBrackets('\'', name) || matchBrackets('"', name) || matchBrackets('`', name);
-    }
-
-    if (name !== '') {
-      var sameNamedEles;
-
-      if (node === null) {
-        sameNamedEles = cy.$("[name = '" + name + "']");
-      } else {
-        sameNamedEles = cy.$("[name = '" + name + "']").difference(node);
-      } // Look for something named the same, and make this node the same color.
-
-
-      if (sameNamedEles.length > 0 && name !== '') {
-        return sameNamedEles.data('defaultColor');
-      } else if (isString(name)) {
-        // If the name represents a string, make the node green.
-        return 'lime';
-      } else if (!isNaN(name)) {
-        // We want numbers (including floats, ints, etc) to be one color.
-        return 'blue';
-      }
-    } // Else generate a random color from a colormap (and convert it to hash).
-
-
-    var ncolors = 72;
-    var index = Math.floor(Math.random() * ncolors);
-    var col = (0, _colormap.default)('nature', ncolors, 'hex')[index];
-    return col;
-  }
-
-  (0, _cytoscape.default)('collection', 'getColor', function () {
-    return getColor(this.data('name'), this);
-  });
-
-  function setColor() {
-    var color = this.getColor();
-    this.data('defaultColor', color);
-  }
-
-  (0, _cytoscape.default)('collection', 'setColor', setColor);
-
-  function rename(ele) {
-    var newName = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
-
-    if (newName === null) {
-      newName = utils.getText();
-    }
-
-    if (!(newName === null)) {
-      ele.data('name', newName);
-      ele.setColor();
-    }
-  }
-
-  (0, _cytoscape.default)('collection', 'rename', function () {
-    var name = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
-    rename(this, name);
-  });
-
-  function setParent(newParent) {
-    // Set self's parent to newParent.
-    if (newParent != null && newParent.id()) {
-      ur.do('changeParent', {
-        'parentData': newParent.id(),
-        'nodes': this,
-        'posDiffX': 0,
-        'posDiffY': 0
-      });
-    } else {
-      // If newParent is null, remove the parent from the node.
-      var oldParent = this.parent();
-      ur.do('changeParent', {
-        'parentData': null,
-        'nodes': this,
-        'posDiffX': 0,
-        'posDiffY': 0
-      }); // Remove childless parents
-
-      if (oldParent.length > 0 && oldParent.children().length === 0) {
-        oldParent.remove();
-      }
-    }
-
-    return cy.$id(this.id());
-  }
-
-  (0, _cytoscape.default)('collection', 'setParent', setParent);
-
-  function toggleVariable() {
-    switch (this.data('type')) {
-      case 'Free':
-        this.setType('NearBoundVariable');
-        break;
-
-      case 'NearBoundVariable':
-        this.setType('FarBoundVariable');
-        break;
-
-      case 'FarBoundVariable':
-        this.setType('Free');
-        break;
-    }
-  }
-
-  (0, _cytoscape.default)('collection', 'toggleVariable', toggleVariable); // =========================
-  // || USER INPUT HANDLERS ||
-  // =========================
-
-  var dclickPrevTap;
-  var dclickTappedTimeout;
-  var eSelected; // __Handlers for clicking on the background__
-  // Double-tap or single-tap with 'e'/'w' to add a new node.
-
-  cy.on('tap', function (event) {
-    var tapTarget = event.target;
-
-    if (tapTarget === cy) {
-      if (keysPressed.has('e')) {
-        // Click on the background with 'e'
-        var n = newNode(event.position);
-        dclickTappedTimeout = false;
-
-        if (eSelected.length > 0 && eSelected.parent().length <= 1) {
-          newEdge(eSelected, n);
-          n = n.setParent(eSelected.parent());
-        }
-
-        selectOnly(n);
-      } else if (tapTarget === cy && keysPressed.has('w')) {
-        // Click on the background with 'e'
-        n = newNode(event.position);
-        dclickTappedTimeout = false;
-
-        if (eSelected.length === 1) {
-          newEdge(n, eSelected);
-          n = n.setParent(eSelected.parent());
-        }
-
-        selectOnly(eSelected);
-      } else if (dclickTappedTimeout && dclickPrevTap) {
-        clearTimeout(dclickTappedTimeout);
-      } // If double clicked:
-
-
-      if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
-        n = newNode(event.position);
-        selectOnly(n);
-        dclickPrevTap = null;
-      }
-    } else {
-      if (tapTarget.isNode() && dclickTappedTimeout && dclickPrevTap) {
-        clearTimeout(dclickTappedTimeout);
-      } // If double clicked:
-
-
-      if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
-        rename(tapTarget);
-      }
-    } // Update doubleclick handlers
-
-
-    dclickTappedTimeout = setTimeout(function () {
-      dclickPrevTap = null;
-    }, 300);
-    dclickPrevTap = tapTarget;
-  }); // Hold 'e/w' and tap a node to make a new edge
-
-  cy.on('tap', 'node', function (event) {
-    var target = event.target;
-    var sources = cy.$('node:selected').difference(event.target);
-
-    if (sources.length > 0) {
-      if (keysPressed.has('e')) {
-        newEdge(sources, target);
-        selectOnly(target);
-        sources.connectedClosure().setParent(target.parent());
-      } else if (keysPressed.has('w')) {
-        sources.map(function (source) {
-          return newEdge(target, source);
-        });
-        sources = sources.connectedClosure().setParent(target.parent());
-        selectOnly(sources);
-      }
-    }
-  }); // Hold 'r' and tap a node to rename it.
-
-  cy.on('tap', 'node, edge', function (event) {
-    if (keysPressed.has('r')) {
-      event.target.rename();
-    }
-  }); // l to 'lambda': wrap selection in a hypernode, containing the selection
-  // and its closed neighbourhood, corresponding to a lambda function.
-
-  _mousetrap.default.bind('l', function () {
-    // If all of them belong to the same parent, take them out of the parent.
-    var selected = cy.$('node:selected');
-
-    if (selected.parents().length === 1) {
-      selected.setParent(null);
-    } else {
-      var parent = newNode();
-      parent.setType('Lambda');
-      var closure = selected.connectedClosure();
-      closure.setParent(parent);
-      selectOnly(parent);
-    }
-  }, 'keypress'); // p to 'parens': wrap selection in a hypernode representing 'evaluate all this together',
-  // corresponding to wrapping () around a group.
-
-
-  _mousetrap.default.bind('p', function () {
-    // If all of them belong to the same parent, take them out of the parent.
-    var selected = cy.$('node:selected');
-
-    if (selected.parents().length === 1) {
-      selected.setParent(null);
-    } else {
-      var parent = newNode();
-      parent.setType('Parens');
-      var closure = selected.connectedClosure();
-      closure.setParent(parent);
-      selectOnly(parent);
-    }
-  }, 'keypress'); // d to 'define': wrap selection in a hypernode, containing the selection
-  // and its closed neighbourhood, corresponding to a define statement.
-
-
-  _mousetrap.default.bind('d', function () {
-    // If all of them belong to the same parent, take them out of the parent.
-    var selected = cy.$('node:selected');
-
-    if (selected.parents().length === 1) {
-      selected.setParent(null);
-    } else {
-      var parent = newNode();
-      parent.setType('Define');
-      var closure = selected.connectedClosure();
-      parent.rename();
-      closure.setParent(parent);
-      selectOnly(parent);
-    }
-  }, 'keypress'); // Backspace to delete selection
-
-
-  _mousetrap.default.bind('backspace', function () {
-    ur.do('deleteEles', cy.$(':selected'));
-  });
-
-  _mousetrap.default.bind('V', function () {
-    cy.$(':selected').toggleVariable();
-  });
-
-  _mousetrap.default.bind('P', function () {
-    toLisp(cy.$(':selected'));
-  });
-
-  _mousetrap.default.bind('Z', function () {
-    ur.undo();
-  }); // Recognise keys pressed down
-
-
-  var keysPressed = new Set();
-
-  _mousetrap.default.bind('e', function () {
-    keysPressed.add('e');
-    eSelected = cy.$('node:selected');
-  }, 'keypress');
-
-  _mousetrap.default.bind('e', function () {
-    keysPressed.delete('e');
-  }, 'keyup');
-
-  _mousetrap.default.bind('w', function () {
-    keysPressed.add('w');
-    eSelected = cy.$('node:selected');
-  }, 'keypress');
-
-  _mousetrap.default.bind('w', function () {
-    keysPressed.delete('w');
-  }, 'keyup');
-
-  _mousetrap.default.bind('c', function () {
-    if (!keysPressed.has('c')) {
-      keysPressed.add('c');
-      commentPoints.enableDrawingMode();
-    }
-  }, 'keydown');
-
-  _mousetrap.default.bind('c', function () {
-    keysPressed.delete('c');
-    commentPoints.disableDrawingMode();
-  }, 'keyup');
-
-  _mousetrap.default.bind('r', function () {
-    keysPressed.add('r');
-    var selected = cy.$(':selected');
-
-    if (selected.length === 1) {
-      selected.rename();
-      keysPressed.delete('r');
-    }
-  }, 'keypress');
-
-  _mousetrap.default.bind('r', function () {
-    keysPressed.delete('r');
-  }, 'keyup');
-
-  function loadState(objectId) {
-    var x = document.getElementById(objectId).files[0];
-    var reader = new FileReader();
-
-    reader.onload = function (e) {
-      var graphString = e.target.result; // We HAVE to double-load elements here: once to get them into the
-      // graph, and once to set their parents correctly. If we don't, when
-      // elements are loaded and don't have a parent in place already,
-      // not only do they set the parent to 'undefined', they also
-      // _edit the fucking json_ so that the parent is thereafter undefined.
-      //
-      // That means that if you try to use the same JSON object twice for the
-      // two loads, it WON'T WORK because it's been modified by the first.
-      // WHAT THE HELL, CYTOSCAPE??? (Yes I lost several hours to this bug.)
-
-      cy.json();
-      cy.json(JSON.parse(graphString));
-      JSON.parse(graphString).elements.nodes.map(function (jsn) {
-        var nodeId = jsn.data.id;
-        var nodeParent = jsn.data.parent;
-        cy.$id(nodeId).setParent(cy.$id(nodeParent));
-      });
-      commentPoints.reset();
-      commentPoints.load(JSON.parse(graphString).comments);
-    };
-
-    reader.readAsText(x, 'UTF-8');
-  }
-
-  function saveState() {
-    var fileName = window.prompt('File name:', '');
-    var comments = commentPoints.serialize();
-
-    if (!(fileName === null)) {
-      var jsonData = JSON.stringify({
-        'elements': cy.json()['elements'],
-        'comments': comments
-      });
-      var a = document.createElement('a');
-      var file = new Blob([jsonData], {
-        type: 'text/plain'
-      });
-      a.href = URL.createObjectURL(file);
-      a.download = fileName + '.txt';
-      a.click();
-    }
-  }
-
-  function resetGraph() {
-    if (confirm('REALLY CLEAR ALL? (There\'s no autosave and no undo!)')) {
-      console.log('RESET');
-      cy.remove(cy.$(''));
-      commentPoints.reset();
-      cy.forceRender();
-    }
-  }
-
-  function selectOnly(ele) {
-    cy.$().deselect();
-    ele.select();
-  }
-
-  function connectedClosure() {
-    // Returns the closure (union with all-depth family) of the eles.
-    var nextLevel = this.closedNeighborhood('node');
-
-    if (nextLevel.length === this.length) {
-      return this;
-    } else {
-      return nextLevel.connectedClosure();
-    }
-  }
-
-  (0, _cytoscape.default)('collection', 'connectedClosure', connectedClosure);
-  return {
-    'cy': cy,
-    'loadState': loadState,
-    'saveState': saveState,
-    'resetGraph': resetGraph
-  };
-}
-
-module.exports = buildEditor;
-
-/***/ }),
-/* 8 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _cytoscape = _interopRequireDefault(__webpack_require__(3));
-
-__webpack_require__(13);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function createCanvas() {
-  // cytoscape.use( require('undo-redo') );
-  return (0, _cytoscape.default)({
-    container: document.getElementById('cy'),
-    boxSelectionEnabled: true,
-    style: [{
-      selector: 'node',
-      style: {
-        'background-color': 'data(defaultColor)',
-        'border-width': 0,
-        'content': 'UNKNOWN TYPE',
-        // text
-        'text-outline-width': 2,
-        'text-outline-color': 'black',
-        'color': 'white',
-        // font color
-        'text-valign': 'center'
-      }
-    }, {
-      selector: 'node[type = "NearBoundVariable"]',
-      style: {
-        'shape': 'diamond',
-        'border-width': 1,
-        'border-color': 'black',
-        'background-color': 'cyan',
-        'content': 'data(name)' // text
-
-      }
-    }, {
-      selector: 'node[type = "FarBoundVariable"]',
-      style: {
-        'shape': 'square',
-        'border-width': 1,
-        'border-color': 'black',
-        'background-color': 'cyan',
-        'content': 'data(name)' // text
-
-      }
-    }, {
-      selector: 'node[type = "Free"], node[type = "If"]',
-      style: {
-        'content': 'data(name)' // text
-
-      }
-    }, {
-      selector: 'node[type = "Lambda"]',
-      style: {
-        // Compound node, by definition.
-        'background-color': 'white',
-        'text-valign': 'bottom',
-        'text-halign': 'center',
-        'border-width': 5,
-        'shape': 'roundrectangle',
-        'border-color': 'gray',
-        'padding': '10px',
-        'font-size': '15px',
-        'text-margin-y': '-10px',
-        'text-background-color': 'gray',
-        'text-background-opacity': 1,
-        'text-background-shape': 'roundrectangle',
-        'text-background-padding': '3px',
-        'content': 'data(name)'
-      }
-    }, {
-      selector: 'node[type = "Define"]',
-      style: {
-        // Compound node, by definition.
-        'background-color': 'white',
-        'text-valign': 'top',
-        'text-halign': 'center',
-        'border-width': 5,
-        'border-style': 'double',
-        'shape': 'roundrectangle',
-        'border-color': 'data(defaultColor)',
-        'padding': '3px',
-        'text-margin-y': '3px',
-        'font-size': '20px',
-        'text-background-color': 'data(defaultColor)',
-        'text-background-opacity': 1,
-        'text-background-shape': 'roundrectangle',
-        'text-background-padding': '1px',
-        'content': 'data(name)'
-      }
-    }, {
-      selector: 'node[type = "Parens"]',
-      style: {
-        // Compound node, by definition.
-        'background-color': 'white',
-        'border-width': 5,
-        'border-style': 'dotted',
-        'shape': 'roundrectangle',
-        'border-color': '#DEDDC5',
-        'padding': '10px',
-        'text-margin-y': '3px',
-        'font-size': '20px',
-        'content': ''
-      }
-    }, {
-      selector: 'edge',
-      style: {
-        'curve-style': 'bezier',
-        'width': 4,
-        'target-arrow-shape': 'triangle',
-        'line-color': 'black',
-        'target-arrow-color': 'black',
-        'target-label': 'data(name)',
-        'target-text-offset': 20,
-        'color': 'white',
-        'text-outline-width': 2,
-        'text-outline-color': 'black'
-      }
-    }, {
-      selector: 'edge:selected',
-      style: {
-        'line-color': 'red',
-        'target-arrow-color': 'red',
-        'text-outline-color': 'red'
-      }
-    }, {
-      selector: 'node:selected',
-      style: {
-        'border-color': 'red',
-        'border-width': 5,
-        'text-background-color': 'red'
-      }
-    }]
-  });
-}
-
-module.exports = createCanvas;
-
-/***/ }),
-/* 9 */
-/***/ (function(module, exports, __webpack_require__) {
-
-/* WEBPACK VAR INJECTION */(function(global, process) {(function (global, undefined) {
-    "use strict";
-
-    if (global.setImmediate) {
-        return;
-    }
-
-    var nextHandle = 1; // Spec says greater than zero
-    var tasksByHandle = {};
-    var currentlyRunningATask = false;
-    var doc = global.document;
-    var registerImmediate;
-
-    function setImmediate(callback) {
-      // Callback can either be a function or a string
-      if (typeof callback !== "function") {
-        callback = new Function("" + callback);
-      }
-      // Copy function arguments
-      var args = new Array(arguments.length - 1);
-      for (var i = 0; i < args.length; i++) {
-          args[i] = arguments[i + 1];
-      }
-      // Store and register the task
-      var task = { callback: callback, args: args };
-      tasksByHandle[nextHandle] = task;
-      registerImmediate(nextHandle);
-      return nextHandle++;
-    }
-
-    function clearImmediate(handle) {
-        delete tasksByHandle[handle];
-    }
-
-    function run(task) {
-        var callback = task.callback;
-        var args = task.args;
-        switch (args.length) {
-        case 0:
-            callback();
-            break;
-        case 1:
-            callback(args[0]);
-            break;
-        case 2:
-            callback(args[0], args[1]);
-            break;
-        case 3:
-            callback(args[0], args[1], args[2]);
-            break;
-        default:
-            callback.apply(undefined, args);
-            break;
-        }
-    }
-
-    function runIfPresent(handle) {
-        // From the spec: "Wait until any invocations of this algorithm started before this one have completed."
-        // So if we're currently running a task, we'll need to delay this invocation.
-        if (currentlyRunningATask) {
-            // Delay by doing a setTimeout. setImmediate was tried instead, but in Firefox 7 it generated a
-            // "too much recursion" error.
-            setTimeout(runIfPresent, 0, handle);
-        } else {
-            var task = tasksByHandle[handle];
-            if (task) {
-                currentlyRunningATask = true;
-                try {
-                    run(task);
-                } finally {
-                    clearImmediate(handle);
-                    currentlyRunningATask = false;
-                }
-            }
-        }
-    }
-
-    function installNextTickImplementation() {
-        registerImmediate = function(handle) {
-            process.nextTick(function () { runIfPresent(handle); });
-        };
-    }
-
-    function canUsePostMessage() {
-        // The test against `importScripts` prevents this implementation from being installed inside a web worker,
-        // where `global.postMessage` means something completely different and can't be used for this purpose.
-        if (global.postMessage && !global.importScripts) {
-            var postMessageIsAsynchronous = true;
-            var oldOnMessage = global.onmessage;
-            global.onmessage = function() {
-                postMessageIsAsynchronous = false;
-            };
-            global.postMessage("", "*");
-            global.onmessage = oldOnMessage;
-            return postMessageIsAsynchronous;
-        }
-    }
-
-    function installPostMessageImplementation() {
-        // Installs an event handler on `global` for the `message` event: see
-        // * https://developer.mozilla.org/en/DOM/window.postMessage
-        // * http://www.whatwg.org/specs/web-apps/current-work/multipage/comms.html#crossDocumentMessages
-
-        var messagePrefix = "setImmediate$" + Math.random() + "$";
-        var onGlobalMessage = function(event) {
-            if (event.source === global &&
-                typeof event.data === "string" &&
-                event.data.indexOf(messagePrefix) === 0) {
-                runIfPresent(+event.data.slice(messagePrefix.length));
-            }
-        };
-
-        if (global.addEventListener) {
-            global.addEventListener("message", onGlobalMessage, false);
-        } else {
-            global.attachEvent("onmessage", onGlobalMessage);
-        }
-
-        registerImmediate = function(handle) {
-            global.postMessage(messagePrefix + handle, "*");
-        };
-    }
-
-    function installMessageChannelImplementation() {
-        var channel = new MessageChannel();
-        channel.port1.onmessage = function(event) {
-            var handle = event.data;
-            runIfPresent(handle);
-        };
-
-        registerImmediate = function(handle) {
-            channel.port2.postMessage(handle);
-        };
-    }
-
-    function installReadyStateChangeImplementation() {
-        var html = doc.documentElement;
-        registerImmediate = function(handle) {
-            // Create a <script> element; its readystatechange event will be fired asynchronously once it is inserted
-            // into the document. Do so, thus queuing up the task. Remember to clean up once it's been called.
-            var script = doc.createElement("script");
-            script.onreadystatechange = function () {
-                runIfPresent(handle);
-                script.onreadystatechange = null;
-                html.removeChild(script);
-                script = null;
-            };
-            html.appendChild(script);
-        };
-    }
-
-    function installSetTimeoutImplementation() {
-        registerImmediate = function(handle) {
-            setTimeout(runIfPresent, 0, handle);
-        };
-    }
-
-    // If supported, we should attach to the prototype of global, since that is where setTimeout et al. live.
-    var attachTo = Object.getPrototypeOf && Object.getPrototypeOf(global);
-    attachTo = attachTo && attachTo.setTimeout ? attachTo : global;
-
-    // Don't get fooled by e.g. browserify environments.
-    if ({}.toString.call(global.process) === "[object process]") {
-        // For Node.js before 0.9
-        installNextTickImplementation();
-
-    } else if (canUsePostMessage()) {
-        // For non-IE10 modern browsers
-        installPostMessageImplementation();
-
-    } else if (global.MessageChannel) {
-        // For web workers, where supported
-        installMessageChannelImplementation();
-
-    } else if (doc && "onreadystatechange" in doc.createElement("script")) {
-        // For IE 6–8
-        installReadyStateChangeImplementation();
-
-    } else {
-        // For older browsers
-        installSetTimeoutImplementation();
-    }
-
-    attachTo.setImmediate = setImmediate;
-    attachTo.clearImmediate = clearImmediate;
-}(typeof self === "undefined" ? typeof global === "undefined" ? this : global : self));
-
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0), __webpack_require__(1)))
-
-/***/ }),
-/* 10 */
-/***/ (function(module, exports, __webpack_require__) {
-
-module.exports = __webpack_require__(11);
-
-
-/***/ }),
-/* 11 */
-/***/ (function(module, exports, __webpack_require__) {
-
-var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// Generated by CoffeeScript 1.8.0
-(function() {
-  var Heap, defaultCmp, floor, heapify, heappop, heappush, heappushpop, heapreplace, insort, min, nlargest, nsmallest, updateItem, _siftdown, _siftup;
-
-  floor = Math.floor, min = Math.min;
-
-
-  /*
-  Default comparison function to be used
-   */
-
-  defaultCmp = function(x, y) {
-    if (x < y) {
-      return -1;
-    }
-    if (x > y) {
-      return 1;
-    }
-    return 0;
-  };
-
-
-  /*
-  Insert item x in list a, and keep it sorted assuming a is sorted.
-  
-  If x is already in a, insert it to the right of the rightmost x.
-  
-  Optional args lo (default 0) and hi (default a.length) bound the slice
-  of a to be searched.
-   */
-
-  insort = function(a, x, lo, hi, cmp) {
-    var mid;
-    if (lo == null) {
-      lo = 0;
-    }
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    if (lo < 0) {
-      throw new Error('lo must be non-negative');
-    }
-    if (hi == null) {
-      hi = a.length;
-    }
-    while (lo < hi) {
-      mid = floor((lo + hi) / 2);
-      if (cmp(x, a[mid]) < 0) {
-        hi = mid;
-      } else {
-        lo = mid + 1;
-      }
-    }
-    return ([].splice.apply(a, [lo, lo - lo].concat(x)), x);
-  };
-
-
-  /*
-  Push item onto heap, maintaining the heap invariant.
-   */
-
-  heappush = function(array, item, cmp) {
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    array.push(item);
-    return _siftdown(array, 0, array.length - 1, cmp);
-  };
-
-
-  /*
-  Pop the smallest item off the heap, maintaining the heap invariant.
-   */
-
-  heappop = function(array, cmp) {
-    var lastelt, returnitem;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    lastelt = array.pop();
-    if (array.length) {
-      returnitem = array[0];
-      array[0] = lastelt;
-      _siftup(array, 0, cmp);
-    } else {
-      returnitem = lastelt;
-    }
-    return returnitem;
-  };
-
-
-  /*
-  Pop and return the current smallest value, and add the new item.
-  
-  This is more efficient than heappop() followed by heappush(), and can be
-  more appropriate when using a fixed size heap. Note that the value
-  returned may be larger than item! That constrains reasonable use of
-  this routine unless written as part of a conditional replacement:
-      if item > array[0]
-        item = heapreplace(array, item)
-   */
-
-  heapreplace = function(array, item, cmp) {
-    var returnitem;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    returnitem = array[0];
-    array[0] = item;
-    _siftup(array, 0, cmp);
-    return returnitem;
-  };
-
-
-  /*
-  Fast version of a heappush followed by a heappop.
-   */
-
-  heappushpop = function(array, item, cmp) {
-    var _ref;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    if (array.length && cmp(array[0], item) < 0) {
-      _ref = [array[0], item], item = _ref[0], array[0] = _ref[1];
-      _siftup(array, 0, cmp);
-    }
-    return item;
-  };
-
-
-  /*
-  Transform list into a heap, in-place, in O(array.length) time.
-   */
-
-  heapify = function(array, cmp) {
-    var i, _i, _j, _len, _ref, _ref1, _results, _results1;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    _ref1 = (function() {
-      _results1 = [];
-      for (var _j = 0, _ref = floor(array.length / 2); 0 <= _ref ? _j < _ref : _j > _ref; 0 <= _ref ? _j++ : _j--){ _results1.push(_j); }
-      return _results1;
-    }).apply(this).reverse();
-    _results = [];
-    for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-      i = _ref1[_i];
-      _results.push(_siftup(array, i, cmp));
-    }
-    return _results;
-  };
-
-
-  /*
-  Update the position of the given item in the heap.
-  This function should be called every time the item is being modified.
-   */
-
-  updateItem = function(array, item, cmp) {
-    var pos;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    pos = array.indexOf(item);
-    if (pos === -1) {
-      return;
-    }
-    _siftdown(array, 0, pos, cmp);
-    return _siftup(array, pos, cmp);
-  };
-
-
-  /*
-  Find the n largest elements in a dataset.
-   */
-
-  nlargest = function(array, n, cmp) {
-    var elem, result, _i, _len, _ref;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    result = array.slice(0, n);
-    if (!result.length) {
-      return result;
-    }
-    heapify(result, cmp);
-    _ref = array.slice(n);
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      elem = _ref[_i];
-      heappushpop(result, elem, cmp);
-    }
-    return result.sort(cmp).reverse();
-  };
-
-
-  /*
-  Find the n smallest elements in a dataset.
-   */
-
-  nsmallest = function(array, n, cmp) {
-    var elem, i, los, result, _i, _j, _len, _ref, _ref1, _results;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    if (n * 10 <= array.length) {
-      result = array.slice(0, n).sort(cmp);
-      if (!result.length) {
-        return result;
-      }
-      los = result[result.length - 1];
-      _ref = array.slice(n);
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        elem = _ref[_i];
-        if (cmp(elem, los) < 0) {
-          insort(result, elem, 0, null, cmp);
-          result.pop();
-          los = result[result.length - 1];
-        }
-      }
-      return result;
-    }
-    heapify(array, cmp);
-    _results = [];
-    for (i = _j = 0, _ref1 = min(n, array.length); 0 <= _ref1 ? _j < _ref1 : _j > _ref1; i = 0 <= _ref1 ? ++_j : --_j) {
-      _results.push(heappop(array, cmp));
-    }
-    return _results;
-  };
-
-  _siftdown = function(array, startpos, pos, cmp) {
-    var newitem, parent, parentpos;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    newitem = array[pos];
-    while (pos > startpos) {
-      parentpos = (pos - 1) >> 1;
-      parent = array[parentpos];
-      if (cmp(newitem, parent) < 0) {
-        array[pos] = parent;
-        pos = parentpos;
-        continue;
-      }
-      break;
-    }
-    return array[pos] = newitem;
-  };
-
-  _siftup = function(array, pos, cmp) {
-    var childpos, endpos, newitem, rightpos, startpos;
-    if (cmp == null) {
-      cmp = defaultCmp;
-    }
-    endpos = array.length;
-    startpos = pos;
-    newitem = array[pos];
-    childpos = 2 * pos + 1;
-    while (childpos < endpos) {
-      rightpos = childpos + 1;
-      if (rightpos < endpos && !(cmp(array[childpos], array[rightpos]) < 0)) {
-        childpos = rightpos;
-      }
-      array[pos] = array[childpos];
-      pos = childpos;
-      childpos = 2 * pos + 1;
-    }
-    array[pos] = newitem;
-    return _siftdown(array, startpos, pos, cmp);
-  };
-
-  Heap = (function() {
-    Heap.push = heappush;
-
-    Heap.pop = heappop;
-
-    Heap.replace = heapreplace;
-
-    Heap.pushpop = heappushpop;
-
-    Heap.heapify = heapify;
-
-    Heap.updateItem = updateItem;
-
-    Heap.nlargest = nlargest;
-
-    Heap.nsmallest = nsmallest;
-
-    function Heap(cmp) {
-      this.cmp = cmp != null ? cmp : defaultCmp;
-      this.nodes = [];
-    }
-
-    Heap.prototype.push = function(x) {
-      return heappush(this.nodes, x, this.cmp);
-    };
-
-    Heap.prototype.pop = function() {
-      return heappop(this.nodes, this.cmp);
-    };
-
-    Heap.prototype.peek = function() {
-      return this.nodes[0];
-    };
-
-    Heap.prototype.contains = function(x) {
-      return this.nodes.indexOf(x) !== -1;
-    };
-
-    Heap.prototype.replace = function(x) {
-      return heapreplace(this.nodes, x, this.cmp);
-    };
-
-    Heap.prototype.pushpop = function(x) {
-      return heappushpop(this.nodes, x, this.cmp);
-    };
-
-    Heap.prototype.heapify = function() {
-      return heapify(this.nodes, this.cmp);
-    };
-
-    Heap.prototype.updateItem = function(x) {
-      return updateItem(this.nodes, x, this.cmp);
-    };
-
-    Heap.prototype.clear = function() {
-      return this.nodes = [];
-    };
-
-    Heap.prototype.empty = function() {
-      return this.nodes.length === 0;
-    };
-
-    Heap.prototype.size = function() {
-      return this.nodes.length;
-    };
-
-    Heap.prototype.clone = function() {
-      var heap;
-      heap = new Heap();
-      heap.nodes = this.nodes.slice(0);
-      return heap;
-    };
-
-    Heap.prototype.toArray = function() {
-      return this.nodes.slice(0);
-    };
-
-    Heap.prototype.insert = Heap.prototype.push;
-
-    Heap.prototype.top = Heap.prototype.peek;
-
-    Heap.prototype.front = Heap.prototype.peek;
-
-    Heap.prototype.has = Heap.prototype.contains;
-
-    Heap.prototype.copy = Heap.prototype.clone;
-
-    return Heap;
-
-  })();
-
-  (function(root, factory) {
-    if (true) {
-      return !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
-				__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
-				(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
-				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
-    } else if (typeof exports === 'object') {
-      return module.exports = factory();
-    } else {
-      return root.Heap = factory();
-    }
-  })(this, function() {
-    return Heap;
-  });
-
-}).call(this);
-
-
-/***/ }),
-/* 12 */
-/***/ (function(module, exports, __webpack_require__) {
-
-/* WEBPACK VAR INJECTION */(function(global) {/**
- * lodash (Custom Build) <https://lodash.com/>
- * Build: `lodash modularize exports="npm" -o ./`
- * Copyright jQuery Foundation and other contributors <https://jquery.org/>
- * Released under MIT license <https://lodash.com/license>
- * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
- * Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- */
-
-/** Used as the `TypeError` message for "Functions" methods. */
-var FUNC_ERROR_TEXT = 'Expected a function';
-
-/** Used as references for various `Number` constants. */
-var NAN = 0 / 0;
-
-/** `Object#toString` result references. */
-var symbolTag = '[object Symbol]';
-
-/** Used to match leading and trailing whitespace. */
-var reTrim = /^\s+|\s+$/g;
-
-/** Used to detect bad signed hexadecimal string values. */
-var reIsBadHex = /^[-+]0x[0-9a-f]+$/i;
-
-/** Used to detect binary string values. */
-var reIsBinary = /^0b[01]+$/i;
-
-/** Used to detect octal string values. */
-var reIsOctal = /^0o[0-7]+$/i;
-
-/** Built-in method references without a dependency on `root`. */
-var freeParseInt = parseInt;
-
-/** Detect free variable `global` from Node.js. */
-var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
-
-/** Detect free variable `self`. */
-var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
-
-/** Used as a reference to the global object. */
-var root = freeGlobal || freeSelf || Function('return this')();
-
-/** Used for built-in method references. */
-var objectProto = Object.prototype;
-
-/**
- * Used to resolve the
- * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
- * of values.
- */
-var objectToString = objectProto.toString;
-
-/* Built-in method references for those with the same name as other `lodash` methods. */
-var nativeMax = Math.max,
-    nativeMin = Math.min;
-
-/**
- * Gets the timestamp of the number of milliseconds that have elapsed since
- * the Unix epoch (1 January 1970 00:00:00 UTC).
- *
- * @static
- * @memberOf _
- * @since 2.4.0
- * @category Date
- * @returns {number} Returns the timestamp.
- * @example
- *
- * _.defer(function(stamp) {
- *   console.log(_.now() - stamp);
- * }, _.now());
- * // => Logs the number of milliseconds it took for the deferred invocation.
- */
-var now = function() {
-  return root.Date.now();
-};
-
-/**
- * Creates a debounced function that delays invoking `func` until after `wait`
- * milliseconds have elapsed since the last time the debounced function was
- * invoked. The debounced function comes with a `cancel` method to cancel
- * delayed `func` invocations and a `flush` method to immediately invoke them.
- * Provide `options` to indicate whether `func` should be invoked on the
- * leading and/or trailing edge of the `wait` timeout. The `func` is invoked
- * with the last arguments provided to the debounced function. Subsequent
- * calls to the debounced function return the result of the last `func`
- * invocation.
- *
- * **Note:** If `leading` and `trailing` options are `true`, `func` is
- * invoked on the trailing edge of the timeout only if the debounced function
- * is invoked more than once during the `wait` timeout.
- *
- * If `wait` is `0` and `leading` is `false`, `func` invocation is deferred
- * until to the next tick, similar to `setTimeout` with a timeout of `0`.
- *
- * See [David Corbacho's article](https://css-tricks.com/debouncing-throttling-explained-examples/)
- * for details over the differences between `_.debounce` and `_.throttle`.
- *
- * @static
- * @memberOf _
- * @since 0.1.0
- * @category Function
- * @param {Function} func The function to debounce.
- * @param {number} [wait=0] The number of milliseconds to delay.
- * @param {Object} [options={}] The options object.
- * @param {boolean} [options.leading=false]
- *  Specify invoking on the leading edge of the timeout.
- * @param {number} [options.maxWait]
- *  The maximum time `func` is allowed to be delayed before it's invoked.
- * @param {boolean} [options.trailing=true]
- *  Specify invoking on the trailing edge of the timeout.
- * @returns {Function} Returns the new debounced function.
- * @example
- *
- * // Avoid costly calculations while the window size is in flux.
- * jQuery(window).on('resize', _.debounce(calculateLayout, 150));
- *
- * // Invoke `sendMail` when clicked, debouncing subsequent calls.
- * jQuery(element).on('click', _.debounce(sendMail, 300, {
- *   'leading': true,
- *   'trailing': false
- * }));
- *
- * // Ensure `batchLog` is invoked once after 1 second of debounced calls.
- * var debounced = _.debounce(batchLog, 250, { 'maxWait': 1000 });
- * var source = new EventSource('/stream');
- * jQuery(source).on('message', debounced);
- *
- * // Cancel the trailing debounced invocation.
- * jQuery(window).on('popstate', debounced.cancel);
- */
-function debounce(func, wait, options) {
-  var lastArgs,
-      lastThis,
-      maxWait,
-      result,
-      timerId,
-      lastCallTime,
-      lastInvokeTime = 0,
-      leading = false,
-      maxing = false,
-      trailing = true;
-
-  if (typeof func != 'function') {
-    throw new TypeError(FUNC_ERROR_TEXT);
-  }
-  wait = toNumber(wait) || 0;
-  if (isObject(options)) {
-    leading = !!options.leading;
-    maxing = 'maxWait' in options;
-    maxWait = maxing ? nativeMax(toNumber(options.maxWait) || 0, wait) : maxWait;
-    trailing = 'trailing' in options ? !!options.trailing : trailing;
-  }
-
-  function invokeFunc(time) {
-    var args = lastArgs,
-        thisArg = lastThis;
-
-    lastArgs = lastThis = undefined;
-    lastInvokeTime = time;
-    result = func.apply(thisArg, args);
-    return result;
-  }
-
-  function leadingEdge(time) {
-    // Reset any `maxWait` timer.
-    lastInvokeTime = time;
-    // Start the timer for the trailing edge.
-    timerId = setTimeout(timerExpired, wait);
-    // Invoke the leading edge.
-    return leading ? invokeFunc(time) : result;
-  }
-
-  function remainingWait(time) {
-    var timeSinceLastCall = time - lastCallTime,
-        timeSinceLastInvoke = time - lastInvokeTime,
-        result = wait - timeSinceLastCall;
-
-    return maxing ? nativeMin(result, maxWait - timeSinceLastInvoke) : result;
-  }
-
-  function shouldInvoke(time) {
-    var timeSinceLastCall = time - lastCallTime,
-        timeSinceLastInvoke = time - lastInvokeTime;
-
-    // Either this is the first call, activity has stopped and we're at the
-    // trailing edge, the system time has gone backwards and we're treating
-    // it as the trailing edge, or we've hit the `maxWait` limit.
-    return (lastCallTime === undefined || (timeSinceLastCall >= wait) ||
-      (timeSinceLastCall < 0) || (maxing && timeSinceLastInvoke >= maxWait));
-  }
-
-  function timerExpired() {
-    var time = now();
-    if (shouldInvoke(time)) {
-      return trailingEdge(time);
-    }
-    // Restart the timer.
-    timerId = setTimeout(timerExpired, remainingWait(time));
-  }
-
-  function trailingEdge(time) {
-    timerId = undefined;
-
-    // Only invoke if we have `lastArgs` which means `func` has been
-    // debounced at least once.
-    if (trailing && lastArgs) {
-      return invokeFunc(time);
-    }
-    lastArgs = lastThis = undefined;
-    return result;
-  }
-
-  function cancel() {
-    if (timerId !== undefined) {
-      clearTimeout(timerId);
-    }
-    lastInvokeTime = 0;
-    lastArgs = lastCallTime = lastThis = timerId = undefined;
-  }
-
-  function flush() {
-    return timerId === undefined ? result : trailingEdge(now());
-  }
-
-  function debounced() {
-    var time = now(),
-        isInvoking = shouldInvoke(time);
-
-    lastArgs = arguments;
-    lastThis = this;
-    lastCallTime = time;
-
-    if (isInvoking) {
-      if (timerId === undefined) {
-        return leadingEdge(lastCallTime);
-      }
-      if (maxing) {
-        // Handle invocations in a tight loop.
-        timerId = setTimeout(timerExpired, wait);
-        return invokeFunc(lastCallTime);
-      }
-    }
-    if (timerId === undefined) {
-      timerId = setTimeout(timerExpired, wait);
-    }
-    return result;
-  }
-  debounced.cancel = cancel;
-  debounced.flush = flush;
-  return debounced;
-}
-
-/**
- * Checks if `value` is the
- * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
- * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
- *
- * @static
- * @memberOf _
- * @since 0.1.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is an object, else `false`.
- * @example
- *
- * _.isObject({});
- * // => true
- *
- * _.isObject([1, 2, 3]);
- * // => true
- *
- * _.isObject(_.noop);
- * // => true
- *
- * _.isObject(null);
- * // => false
- */
-function isObject(value) {
-  var type = typeof value;
-  return !!value && (type == 'object' || type == 'function');
-}
-
-/**
- * Checks if `value` is object-like. A value is object-like if it's not `null`
- * and has a `typeof` result of "object".
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
- * @example
- *
- * _.isObjectLike({});
- * // => true
- *
- * _.isObjectLike([1, 2, 3]);
- * // => true
- *
- * _.isObjectLike(_.noop);
- * // => false
- *
- * _.isObjectLike(null);
- * // => false
- */
-function isObjectLike(value) {
-  return !!value && typeof value == 'object';
-}
-
-/**
- * Checks if `value` is classified as a `Symbol` primitive or object.
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
- * @example
- *
- * _.isSymbol(Symbol.iterator);
- * // => true
- *
- * _.isSymbol('abc');
- * // => false
- */
-function isSymbol(value) {
-  return typeof value == 'symbol' ||
-    (isObjectLike(value) && objectToString.call(value) == symbolTag);
-}
-
-/**
- * Converts `value` to a number.
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to process.
- * @returns {number} Returns the number.
- * @example
- *
- * _.toNumber(3.2);
- * // => 3.2
- *
- * _.toNumber(Number.MIN_VALUE);
- * // => 5e-324
- *
- * _.toNumber(Infinity);
- * // => Infinity
- *
- * _.toNumber('3.2');
- * // => 3.2
- */
-function toNumber(value) {
-  if (typeof value == 'number') {
-    return value;
-  }
-  if (isSymbol(value)) {
-    return NAN;
-  }
-  if (isObject(value)) {
-    var other = typeof value.valueOf == 'function' ? value.valueOf() : value;
-    value = isObject(other) ? (other + '') : other;
-  }
-  if (typeof value != 'string') {
-    return value === 0 ? value : +value;
-  }
-  value = value.replace(reTrim, '');
-  var isBinary = reIsBinary.test(value);
-  return (isBinary || reIsOctal.test(value))
-    ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
-    : (reIsBadHex.test(value) ? NAN : +value);
-}
-
-module.exports = debounce;
-
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
-
-/***/ }),
-/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(process) {var _ = __webpack_require__(14);
@@ -39688,6 +38043,1651 @@ for(x in BiwaScheme){
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1)))
 
 /***/ }),
+/* 6 */
+/***/ (function(module, exports) {
+
+function getText() {
+  var newName = window.prompt('name:', '');
+  keysPressed = new Set();
+  return newName;
+}
+
+module.exports = {
+  getText: getText
+};
+
+/***/ }),
+/* 7 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _editor = _interopRequireDefault(__webpack_require__(8));
+
+var _parse = _interopRequireDefault(__webpack_require__(42));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function displayResult(result, compiledLisp) {
+  var newHtml = '>> ' + result + '<br />' + compiledLisp;
+  document.getElementById('lispOutput').innerHTML = newHtml;
+}
+
+var c = (0, _editor.default)();
+window.loadState = c['loadState'];
+window.saveState = c['saveState'];
+window.resetGraph = c['resetGraph'];
+
+window.parseButton = function () {
+  var cy = c['cy'];
+  var results = (0, _parse.default)(cy.$('node:orphan'));
+  displayResult.apply(this, results);
+};
+
+/***/ }),
+/* 8 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _cytoscape_init = _interopRequireDefault(__webpack_require__(9));
+
+var _newRemove = _interopRequireDefault(__webpack_require__(27));
+
+var _cytoscapeUndoRedo = _interopRequireDefault(__webpack_require__(28));
+
+var _cytoscape = _interopRequireDefault(__webpack_require__(3));
+
+var _mousetrap = _interopRequireDefault(__webpack_require__(29));
+
+var _colormap = _interopRequireDefault(__webpack_require__(30));
+
+var _cytoscapeCanvas = _interopRequireDefault(__webpack_require__(33));
+
+var comments = _interopRequireWildcard(__webpack_require__(34));
+
+var utils = _interopRequireWildcard(__webpack_require__(6));
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = Object.defineProperty && Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : {}; if (desc.get || desc.set) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } } newObj.default = obj; return newObj; } }
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function buildEditor() {
+  var cy = (0, _cytoscape_init.default)();
+  (0, _cytoscapeUndoRedo.default)(_cytoscape.default);
+  (0, _cytoscapeCanvas.default)(_cytoscape.default); // Register undo/redo, and other imported functions
+
+  var ur = cy.undoRedo();
+  (0, _cytoscape.default)('collection', 'delete', _newRemove.default);
+  ur.action('deleteEles', function (eles) {
+    eles.delete();
+    return eles;
+  }, function (eles) {
+    eles.restore();
+  });
+  var commentPoints = new comments.CommentsCanvas(cy);
+  var commentMode = false; // =====================
+  // || GRAPH FUNCTIONS ||
+  // =====================
+
+  function setType(ele, newtype) {
+    ele.data('type', newtype);
+  }
+
+  (0, _cytoscape.default)('collection', 'setType', function (newType) {
+    setType(this, newType);
+  });
+
+  function newNode(pos) {
+    var color = getColor();
+    var createdNode = cy.add({
+      group: 'nodes',
+      position: pos,
+      data: {
+        'variable': false,
+        'name': '',
+        'type': 'Free',
+        'defaultColor': color
+      }
+    });
+    return createdNode;
+  }
+
+  function newEdge(origins, dest) {
+    var newEdges = origins.map(function (source) {
+      cy.add({
+        group: 'edges',
+        style: {
+          'target-arrow-shape': 'triangle'
+        },
+        data: {
+          source: source.id(),
+          target: dest.id(),
+          name: ''
+        },
+        selectable: true
+      });
+    });
+    return newEdges;
+  }
+
+  function getColor() {
+    var name = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
+    var node = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+
+    // Method to generate a color for the node that the method is called on.
+    function isString(name) {
+      function matchBrackets(bra, n) {
+        return n[0] === bra && n[n.length - 1] === bra;
+      }
+
+      return matchBrackets('\'', name) || matchBrackets('"', name) || matchBrackets('`', name);
+    }
+
+    if (name !== '') {
+      var sameNamedEles;
+
+      if (node === null) {
+        sameNamedEles = cy.$("[name = '" + name + "']");
+      } else {
+        sameNamedEles = cy.$("[name = '" + name + "']").difference(node);
+      } // Look for something named the same, and make this node the same color.
+
+
+      if (sameNamedEles.length > 0 && name !== '') {
+        return sameNamedEles.data('defaultColor');
+      } else if (isString(name)) {
+        // If the name represents a string, make the node green.
+        return 'lime';
+      } else if (!isNaN(name)) {
+        // We want numbers (including floats, ints, etc) to be one color.
+        return 'blue';
+      }
+    } // Else generate a random color from a colormap (and convert it to hash).
+
+
+    var ncolors = 72;
+    var index = Math.floor(Math.random() * ncolors);
+    var col = (0, _colormap.default)('nature', ncolors, 'hex')[index];
+    return col;
+  }
+
+  (0, _cytoscape.default)('collection', 'getColor', function () {
+    return getColor(this.data('name'), this);
+  });
+
+  function setColor() {
+    var color = this.getColor();
+    this.data('defaultColor', color);
+  }
+
+  (0, _cytoscape.default)('collection', 'setColor', setColor);
+
+  function rename(ele) {
+    var newName = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+
+    if (newName === null) {
+      newName = utils.getText();
+    }
+
+    if (!(newName === null)) {
+      ele.data('name', newName);
+      ele.setColor();
+    }
+  }
+
+  (0, _cytoscape.default)('collection', 'rename', function () {
+    var name = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
+    rename(this, name);
+  });
+
+  function setParent(newParent) {
+    // Set self's parent to newParent.
+    if (newParent != null && newParent.id()) {
+      ur.do('changeParent', {
+        'parentData': newParent.id(),
+        'nodes': this,
+        'posDiffX': 0,
+        'posDiffY': 0
+      });
+    } else {
+      // If newParent is null, remove the parent from the node.
+      var oldParent = this.parent();
+      ur.do('changeParent', {
+        'parentData': null,
+        'nodes': this,
+        'posDiffX': 0,
+        'posDiffY': 0
+      }); // Remove childless parents
+
+      if (oldParent.length > 0 && oldParent.children().length === 0) {
+        oldParent.remove();
+      }
+    }
+
+    return cy.$id(this.id());
+  }
+
+  (0, _cytoscape.default)('collection', 'setParent', setParent);
+
+  function toggleVariable() {
+    switch (this.data('type')) {
+      case 'Free':
+        this.setType('NearBoundVariable');
+        break;
+
+      case 'NearBoundVariable':
+        this.setType('FarBoundVariable');
+        break;
+
+      case 'FarBoundVariable':
+        this.setType('Free');
+        break;
+    }
+  }
+
+  (0, _cytoscape.default)('collection', 'toggleVariable', toggleVariable); // =========================
+  // || USER INPUT HANDLERS ||
+  // =========================
+
+  var dclickPrevTap;
+  var dclickTappedTimeout;
+  var eSelected; // __Handlers for clicking on the background__
+  // Double-tap or single-tap with 'e'/'w' to add a new node.
+
+  cy.on('tap', function (event) {
+    var tapTarget = event.target;
+
+    if (tapTarget === cy) {
+      if (keysPressed.has('e')) {
+        // Click on the background with 'e'
+        var n = newNode(event.position);
+        dclickTappedTimeout = false;
+
+        if (eSelected.length > 0 && eSelected.parent().length <= 1) {
+          newEdge(eSelected, n);
+          n = n.setParent(eSelected.parent());
+        }
+
+        selectOnly(n);
+      } else if (tapTarget === cy && keysPressed.has('w')) {
+        // Click on the background with 'e'
+        n = newNode(event.position);
+        dclickTappedTimeout = false;
+
+        if (eSelected.length === 1) {
+          newEdge(n, eSelected);
+          n = n.setParent(eSelected.parent());
+        }
+
+        selectOnly(eSelected);
+      } else if (dclickTappedTimeout && dclickPrevTap) {
+        clearTimeout(dclickTappedTimeout);
+      } // If double clicked:
+
+
+      if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
+        n = newNode(event.position);
+        selectOnly(n);
+        dclickPrevTap = null;
+      }
+    } else {
+      if (tapTarget.isNode() && dclickTappedTimeout && dclickPrevTap) {
+        clearTimeout(dclickTappedTimeout);
+      } // If double clicked:
+
+
+      if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
+        rename(tapTarget);
+      }
+    } // Update doubleclick handlers
+
+
+    dclickTappedTimeout = setTimeout(function () {
+      dclickPrevTap = null;
+    }, 300);
+    dclickPrevTap = tapTarget;
+  }); // Hold 'e/w' and tap a node to make a new edge
+
+  cy.on('tap', 'node', function (event) {
+    var target = event.target;
+    var sources = cy.$('node:selected').difference(event.target);
+
+    if (sources.length > 0) {
+      if (keysPressed.has('e')) {
+        newEdge(sources, target);
+        selectOnly(target);
+        sources.connectedClosure().setParent(target.parent());
+      } else if (keysPressed.has('w')) {
+        sources.map(function (source) {
+          return newEdge(target, source);
+        });
+        sources = sources.connectedClosure().setParent(target.parent());
+        selectOnly(sources);
+      }
+    }
+  }); // Hold 'r' and tap a node to rename it.
+
+  cy.on('tap', 'node, edge', function (event) {
+    if (keysPressed.has('r')) {
+      event.target.rename();
+    }
+  }); // l to 'lambda': wrap selection in a hypernode, containing the selection
+  // and its closed neighbourhood, corresponding to a lambda function.
+
+  _mousetrap.default.bind('l', function () {
+    // If all of them belong to the same parent, take them out of the parent.
+    var selected = cy.$('node:selected');
+
+    if (selected.parents().length === 1) {
+      selected.setParent(null);
+    } else {
+      var parent = newNode();
+      parent.setType('Lambda');
+      var closure = selected.connectedClosure();
+      closure.setParent(parent);
+      selectOnly(parent);
+    }
+  }, 'keypress'); // p to 'parens': wrap selection in a hypernode representing 'evaluate all this together',
+  // corresponding to wrapping () around a group.
+
+
+  _mousetrap.default.bind('p', function () {
+    // If all of them belong to the same parent, take them out of the parent.
+    var selected = cy.$('node:selected');
+
+    if (selected.parents().length === 1) {
+      selected.setParent(null);
+    } else {
+      var parent = newNode();
+      parent.setType('Parens');
+      var closure = selected.connectedClosure();
+      closure.setParent(parent);
+      selectOnly(parent);
+    }
+  }, 'keypress'); // d to 'define': wrap selection in a hypernode, containing the selection
+  // and its closed neighbourhood, corresponding to a define statement.
+
+
+  _mousetrap.default.bind('d', function () {
+    // If all of them belong to the same parent, take them out of the parent.
+    var selected = cy.$('node:selected');
+
+    if (selected.parents().length === 1) {
+      selected.setParent(null);
+    } else {
+      var parent = newNode();
+      parent.setType('Define');
+      var closure = selected.connectedClosure();
+      parent.rename();
+      closure.setParent(parent);
+      selectOnly(parent);
+    }
+  }, 'keypress'); // Backspace to delete selection
+
+
+  _mousetrap.default.bind('backspace', function () {
+    ur.do('deleteEles', cy.$(':selected'));
+  });
+
+  _mousetrap.default.bind('V', function () {
+    cy.$(':selected').toggleVariable();
+  });
+
+  _mousetrap.default.bind('P', function () {
+    toLisp(cy.$(':selected'));
+  });
+
+  _mousetrap.default.bind('Z', function () {
+    ur.undo();
+  }); // Recognise keys pressed down
+
+
+  var keysPressed = new Set();
+
+  _mousetrap.default.bind('e', function () {
+    keysPressed.add('e');
+    eSelected = cy.$('node:selected');
+  }, 'keypress');
+
+  _mousetrap.default.bind('e', function () {
+    keysPressed.delete('e');
+  }, 'keyup');
+
+  _mousetrap.default.bind('w', function () {
+    keysPressed.add('w');
+    eSelected = cy.$('node:selected');
+  }, 'keypress');
+
+  _mousetrap.default.bind('w', function () {
+    keysPressed.delete('w');
+  }, 'keyup');
+
+  _mousetrap.default.bind('c', function () {
+    if (!keysPressed.has('c')) {
+      keysPressed.add('c');
+      commentPoints.enableDrawingMode();
+    }
+  }, 'keydown');
+
+  _mousetrap.default.bind('c', function () {
+    keysPressed.delete('c');
+    commentPoints.disableDrawingMode();
+  }, 'keyup');
+
+  _mousetrap.default.bind('r', function () {
+    keysPressed.add('r');
+    var selected = cy.$(':selected');
+
+    if (selected.length === 1) {
+      selected.rename();
+      keysPressed.delete('r');
+    }
+  }, 'keypress');
+
+  _mousetrap.default.bind('r', function () {
+    keysPressed.delete('r');
+  }, 'keyup');
+
+  function loadState(objectId) {
+    var x = document.getElementById(objectId).files[0];
+    var reader = new FileReader();
+
+    reader.onload = function (e) {
+      var graphString = e.target.result; // We HAVE to double-load elements here: once to get them into the
+      // graph, and once to set their parents correctly. If we don't, when
+      // elements are loaded and don't have a parent in place already,
+      // not only do they set the parent to 'undefined', they also
+      // _edit the fucking json_ so that the parent is thereafter undefined.
+      //
+      // That means that if you try to use the same JSON object twice for the
+      // two loads, it WON'T WORK because it's been modified by the first.
+      // WHAT THE HELL, CYTOSCAPE??? (Yes I lost several hours to this bug.)
+
+      cy.json();
+      cy.json(JSON.parse(graphString));
+      JSON.parse(graphString).elements.nodes.map(function (jsn) {
+        var nodeId = jsn.data.id;
+        var nodeParent = jsn.data.parent;
+        cy.$id(nodeId).setParent(cy.$id(nodeParent));
+      });
+      commentPoints.reset();
+      commentPoints.load(JSON.parse(graphString).comments);
+    };
+
+    reader.readAsText(x, 'UTF-8');
+  }
+
+  function saveState() {
+    var fileName = window.prompt('File name:', '');
+    var comments = commentPoints.serialize();
+
+    if (!(fileName === null)) {
+      var jsonData = JSON.stringify({
+        'elements': cy.json()['elements'],
+        'comments': comments
+      });
+      var a = document.createElement('a');
+      var file = new Blob([jsonData], {
+        type: 'text/plain'
+      });
+      a.href = URL.createObjectURL(file);
+      a.download = fileName + '.txt';
+      a.click();
+    }
+  }
+
+  function resetGraph() {
+    if (confirm('REALLY CLEAR ALL? (There\'s no autosave and no undo!)')) {
+      console.log('RESET');
+      cy.remove(cy.$(''));
+      commentPoints.reset();
+      cy.forceRender();
+    }
+  }
+
+  function selectOnly(ele) {
+    cy.$().deselect();
+    ele.select();
+  }
+
+  function connectedClosure() {
+    // Returns the closure (union with all-depth family) of the eles.
+    var nextLevel = this.closedNeighborhood('node');
+
+    if (nextLevel.length === this.length) {
+      return this;
+    } else {
+      return nextLevel.connectedClosure();
+    }
+  }
+
+  (0, _cytoscape.default)('collection', 'connectedClosure', connectedClosure);
+  return {
+    'cy': cy,
+    'loadState': loadState,
+    'saveState': saveState,
+    'resetGraph': resetGraph
+  };
+}
+
+module.exports = buildEditor;
+
+/***/ }),
+/* 9 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _cytoscape = _interopRequireDefault(__webpack_require__(3));
+
+__webpack_require__(5);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function createCanvas() {
+  // cytoscape.use( require('undo-redo') );
+  return (0, _cytoscape.default)({
+    container: document.getElementById('cy'),
+    boxSelectionEnabled: true,
+    style: [{
+      selector: 'node',
+      style: {
+        'background-color': 'data(defaultColor)',
+        'border-width': 0,
+        'content': 'UNKNOWN TYPE',
+        // text
+        'text-outline-width': 2,
+        'text-outline-color': 'black',
+        'color': 'white',
+        // font color
+        'text-valign': 'center'
+      }
+    }, {
+      selector: 'node[type = "NearBoundVariable"]',
+      style: {
+        'shape': 'diamond',
+        'border-width': 1,
+        'border-color': 'black',
+        'background-color': 'cyan',
+        'content': 'data(name)' // text
+
+      }
+    }, {
+      selector: 'node[type = "FarBoundVariable"]',
+      style: {
+        'shape': 'square',
+        'border-width': 1,
+        'border-color': 'black',
+        'background-color': 'cyan',
+        'content': 'data(name)' // text
+
+      }
+    }, {
+      selector: 'node[type = "Free"], node[type = "If"]',
+      style: {
+        'content': 'data(name)' // text
+
+      }
+    }, {
+      selector: 'node[type = "Lambda"]',
+      style: {
+        // Compound node, by definition.
+        'background-color': 'white',
+        'text-valign': 'bottom',
+        'text-halign': 'center',
+        'border-width': 5,
+        'shape': 'roundrectangle',
+        'border-color': 'gray',
+        'padding': '10px',
+        'font-size': '15px',
+        'text-margin-y': '-10px',
+        'text-background-color': 'gray',
+        'text-background-opacity': 1,
+        'text-background-shape': 'roundrectangle',
+        'text-background-padding': '3px',
+        'content': 'data(name)'
+      }
+    }, {
+      selector: 'node[type = "Define"]',
+      style: {
+        // Compound node, by definition.
+        'background-color': 'white',
+        'text-valign': 'top',
+        'text-halign': 'center',
+        'border-width': 5,
+        'border-style': 'double',
+        'shape': 'roundrectangle',
+        'border-color': 'data(defaultColor)',
+        'padding': '3px',
+        'text-margin-y': '3px',
+        'font-size': '20px',
+        'text-background-color': 'data(defaultColor)',
+        'text-background-opacity': 1,
+        'text-background-shape': 'roundrectangle',
+        'text-background-padding': '1px',
+        'content': 'data(name)'
+      }
+    }, {
+      selector: 'node[type = "Parens"]',
+      style: {
+        // Compound node, by definition.
+        'background-color': 'white',
+        'border-width': 5,
+        'border-style': 'dotted',
+        'shape': 'roundrectangle',
+        'border-color': '#DEDDC5',
+        'padding': '10px',
+        'text-margin-y': '3px',
+        'font-size': '20px',
+        'content': ''
+      }
+    }, {
+      selector: 'edge',
+      style: {
+        'curve-style': 'bezier',
+        'width': 4,
+        'target-arrow-shape': 'triangle',
+        'line-color': 'black',
+        'target-arrow-color': 'black',
+        'target-label': 'data(name)',
+        'target-text-offset': 20,
+        'color': 'white',
+        'text-outline-width': 2,
+        'text-outline-color': 'black'
+      }
+    }, {
+      selector: 'edge:selected',
+      style: {
+        'line-color': 'red',
+        'target-arrow-color': 'red',
+        'text-outline-color': 'red'
+      }
+    }, {
+      selector: 'node:selected',
+      style: {
+        'border-color': 'red',
+        'border-width': 5,
+        'text-background-color': 'red'
+      }
+    }]
+  });
+}
+
+module.exports = createCanvas;
+
+/***/ }),
+/* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
+/* WEBPACK VAR INJECTION */(function(global, process) {(function (global, undefined) {
+    "use strict";
+
+    if (global.setImmediate) {
+        return;
+    }
+
+    var nextHandle = 1; // Spec says greater than zero
+    var tasksByHandle = {};
+    var currentlyRunningATask = false;
+    var doc = global.document;
+    var registerImmediate;
+
+    function setImmediate(callback) {
+      // Callback can either be a function or a string
+      if (typeof callback !== "function") {
+        callback = new Function("" + callback);
+      }
+      // Copy function arguments
+      var args = new Array(arguments.length - 1);
+      for (var i = 0; i < args.length; i++) {
+          args[i] = arguments[i + 1];
+      }
+      // Store and register the task
+      var task = { callback: callback, args: args };
+      tasksByHandle[nextHandle] = task;
+      registerImmediate(nextHandle);
+      return nextHandle++;
+    }
+
+    function clearImmediate(handle) {
+        delete tasksByHandle[handle];
+    }
+
+    function run(task) {
+        var callback = task.callback;
+        var args = task.args;
+        switch (args.length) {
+        case 0:
+            callback();
+            break;
+        case 1:
+            callback(args[0]);
+            break;
+        case 2:
+            callback(args[0], args[1]);
+            break;
+        case 3:
+            callback(args[0], args[1], args[2]);
+            break;
+        default:
+            callback.apply(undefined, args);
+            break;
+        }
+    }
+
+    function runIfPresent(handle) {
+        // From the spec: "Wait until any invocations of this algorithm started before this one have completed."
+        // So if we're currently running a task, we'll need to delay this invocation.
+        if (currentlyRunningATask) {
+            // Delay by doing a setTimeout. setImmediate was tried instead, but in Firefox 7 it generated a
+            // "too much recursion" error.
+            setTimeout(runIfPresent, 0, handle);
+        } else {
+            var task = tasksByHandle[handle];
+            if (task) {
+                currentlyRunningATask = true;
+                try {
+                    run(task);
+                } finally {
+                    clearImmediate(handle);
+                    currentlyRunningATask = false;
+                }
+            }
+        }
+    }
+
+    function installNextTickImplementation() {
+        registerImmediate = function(handle) {
+            process.nextTick(function () { runIfPresent(handle); });
+        };
+    }
+
+    function canUsePostMessage() {
+        // The test against `importScripts` prevents this implementation from being installed inside a web worker,
+        // where `global.postMessage` means something completely different and can't be used for this purpose.
+        if (global.postMessage && !global.importScripts) {
+            var postMessageIsAsynchronous = true;
+            var oldOnMessage = global.onmessage;
+            global.onmessage = function() {
+                postMessageIsAsynchronous = false;
+            };
+            global.postMessage("", "*");
+            global.onmessage = oldOnMessage;
+            return postMessageIsAsynchronous;
+        }
+    }
+
+    function installPostMessageImplementation() {
+        // Installs an event handler on `global` for the `message` event: see
+        // * https://developer.mozilla.org/en/DOM/window.postMessage
+        // * http://www.whatwg.org/specs/web-apps/current-work/multipage/comms.html#crossDocumentMessages
+
+        var messagePrefix = "setImmediate$" + Math.random() + "$";
+        var onGlobalMessage = function(event) {
+            if (event.source === global &&
+                typeof event.data === "string" &&
+                event.data.indexOf(messagePrefix) === 0) {
+                runIfPresent(+event.data.slice(messagePrefix.length));
+            }
+        };
+
+        if (global.addEventListener) {
+            global.addEventListener("message", onGlobalMessage, false);
+        } else {
+            global.attachEvent("onmessage", onGlobalMessage);
+        }
+
+        registerImmediate = function(handle) {
+            global.postMessage(messagePrefix + handle, "*");
+        };
+    }
+
+    function installMessageChannelImplementation() {
+        var channel = new MessageChannel();
+        channel.port1.onmessage = function(event) {
+            var handle = event.data;
+            runIfPresent(handle);
+        };
+
+        registerImmediate = function(handle) {
+            channel.port2.postMessage(handle);
+        };
+    }
+
+    function installReadyStateChangeImplementation() {
+        var html = doc.documentElement;
+        registerImmediate = function(handle) {
+            // Create a <script> element; its readystatechange event will be fired asynchronously once it is inserted
+            // into the document. Do so, thus queuing up the task. Remember to clean up once it's been called.
+            var script = doc.createElement("script");
+            script.onreadystatechange = function () {
+                runIfPresent(handle);
+                script.onreadystatechange = null;
+                html.removeChild(script);
+                script = null;
+            };
+            html.appendChild(script);
+        };
+    }
+
+    function installSetTimeoutImplementation() {
+        registerImmediate = function(handle) {
+            setTimeout(runIfPresent, 0, handle);
+        };
+    }
+
+    // If supported, we should attach to the prototype of global, since that is where setTimeout et al. live.
+    var attachTo = Object.getPrototypeOf && Object.getPrototypeOf(global);
+    attachTo = attachTo && attachTo.setTimeout ? attachTo : global;
+
+    // Don't get fooled by e.g. browserify environments.
+    if ({}.toString.call(global.process) === "[object process]") {
+        // For Node.js before 0.9
+        installNextTickImplementation();
+
+    } else if (canUsePostMessage()) {
+        // For non-IE10 modern browsers
+        installPostMessageImplementation();
+
+    } else if (global.MessageChannel) {
+        // For web workers, where supported
+        installMessageChannelImplementation();
+
+    } else if (doc && "onreadystatechange" in doc.createElement("script")) {
+        // For IE 6–8
+        installReadyStateChangeImplementation();
+
+    } else {
+        // For older browsers
+        installSetTimeoutImplementation();
+    }
+
+    attachTo.setImmediate = setImmediate;
+    attachTo.clearImmediate = clearImmediate;
+}(typeof self === "undefined" ? typeof global === "undefined" ? this : global : self));
+
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0), __webpack_require__(1)))
+
+/***/ }),
+/* 11 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__(12);
+
+
+/***/ }),
+/* 12 */
+/***/ (function(module, exports, __webpack_require__) {
+
+var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// Generated by CoffeeScript 1.8.0
+(function() {
+  var Heap, defaultCmp, floor, heapify, heappop, heappush, heappushpop, heapreplace, insort, min, nlargest, nsmallest, updateItem, _siftdown, _siftup;
+
+  floor = Math.floor, min = Math.min;
+
+
+  /*
+  Default comparison function to be used
+   */
+
+  defaultCmp = function(x, y) {
+    if (x < y) {
+      return -1;
+    }
+    if (x > y) {
+      return 1;
+    }
+    return 0;
+  };
+
+
+  /*
+  Insert item x in list a, and keep it sorted assuming a is sorted.
+  
+  If x is already in a, insert it to the right of the rightmost x.
+  
+  Optional args lo (default 0) and hi (default a.length) bound the slice
+  of a to be searched.
+   */
+
+  insort = function(a, x, lo, hi, cmp) {
+    var mid;
+    if (lo == null) {
+      lo = 0;
+    }
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    if (lo < 0) {
+      throw new Error('lo must be non-negative');
+    }
+    if (hi == null) {
+      hi = a.length;
+    }
+    while (lo < hi) {
+      mid = floor((lo + hi) / 2);
+      if (cmp(x, a[mid]) < 0) {
+        hi = mid;
+      } else {
+        lo = mid + 1;
+      }
+    }
+    return ([].splice.apply(a, [lo, lo - lo].concat(x)), x);
+  };
+
+
+  /*
+  Push item onto heap, maintaining the heap invariant.
+   */
+
+  heappush = function(array, item, cmp) {
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    array.push(item);
+    return _siftdown(array, 0, array.length - 1, cmp);
+  };
+
+
+  /*
+  Pop the smallest item off the heap, maintaining the heap invariant.
+   */
+
+  heappop = function(array, cmp) {
+    var lastelt, returnitem;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    lastelt = array.pop();
+    if (array.length) {
+      returnitem = array[0];
+      array[0] = lastelt;
+      _siftup(array, 0, cmp);
+    } else {
+      returnitem = lastelt;
+    }
+    return returnitem;
+  };
+
+
+  /*
+  Pop and return the current smallest value, and add the new item.
+  
+  This is more efficient than heappop() followed by heappush(), and can be
+  more appropriate when using a fixed size heap. Note that the value
+  returned may be larger than item! That constrains reasonable use of
+  this routine unless written as part of a conditional replacement:
+      if item > array[0]
+        item = heapreplace(array, item)
+   */
+
+  heapreplace = function(array, item, cmp) {
+    var returnitem;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    returnitem = array[0];
+    array[0] = item;
+    _siftup(array, 0, cmp);
+    return returnitem;
+  };
+
+
+  /*
+  Fast version of a heappush followed by a heappop.
+   */
+
+  heappushpop = function(array, item, cmp) {
+    var _ref;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    if (array.length && cmp(array[0], item) < 0) {
+      _ref = [array[0], item], item = _ref[0], array[0] = _ref[1];
+      _siftup(array, 0, cmp);
+    }
+    return item;
+  };
+
+
+  /*
+  Transform list into a heap, in-place, in O(array.length) time.
+   */
+
+  heapify = function(array, cmp) {
+    var i, _i, _j, _len, _ref, _ref1, _results, _results1;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    _ref1 = (function() {
+      _results1 = [];
+      for (var _j = 0, _ref = floor(array.length / 2); 0 <= _ref ? _j < _ref : _j > _ref; 0 <= _ref ? _j++ : _j--){ _results1.push(_j); }
+      return _results1;
+    }).apply(this).reverse();
+    _results = [];
+    for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+      i = _ref1[_i];
+      _results.push(_siftup(array, i, cmp));
+    }
+    return _results;
+  };
+
+
+  /*
+  Update the position of the given item in the heap.
+  This function should be called every time the item is being modified.
+   */
+
+  updateItem = function(array, item, cmp) {
+    var pos;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    pos = array.indexOf(item);
+    if (pos === -1) {
+      return;
+    }
+    _siftdown(array, 0, pos, cmp);
+    return _siftup(array, pos, cmp);
+  };
+
+
+  /*
+  Find the n largest elements in a dataset.
+   */
+
+  nlargest = function(array, n, cmp) {
+    var elem, result, _i, _len, _ref;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    result = array.slice(0, n);
+    if (!result.length) {
+      return result;
+    }
+    heapify(result, cmp);
+    _ref = array.slice(n);
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      elem = _ref[_i];
+      heappushpop(result, elem, cmp);
+    }
+    return result.sort(cmp).reverse();
+  };
+
+
+  /*
+  Find the n smallest elements in a dataset.
+   */
+
+  nsmallest = function(array, n, cmp) {
+    var elem, i, los, result, _i, _j, _len, _ref, _ref1, _results;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    if (n * 10 <= array.length) {
+      result = array.slice(0, n).sort(cmp);
+      if (!result.length) {
+        return result;
+      }
+      los = result[result.length - 1];
+      _ref = array.slice(n);
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        elem = _ref[_i];
+        if (cmp(elem, los) < 0) {
+          insort(result, elem, 0, null, cmp);
+          result.pop();
+          los = result[result.length - 1];
+        }
+      }
+      return result;
+    }
+    heapify(array, cmp);
+    _results = [];
+    for (i = _j = 0, _ref1 = min(n, array.length); 0 <= _ref1 ? _j < _ref1 : _j > _ref1; i = 0 <= _ref1 ? ++_j : --_j) {
+      _results.push(heappop(array, cmp));
+    }
+    return _results;
+  };
+
+  _siftdown = function(array, startpos, pos, cmp) {
+    var newitem, parent, parentpos;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    newitem = array[pos];
+    while (pos > startpos) {
+      parentpos = (pos - 1) >> 1;
+      parent = array[parentpos];
+      if (cmp(newitem, parent) < 0) {
+        array[pos] = parent;
+        pos = parentpos;
+        continue;
+      }
+      break;
+    }
+    return array[pos] = newitem;
+  };
+
+  _siftup = function(array, pos, cmp) {
+    var childpos, endpos, newitem, rightpos, startpos;
+    if (cmp == null) {
+      cmp = defaultCmp;
+    }
+    endpos = array.length;
+    startpos = pos;
+    newitem = array[pos];
+    childpos = 2 * pos + 1;
+    while (childpos < endpos) {
+      rightpos = childpos + 1;
+      if (rightpos < endpos && !(cmp(array[childpos], array[rightpos]) < 0)) {
+        childpos = rightpos;
+      }
+      array[pos] = array[childpos];
+      pos = childpos;
+      childpos = 2 * pos + 1;
+    }
+    array[pos] = newitem;
+    return _siftdown(array, startpos, pos, cmp);
+  };
+
+  Heap = (function() {
+    Heap.push = heappush;
+
+    Heap.pop = heappop;
+
+    Heap.replace = heapreplace;
+
+    Heap.pushpop = heappushpop;
+
+    Heap.heapify = heapify;
+
+    Heap.updateItem = updateItem;
+
+    Heap.nlargest = nlargest;
+
+    Heap.nsmallest = nsmallest;
+
+    function Heap(cmp) {
+      this.cmp = cmp != null ? cmp : defaultCmp;
+      this.nodes = [];
+    }
+
+    Heap.prototype.push = function(x) {
+      return heappush(this.nodes, x, this.cmp);
+    };
+
+    Heap.prototype.pop = function() {
+      return heappop(this.nodes, this.cmp);
+    };
+
+    Heap.prototype.peek = function() {
+      return this.nodes[0];
+    };
+
+    Heap.prototype.contains = function(x) {
+      return this.nodes.indexOf(x) !== -1;
+    };
+
+    Heap.prototype.replace = function(x) {
+      return heapreplace(this.nodes, x, this.cmp);
+    };
+
+    Heap.prototype.pushpop = function(x) {
+      return heappushpop(this.nodes, x, this.cmp);
+    };
+
+    Heap.prototype.heapify = function() {
+      return heapify(this.nodes, this.cmp);
+    };
+
+    Heap.prototype.updateItem = function(x) {
+      return updateItem(this.nodes, x, this.cmp);
+    };
+
+    Heap.prototype.clear = function() {
+      return this.nodes = [];
+    };
+
+    Heap.prototype.empty = function() {
+      return this.nodes.length === 0;
+    };
+
+    Heap.prototype.size = function() {
+      return this.nodes.length;
+    };
+
+    Heap.prototype.clone = function() {
+      var heap;
+      heap = new Heap();
+      heap.nodes = this.nodes.slice(0);
+      return heap;
+    };
+
+    Heap.prototype.toArray = function() {
+      return this.nodes.slice(0);
+    };
+
+    Heap.prototype.insert = Heap.prototype.push;
+
+    Heap.prototype.top = Heap.prototype.peek;
+
+    Heap.prototype.front = Heap.prototype.peek;
+
+    Heap.prototype.has = Heap.prototype.contains;
+
+    Heap.prototype.copy = Heap.prototype.clone;
+
+    return Heap;
+
+  })();
+
+  (function(root, factory) {
+    if (true) {
+      return !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+				__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
+				(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
+				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+    } else if (typeof exports === 'object') {
+      return module.exports = factory();
+    } else {
+      return root.Heap = factory();
+    }
+  })(this, function() {
+    return Heap;
+  });
+
+}).call(this);
+
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+/* WEBPACK VAR INJECTION */(function(global) {/**
+ * lodash (Custom Build) <https://lodash.com/>
+ * Build: `lodash modularize exports="npm" -o ./`
+ * Copyright jQuery Foundation and other contributors <https://jquery.org/>
+ * Released under MIT license <https://lodash.com/license>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ */
+
+/** Used as the `TypeError` message for "Functions" methods. */
+var FUNC_ERROR_TEXT = 'Expected a function';
+
+/** Used as references for various `Number` constants. */
+var NAN = 0 / 0;
+
+/** `Object#toString` result references. */
+var symbolTag = '[object Symbol]';
+
+/** Used to match leading and trailing whitespace. */
+var reTrim = /^\s+|\s+$/g;
+
+/** Used to detect bad signed hexadecimal string values. */
+var reIsBadHex = /^[-+]0x[0-9a-f]+$/i;
+
+/** Used to detect binary string values. */
+var reIsBinary = /^0b[01]+$/i;
+
+/** Used to detect octal string values. */
+var reIsOctal = /^0o[0-7]+$/i;
+
+/** Built-in method references without a dependency on `root`. */
+var freeParseInt = parseInt;
+
+/** Detect free variable `global` from Node.js. */
+var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
+
+/** Detect free variable `self`. */
+var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
+
+/** Used as a reference to the global object. */
+var root = freeGlobal || freeSelf || Function('return this')();
+
+/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var objectToString = objectProto.toString;
+
+/* Built-in method references for those with the same name as other `lodash` methods. */
+var nativeMax = Math.max,
+    nativeMin = Math.min;
+
+/**
+ * Gets the timestamp of the number of milliseconds that have elapsed since
+ * the Unix epoch (1 January 1970 00:00:00 UTC).
+ *
+ * @static
+ * @memberOf _
+ * @since 2.4.0
+ * @category Date
+ * @returns {number} Returns the timestamp.
+ * @example
+ *
+ * _.defer(function(stamp) {
+ *   console.log(_.now() - stamp);
+ * }, _.now());
+ * // => Logs the number of milliseconds it took for the deferred invocation.
+ */
+var now = function() {
+  return root.Date.now();
+};
+
+/**
+ * Creates a debounced function that delays invoking `func` until after `wait`
+ * milliseconds have elapsed since the last time the debounced function was
+ * invoked. The debounced function comes with a `cancel` method to cancel
+ * delayed `func` invocations and a `flush` method to immediately invoke them.
+ * Provide `options` to indicate whether `func` should be invoked on the
+ * leading and/or trailing edge of the `wait` timeout. The `func` is invoked
+ * with the last arguments provided to the debounced function. Subsequent
+ * calls to the debounced function return the result of the last `func`
+ * invocation.
+ *
+ * **Note:** If `leading` and `trailing` options are `true`, `func` is
+ * invoked on the trailing edge of the timeout only if the debounced function
+ * is invoked more than once during the `wait` timeout.
+ *
+ * If `wait` is `0` and `leading` is `false`, `func` invocation is deferred
+ * until to the next tick, similar to `setTimeout` with a timeout of `0`.
+ *
+ * See [David Corbacho's article](https://css-tricks.com/debouncing-throttling-explained-examples/)
+ * for details over the differences between `_.debounce` and `_.throttle`.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Function
+ * @param {Function} func The function to debounce.
+ * @param {number} [wait=0] The number of milliseconds to delay.
+ * @param {Object} [options={}] The options object.
+ * @param {boolean} [options.leading=false]
+ *  Specify invoking on the leading edge of the timeout.
+ * @param {number} [options.maxWait]
+ *  The maximum time `func` is allowed to be delayed before it's invoked.
+ * @param {boolean} [options.trailing=true]
+ *  Specify invoking on the trailing edge of the timeout.
+ * @returns {Function} Returns the new debounced function.
+ * @example
+ *
+ * // Avoid costly calculations while the window size is in flux.
+ * jQuery(window).on('resize', _.debounce(calculateLayout, 150));
+ *
+ * // Invoke `sendMail` when clicked, debouncing subsequent calls.
+ * jQuery(element).on('click', _.debounce(sendMail, 300, {
+ *   'leading': true,
+ *   'trailing': false
+ * }));
+ *
+ * // Ensure `batchLog` is invoked once after 1 second of debounced calls.
+ * var debounced = _.debounce(batchLog, 250, { 'maxWait': 1000 });
+ * var source = new EventSource('/stream');
+ * jQuery(source).on('message', debounced);
+ *
+ * // Cancel the trailing debounced invocation.
+ * jQuery(window).on('popstate', debounced.cancel);
+ */
+function debounce(func, wait, options) {
+  var lastArgs,
+      lastThis,
+      maxWait,
+      result,
+      timerId,
+      lastCallTime,
+      lastInvokeTime = 0,
+      leading = false,
+      maxing = false,
+      trailing = true;
+
+  if (typeof func != 'function') {
+    throw new TypeError(FUNC_ERROR_TEXT);
+  }
+  wait = toNumber(wait) || 0;
+  if (isObject(options)) {
+    leading = !!options.leading;
+    maxing = 'maxWait' in options;
+    maxWait = maxing ? nativeMax(toNumber(options.maxWait) || 0, wait) : maxWait;
+    trailing = 'trailing' in options ? !!options.trailing : trailing;
+  }
+
+  function invokeFunc(time) {
+    var args = lastArgs,
+        thisArg = lastThis;
+
+    lastArgs = lastThis = undefined;
+    lastInvokeTime = time;
+    result = func.apply(thisArg, args);
+    return result;
+  }
+
+  function leadingEdge(time) {
+    // Reset any `maxWait` timer.
+    lastInvokeTime = time;
+    // Start the timer for the trailing edge.
+    timerId = setTimeout(timerExpired, wait);
+    // Invoke the leading edge.
+    return leading ? invokeFunc(time) : result;
+  }
+
+  function remainingWait(time) {
+    var timeSinceLastCall = time - lastCallTime,
+        timeSinceLastInvoke = time - lastInvokeTime,
+        result = wait - timeSinceLastCall;
+
+    return maxing ? nativeMin(result, maxWait - timeSinceLastInvoke) : result;
+  }
+
+  function shouldInvoke(time) {
+    var timeSinceLastCall = time - lastCallTime,
+        timeSinceLastInvoke = time - lastInvokeTime;
+
+    // Either this is the first call, activity has stopped and we're at the
+    // trailing edge, the system time has gone backwards and we're treating
+    // it as the trailing edge, or we've hit the `maxWait` limit.
+    return (lastCallTime === undefined || (timeSinceLastCall >= wait) ||
+      (timeSinceLastCall < 0) || (maxing && timeSinceLastInvoke >= maxWait));
+  }
+
+  function timerExpired() {
+    var time = now();
+    if (shouldInvoke(time)) {
+      return trailingEdge(time);
+    }
+    // Restart the timer.
+    timerId = setTimeout(timerExpired, remainingWait(time));
+  }
+
+  function trailingEdge(time) {
+    timerId = undefined;
+
+    // Only invoke if we have `lastArgs` which means `func` has been
+    // debounced at least once.
+    if (trailing && lastArgs) {
+      return invokeFunc(time);
+    }
+    lastArgs = lastThis = undefined;
+    return result;
+  }
+
+  function cancel() {
+    if (timerId !== undefined) {
+      clearTimeout(timerId);
+    }
+    lastInvokeTime = 0;
+    lastArgs = lastCallTime = lastThis = timerId = undefined;
+  }
+
+  function flush() {
+    return timerId === undefined ? result : trailingEdge(now());
+  }
+
+  function debounced() {
+    var time = now(),
+        isInvoking = shouldInvoke(time);
+
+    lastArgs = arguments;
+    lastThis = this;
+    lastCallTime = time;
+
+    if (isInvoking) {
+      if (timerId === undefined) {
+        return leadingEdge(lastCallTime);
+      }
+      if (maxing) {
+        // Handle invocations in a tight loop.
+        timerId = setTimeout(timerExpired, wait);
+        return invokeFunc(lastCallTime);
+      }
+    }
+    if (timerId === undefined) {
+      timerId = setTimeout(timerExpired, wait);
+    }
+    return result;
+  }
+  debounced.cancel = cancel;
+  debounced.flush = flush;
+  return debounced;
+}
+
+/**
+ * Checks if `value` is the
+ * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
+ * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(_.noop);
+ * // => true
+ *
+ * _.isObject(null);
+ * // => false
+ */
+function isObject(value) {
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+/**
+ * Checks if `value` is object-like. A value is object-like if it's not `null`
+ * and has a `typeof` result of "object".
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ * @example
+ *
+ * _.isObjectLike({});
+ * // => true
+ *
+ * _.isObjectLike([1, 2, 3]);
+ * // => true
+ *
+ * _.isObjectLike(_.noop);
+ * // => false
+ *
+ * _.isObjectLike(null);
+ * // => false
+ */
+function isObjectLike(value) {
+  return !!value && typeof value == 'object';
+}
+
+/**
+ * Checks if `value` is classified as a `Symbol` primitive or object.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
+ * @example
+ *
+ * _.isSymbol(Symbol.iterator);
+ * // => true
+ *
+ * _.isSymbol('abc');
+ * // => false
+ */
+function isSymbol(value) {
+  return typeof value == 'symbol' ||
+    (isObjectLike(value) && objectToString.call(value) == symbolTag);
+}
+
+/**
+ * Converts `value` to a number.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to process.
+ * @returns {number} Returns the number.
+ * @example
+ *
+ * _.toNumber(3.2);
+ * // => 3.2
+ *
+ * _.toNumber(Number.MIN_VALUE);
+ * // => 5e-324
+ *
+ * _.toNumber(Infinity);
+ * // => Infinity
+ *
+ * _.toNumber('3.2');
+ * // => 3.2
+ */
+function toNumber(value) {
+  if (typeof value == 'number') {
+    return value;
+  }
+  if (isSymbol(value)) {
+    return NAN;
+  }
+  if (isObject(value)) {
+    var other = typeof value.valueOf == 'function' ? value.valueOf() : value;
+    value = isObject(other) ? (other + '') : other;
+  }
+  if (typeof value != 'string') {
+    return value === 0 ? value : +value;
+  }
+  value = value.replace(reTrim, '');
+  var isBinary = reIsBinary.test(value);
+  return (isBinary || reIsOctal.test(value))
+    ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
+    : (reIsBadHex.test(value) ? NAN : +value);
+}
+
+module.exports = debounce;
+
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
+
+/***/ }),
 /* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -46662,7 +46662,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;
 
 __webpack_require__(35);
 
-var utils = _interopRequireWildcard(__webpack_require__(5));
+var utils = _interopRequireWildcard(__webpack_require__(6));
 
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = Object.defineProperty && Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : {}; if (desc.get || desc.set) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } } newObj.default = obj; return newObj; } }
 
@@ -46672,6 +46672,9 @@ var currentShape;
 var thisThing;
 var oldX, oldY;
 var haveAddedText = false;
+var PENCOLOUR = createjs.Graphics.getRGB(100, 100, 100);
+var PENSIZE = 20;
+var TEXTFONT = '60px Helvetica';
 
 function CommentsCanvas(cyObj) {
   /* ******************\
@@ -46734,8 +46737,7 @@ function CommentsCanvas(cyObj) {
     currentShape = new createjs.Shape();
     var g = currentShape.graphics;
     addPointListeners(currentShape);
-    g.setStrokeStyle(50, 'round', 'round');
-    g.beginStroke(createjs.Graphics.getRGB(0, 0, 0));
+    g.beginStroke(PENCOLOUR);
     stage.addChild(currentShape);
     cy.on('mousemove', addPoint, false);
   };
@@ -46779,7 +46781,7 @@ var addText = function addText(evt) {
 
   if (inpText !== null) {
     haveAddedText = true;
-    var text = new createjs.Text(inpText, '20px Arial', 'black');
+    var text = new createjs.Text(inpText, TEXTFONT, 'black');
     text.x = 2 * evt.position.x;
     text.y = 2 * evt.position.y;
     addTextListeners(text);
@@ -46792,7 +46794,7 @@ var addPoint = function addPoint(evt) {
   if (!haveAddedText) {
     var x = 2 * evt.position.x;
     var y = 2 * evt.position.y;
-    currentShape.graphics.lineTo(x, y);
+    currentShape.graphics.lineTo(x, y).setStrokeStyle(PENSIZE, "round", "round").moveTo(x, y);
     stage.update();
   }
 };
@@ -79044,7 +79046,7 @@ window.createjs = window.createjs || {};
 "use strict";
 
 
-var _biwascheme = _interopRequireDefault(__webpack_require__(13));
+var _biwascheme = _interopRequireDefault(__webpack_require__(5));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -79477,7 +79479,11 @@ function compileCanvas(graph) {
 }
 
 function execute(compiledLisp) {
-  var biwa = new _biwascheme.default.Interpreter();
+  var onError = function onError(e) {
+    console.error(e);
+  };
+
+  var biwa = new _biwascheme.default.Interpreter(onError);
   return biwa.evaluate(compiledLisp);
 }
 

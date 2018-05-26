@@ -326,7 +326,8 @@ function compileCanvas (graph) {
 }
 
 function execute (compiledLisp) {
-  var biwa = new BiwaScheme.Interpreter()
+  var onError = function(e){ console.error(e); }
+  var biwa = new BiwaScheme.Interpreter(onError)
   return biwa.evaluate(compiledLisp)
 }
 
