@@ -61,14 +61,6 @@ DONE
 > Allow e-clicking to make a node with an edge already coming out of it.
 > Bug in recursive lambdaing
 
-Packages:
-Elesfn.remove can be found in line ~2500 of cytoscape.js.
-The package should /probably/ use
-  var elesfn = Element.prototype = Collection.prototype;
-and then define/redefine elesfn.foo like in cytoscape.js.
-But I'm not exactly sure how packages work, look at another eg.
-
-
 BUGS
 > Comment text (what about drawing?) don't disappear when resetting the page.
 > After making comment text, the program is still in comment mode.
