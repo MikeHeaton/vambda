@@ -37,7 +37,6 @@ function buildEditor () {
   cytoscape('collection', 'setType', function (newType) { setType(this, newType) })
 
   function newNode (pos) {
-    var color = getColor()
     var createdNode = cy.add({
       group: 'nodes',
       position: pos,
@@ -45,9 +44,10 @@ function buildEditor () {
         'variable': false,
         'name': '',
         'type': 'Free',
-        'defaultColor': color
+        'defaultColor': 'black'
       }
     })
+    createdNode.setColor()
     return createdNode
   }
 
@@ -67,42 +67,59 @@ function buildEditor () {
     return newEdges
   }
 
-  function getColor (name = '', node = null) {
-    // Method to generate a color for the node that the method is called on.
-    function isString (name) {
-      function matchBrackets (bra, n) {
-        return (n[0] === bra && n[n.length - 1] === bra)
-      }
-      return (matchBrackets('\'', name) || matchBrackets('"', name) || matchBrackets('`', name))
-    }
-
-    if (name !== '') {
-      var sameNamedEles
-      if (node === null) {
-        sameNamedEles = cy.$("[name = '" + name + "']")
-      } else {
-        sameNamedEles = cy.$("[name = '" + name + "']").difference(node)
-      }
-
-      // Look for something named the same, and make this node the same color.
-      if (sameNamedEles.length > 0 && name !== '') {
-        return sameNamedEles.data('defaultColor')
-      } else if (isString(name)) {
-      // If the name represents a string, make the node green.
-        return 'lime'
-      } else if (!isNaN(name)) {
-      // We want numbers (including floats, ints, etc) to be one color.
-        return 'blue'
-      }
-    }
-
-    // Else generate a random color from a colormap (and convert it to hash).
+  function getRandomColor() {
+    // Generate a random color from a colormap (and convert it to hash).
     var ncolors = 72
     var index = Math.floor(Math.random() * ncolors)
     var col = colormap('nature', ncolors, 'hex')[index]
     return col
   }
-  cytoscape('collection', 'getColor', function () { return getColor(this.data('name'), this) })
+
+  function getColor (node) {
+    /* Takes a node. Returns a color for the node according to these rules:
+     * All strings will be green
+     * All numbers will be blue
+     * Nodes with the same name will have the same color
+     * Otherwise, make the node a random color.
+     */
+     var name = node.data('name')
+
+    function isString (name) {
+      // Detects whether the name represents a string
+      /*function matchBrackets (bra, n) {
+        return (n[0] === bra && n[n.length - 1] === bra)
+      }
+      return (matchBrackets('\'', name) || matchBrackets('"', name) || matchBrackets('`', name))*/
+      return (name.match(RegExp("^\'.*\'$")) || name.match(RegExp('^\".*\"$')) || name.match(RegExp("^\`.*\`$")))
+    }
+
+    if (name !== '') {
+      if (isString(name)) {
+        // If the name represents a string, make the node green.
+        return 'lime'
+      } else if (!isNaN(name)) {
+        // If the name represents a number (including floats, ints, etc), make it blue.
+        return 'blue'
+      } else {
+        // Look for something named the same, and make this node the same color if found.
+        var sameNamedEles
+        if (node === null) {
+          sameNamedEles = cy.$("[name = '" + name + "']")
+        } else {
+          sameNamedEles = cy.$("[name = '" + name + "']").difference(node)
+        }
+
+        if (sameNamedEles.length > 0 && name !== '') {
+          return sameNamedEles.data('defaultColor')
+        }
+      }
+    }
+
+    // If none of the above match:
+    return getRandomColor()
+  }
+
+  cytoscape('collection', 'getColor', function () { return getColor(this) })
 
   function setColor () {
     var color = this.getColor()
