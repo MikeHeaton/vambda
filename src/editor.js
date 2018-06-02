@@ -31,10 +31,11 @@ function buildEditor () {
   // =====================
   // || GRAPH FUNCTIONS ||
   // =====================
-  function setType (ele, newtype) {
-    ele.data('type', newtype)
+  function set (ele, field, newVal) {
+    ele.data(field, newVal)
   }
-  cytoscape('collection', 'setType', function (newType) { setType(this, newType) })
+  cytoscape('collection', 'setType', function (newType) { set(this, 'type', newType) })
+  cytoscape('collection', 'setActive', function (newVal) { set(this, 'active', newVal) })
 
   function newNode (pos) {
     var createdNode = cy.add({
@@ -44,7 +45,8 @@ function buildEditor () {
         'variable': false,
         'name': '',
         'type': 'Free',
-        'defaultColor': 'black'
+        'defaultColor': 'black',
+        'active': 'true'
       }
     })
     createdNode.setColor()
@@ -171,12 +173,23 @@ function buildEditor () {
       case 'NearBoundVariable':
         this.setType('FarBoundVariable')
         break
-      case 'FarBoundVariable':
+      default:
         this.setType('Free')
-        break
     }
   }
   cytoscape('collection', 'toggleVariable', toggleVariable)
+
+  function toggleActive () {
+    switch (this.data('active')) {
+      case 'true':
+        this.setActive('false')
+        break
+      default:
+        this.setActive('true')
+    }
+    console.log(this.data('active'))
+  }
+  cytoscape('collection', 'toggleActive', toggleActive)
 
   // =========================
   // || USER INPUT HANDLERS ||
@@ -316,6 +329,7 @@ function buildEditor () {
   Mousetrap.bind('backspace', function () { ur.do('deleteEles', cy.$(':selected')) })
 
   Mousetrap.bind('V', function () { cy.$(':selected').toggleVariable() })
+  Mousetrap.bind('a', function () { cy.$(':selected').toggleActive() })
   Mousetrap.bind('P', function () { toLisp(cy.$(':selected')) })
   Mousetrap.bind('Z', function () { ur.undo() })
 

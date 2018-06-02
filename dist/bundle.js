@@ -38132,12 +38132,15 @@ function buildEditor() {
   // || GRAPH FUNCTIONS ||
   // =====================
 
-  function setType(ele, newtype) {
-    ele.data('type', newtype);
+  function set(ele, field, newVal) {
+    ele.data(field, newVal);
   }
 
   (0, _cytoscape.default)('collection', 'setType', function (newType) {
-    setType(this, newType);
+    set(this, 'type', newType);
+  });
+  (0, _cytoscape.default)('collection', 'setActive', function (newVal) {
+    set(this, 'active', newVal);
   });
 
   function newNode(pos) {
@@ -38148,7 +38151,8 @@ function buildEditor() {
         'variable': false,
         'name': '',
         'type': 'Free',
-        'defaultColor': 'black'
+        'defaultColor': 'black',
+        'active': 'true'
       }
     });
     createdNode.setColor();
@@ -38295,13 +38299,27 @@ function buildEditor() {
         this.setType('FarBoundVariable');
         break;
 
-      case 'FarBoundVariable':
+      default:
         this.setType('Free');
-        break;
     }
   }
 
-  (0, _cytoscape.default)('collection', 'toggleVariable', toggleVariable); // =========================
+  (0, _cytoscape.default)('collection', 'toggleVariable', toggleVariable);
+
+  function toggleActive() {
+    switch (this.data('active')) {
+      case 'true':
+        this.setActive('false');
+        break;
+
+      default:
+        this.setActive('true');
+    }
+
+    console.log(this.data('active'));
+  }
+
+  (0, _cytoscape.default)('collection', 'toggleActive', toggleActive); // =========================
   // || USER INPUT HANDLERS ||
   // =========================
 
@@ -38447,6 +38465,10 @@ function buildEditor() {
 
   _mousetrap.default.bind('V', function () {
     cy.$(':selected').toggleVariable();
+  });
+
+  _mousetrap.default.bind('a', function () {
+    cy.$(':selected').toggleActive();
   });
 
   _mousetrap.default.bind('P', function () {
