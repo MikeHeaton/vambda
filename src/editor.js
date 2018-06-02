@@ -61,7 +61,8 @@ function buildEditor () {
         data: {
           source: source.id(),
           target: dest.id(),
-          name: ''
+          name: '',
+          active: "true"
         },
         selectable: true
       })
@@ -180,14 +181,21 @@ function buildEditor () {
   cytoscape('collection', 'toggleVariable', toggleVariable)
 
   function toggleActive () {
-    switch (this.data('active')) {
+    var connected = this.union(
+      this.descendants()
+    )
+    connected = connected.union(
+      connected.connectedEdges()
+    ).union(
+
+    )
+    switch (connected.data('active')) {
       case 'true':
-        this.setActive('false')
+        connected.setActive('false')
         break
       default:
-        this.setActive('true')
+        connected.setActive('true')
     }
-    console.log(this.data('active'))
   }
   cytoscape('collection', 'toggleActive', toggleActive)
 
@@ -289,23 +297,6 @@ function buildEditor () {
     }
   },
   'keypress')
-
-    // p to 'parens': wrap selection in a hypernode representing 'evaluate all this together',
-    // corresponding to wrapping () around a group.
-  Mousetrap.bind('p', function () {
-    // If all of them belong to the same parent, take them out of the parent.
-    var selected = cy.$('node:selected')
-    if (selected.parents().length === 1) {
-      selected.setParent(null)
-    } else {
-      var parent = newNode()
-      parent.setType('Parens')
-      var closure = selected.connectedClosure()
-      closure.setParent(parent)
-      selectOnly(parent)
-    }
-  },
-    'keypress')
 
   // d to 'define': wrap selection in a hypernode, containing the selection
   // and its closed neighbourhood, corresponding to a define statement.

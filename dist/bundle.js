@@ -38169,7 +38169,8 @@ function buildEditor() {
         data: {
           source: source.id(),
           target: dest.id(),
-          name: ''
+          name: '',
+          active: "true"
         },
         selectable: true
       });
@@ -38307,16 +38308,17 @@ function buildEditor() {
   (0, _cytoscape.default)('collection', 'toggleVariable', toggleVariable);
 
   function toggleActive() {
-    switch (this.data('active')) {
+    var connected = this.union(this.descendants());
+    connected = connected.union(connected.connectedEdges()).union();
+
+    switch (connected.data('active')) {
       case 'true':
-        this.setActive('false');
+        connected.setActive('false');
         break;
 
       default:
-        this.setActive('true');
+        connected.setActive('true');
     }
-
-    console.log(this.data('active'));
   }
 
   (0, _cytoscape.default)('collection', 'toggleActive', toggleActive); // =========================
@@ -38417,23 +38419,6 @@ function buildEditor() {
     } else {
       var parent = newNode();
       parent.setType('Lambda');
-      var closure = selected.connectedClosure();
-      closure.setParent(parent);
-      selectOnly(parent);
-    }
-  }, 'keypress'); // p to 'parens': wrap selection in a hypernode representing 'evaluate all this together',
-  // corresponding to wrapping () around a group.
-
-
-  _mousetrap.default.bind('p', function () {
-    // If all of them belong to the same parent, take them out of the parent.
-    var selected = cy.$('node:selected');
-
-    if (selected.parents().length === 1) {
-      selected.setParent(null);
-    } else {
-      var parent = newNode();
-      parent.setType('Parens');
       var closure = selected.connectedClosure();
       closure.setParent(parent);
       selectOnly(parent);
@@ -38707,20 +38692,6 @@ function createCanvas() {
         'content': 'data(name)'
       }
     }, {
-      selector: 'node[type = "Parens"]',
-      style: {
-        // Compound node, by definition.
-        'background-color': 'white',
-        'border-width': 5,
-        'border-style': 'dotted',
-        'shape': 'roundrectangle',
-        'border-color': '#DEDDC5',
-        'padding': '10px',
-        'text-margin-y': '3px',
-        'font-size': '20px',
-        'content': ''
-      }
-    }, {
       selector: 'edge',
       style: {
         'curve-style': 'bezier',
@@ -38733,6 +38704,33 @@ function createCanvas() {
         'color': 'white',
         'text-outline-width': 2,
         'text-outline-color': 'black'
+      }
+    }, {
+      selector: 'node[active = "false"]',
+      style: {
+        'border-color': 'LightGray',
+        'background-color': 'LightGray',
+        'content': 'data(name)',
+        'text-outline-color': 'DarkGray'
+      }
+    }, {
+      selector: 'node[type = "Define"][active = "false"]',
+      style: {
+        'background-color': 'white',
+        'text-background-color': 'LightGray'
+      }
+    }, {
+      selector: 'node[type = "Lambda"][active = "false"]',
+      style: {
+        'background-color': 'white',
+        'text-background-color': 'LightGray'
+      }
+    }, {
+      selector: 'edge[active = "false"]',
+      style: {
+        'line-color': 'LightGray',
+        'text-outline-color': 'DarkGray',
+        'target-arrow-color': 'LightGray'
       }
     }, {
       selector: 'edge:selected',
@@ -79083,6 +79081,8 @@ window.createjs = window.createjs || {};
 
 var _biwascheme = _interopRequireDefault(__webpack_require__(5));
 
+var _cytoscape = _interopRequireDefault(__webpack_require__(3));
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
@@ -79108,6 +79108,10 @@ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _d
  * a node with its parents. When the node is not a singleton (ie is a define
  * or a lambda), evaluateContext compiles the content of the node recursively.
  */
+(0, _cytoscape.default)('collection', 'getActive', function () {
+  return this.filter('*[active = "true"]');
+});
+
 var Node =
 /*#__PURE__*/
 function () {
@@ -79118,7 +79122,7 @@ function () {
   function Node(cytoscapeObj) {
     _classCallCheck(this, Node);
 
-    this._cytoscapeObj = cytoscapeObj;
+    this._cytoscapeObj = cytoscapeObj.getActive();
   }
 
   _createClass(Node, [{
@@ -79167,7 +79171,7 @@ function (_Node) {
 
     _this = _possibleConstructorReturn(this, (DefineNode.__proto__ || Object.getPrototypeOf(DefineNode)).call(this, cytoscapeObj));
 
-    var contents = _this._cytoscapeObj.children();
+    var contents = _this._cytoscapeObj.children().getActive();
 
     _this.innerContext = new Context(contents);
     return _this;
@@ -79194,17 +79198,11 @@ function (_Node) {
        * If one defines a bound variable which is contained in the other,
        * they should be ordered so that the defining one comes first.
        */
-      console.log("this", this.nodeNames(), this.name);
-      console.log("other", other.nodeNames(), other.name);
-
       if (this.nodeNames().has(other.name)) {
-        console.log("this has other");
         return 1;
       } else if (other.nodeNames().has(this.name)) {
-        console.log("other has this");
         return -1;
       } else {
-        console.log("neither have each other");
         return 0;
       }
     }
@@ -79224,7 +79222,7 @@ function (_Node2) {
     _classCallCheck(this, ExecutionNode);
 
     _this2 = _possibleConstructorReturn(this, (ExecutionNode.__proto__ || Object.getPrototypeOf(ExecutionNode)).call(this, cytoscapeObj));
-    _this2.incomingEdges = _this2._cytoscapeObj.incomers('edge').sort(function (a, b) {
+    _this2.incomingEdges = _this2._cytoscapeObj.incomers('edge').getActive().sort(function (a, b) {
       return getRef(a).localeCompare(getRef(b));
     });
     _this2.parents = _this2.incomingEdges.map(function (edge) {
@@ -79290,7 +79288,7 @@ function (_ExecutionNode) {
 
     _this3 = _possibleConstructorReturn(this, (LambdaNode.__proto__ || Object.getPrototypeOf(LambdaNode)).call(this, cytoscapeObj));
 
-    var contents = _this3._cytoscapeObj.children();
+    var contents = _this3._cytoscapeObj.children().getActive();
 
     _this3.innerContext = new Context(contents);
     return _this3;
@@ -79321,7 +79319,7 @@ function (_ExecutionNode) {
     get: function get() {
       // TODO: this should be done using the object structure and searching
       // recursively.
-      var boundVars = this._cytoscapeObj.children().filter("node[type = 'NearBoundVariable']").map(function (n) {
+      var boundVars = this._cytoscapeObj.children().getActive().filter("node[type = 'NearBoundVariable']").map(function (n) {
         return getRef(n);
       });
 
@@ -79343,18 +79341,9 @@ function (_ExecutionNode2) {
   _inherits(BasicNode, _ExecutionNode2);
 
   function BasicNode(cytoscapeObj) {
-    var _this4;
-
     _classCallCheck(this, BasicNode);
 
-    _this4 = _possibleConstructorReturn(this, (BasicNode.__proto__ || Object.getPrototypeOf(BasicNode)).call(this, cytoscapeObj));
-    _this4.incomingEdges = _this4._cytoscapeObj.incomers('edge').sort(function (a, b) {
-      return getRef(a).localeCompare(getRef(b));
-    });
-    _this4.parents = _this4.incomingEdges.map(function (edge) {
-      return createNodeObject(edge.source());
-    });
-    return _this4;
+    return _possibleConstructorReturn(this, (BasicNode.__proto__ || Object.getPrototypeOf(BasicNode)).call(this, cytoscapeObj));
   }
 
   _createClass(BasicNode, [{
@@ -79393,7 +79382,7 @@ function () {
   function Context(cytoscapeNodes) {
     _classCallCheck(this, Context);
 
-    this._cytoscapeNodes = cytoscapeNodes;
+    this._cytoscapeNodes = cytoscapeNodes.getActive();
     this.definitionNodes = this.makeDefinitionNodes();
     this.executionNodes = this.makeExecutionNodes();
 
@@ -79420,10 +79409,12 @@ function () {
   }, {
     key: "makeExecutionNodes",
     value: function makeExecutionNodes() {
-      var _this5 = this;
+      var _this4 = this;
 
       return this._cytoscapeNodes.filter(function (n) {
-        return Context.typ(n) !== 'Define' && _this5._cytoscapeNodes.leaves().contains(n);
+        return Context.typ(n) !== 'Define' && _this4._cytoscapeNodes.filter(function (ele, i, eles) {
+          return ele.outgoers('edge').getActive().empty();
+        }).getActive().contains(n);
       }).map(function (ele, i, eles) {
         return createNodeObject(ele);
       });
@@ -79506,7 +79497,8 @@ function compileCanvas(graph) {
    * the compiled lisp code.
    */
   // We begin with a call to evaluate the global context.
-  var compiledLisp = new Context(graph).evaluate(); //var compiledLisp = "(let* ( (SQRT (lambda (x) (let* ( (square (lambda ( a1a68690-6b60-42ac-aec7-9227e83f54b8) (* a1a68690-6b60-42ac-aec7-9227e83f54b8 a1a68690-6b60-42ac-aec7-9227e83f54b8))) (MIN 1) (good-enough? (lambda ( guess) (< (abs (- (square guess) x)) MIN))) (average (lambda ( 35b68c47-24de-4ed5-ab77-36efcf85e582 985c01aa-9a75-4e18-a885-5379fb7128e3) (/ (+ 35b68c47-24de-4ed5-ab77-36efcf85e582 985c01aa-9a75-4e18-a885-5379fb7128e3) 2.0))) (improve-guess (lambda ( guess) (average (/ x guess) guess))) (sqrt-iter (lambda ( guess) (if (good-enough? guess) guess (sqrt-iter (improve-guess guess))))) ) (sqrt-iter 8) ))) ) (SQRT 95) )"
+  var activeGraph = graph.getActive();
+  var compiledLisp = new Context(activeGraph).evaluate(); //var compiledLisp = "(let* ( (SQRT (lambda (x) (let* ( (square (lambda ( a1a68690-6b60-42ac-aec7-9227e83f54b8) (* a1a68690-6b60-42ac-aec7-9227e83f54b8 a1a68690-6b60-42ac-aec7-9227e83f54b8))) (MIN 1) (good-enough? (lambda ( guess) (< (abs (- (square guess) x)) MIN))) (average (lambda ( 35b68c47-24de-4ed5-ab77-36efcf85e582 985c01aa-9a75-4e18-a885-5379fb7128e3) (/ (+ 35b68c47-24de-4ed5-ab77-36efcf85e582 985c01aa-9a75-4e18-a885-5379fb7128e3) 2.0))) (improve-guess (lambda ( guess) (average (/ x guess) guess))) (sqrt-iter (lambda ( guess) (if (good-enough? guess) guess (sqrt-iter (improve-guess guess))))) ) (sqrt-iter 8) ))) ) (SQRT 95) )"
 
   console.log(compiledLisp);
   var result = execute(compiledLisp);

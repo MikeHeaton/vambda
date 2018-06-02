@@ -1,4 +1,5 @@
 import BiwaScheme from 'biwascheme'
+import cytoscape from 'cytoscape'
 
 /*
  * This file controls how a vambda program is compiled into Lisp and executed.
@@ -10,13 +11,18 @@ import BiwaScheme from 'biwascheme'
  * or a lambda), evaluateContext compiles the content of the node recursively.
  */
 
+cytoscape('collection', 'getActive', function () {
+    return this.filter('*[active = "true"]')
+  }
+)
+
 class Node {
   /*
    * A node is either a basic node, a lambda bubble or a define bubble.
    * This class contains some basic utility functions.
    */
   constructor (cytoscapeObj) {
-    this._cytoscapeObj = cytoscapeObj
+    this._cytoscapeObj = cytoscapeObj.getActive()
   }
 
   static type (ele) {
@@ -46,7 +52,7 @@ class Node {
 class DefineNode extends Node {
   constructor(cytoscapeObj) {
     super(cytoscapeObj)
-    var contents = this._cytoscapeObj.children()
+    var contents = this._cytoscapeObj.children().getActive()
     this.innerContext = new Context(contents)
   }
 
@@ -66,16 +72,11 @@ class DefineNode extends Node {
      * If one defines a bound variable which is contained in the other,
      * they should be ordered so that the defining one comes first.
      */
-     console.log("this", this.nodeNames(), this.name)
-     console.log("other", other.nodeNames(), other.name)
     if (this.nodeNames().has(other.name)) {
-      console.log("this has other")
       return 1
     } else if (other.nodeNames().has(this.name)) {
-      console.log("other has this")
       return -1
     } else {
-      console.log("neither have each other")
       return 0
     }
   }
@@ -84,7 +85,9 @@ class DefineNode extends Node {
 class ExecutionNode extends Node {
   constructor (cytoscapeObj) {
     super(cytoscapeObj)
-    this.incomingEdges = this._cytoscapeObj.incomers('edge')
+    this.incomingEdges = this._cytoscapeObj
+      .incomers('edge')
+      .getActive()
       .sort(function (a, b) {
         return getRef(a).localeCompare(getRef(b))
       })
@@ -131,7 +134,7 @@ class LambdaNode extends ExecutionNode {
   constructor(cytoscapeObj) {
     super(cytoscapeObj)
 
-    var contents = this._cytoscapeObj.children()
+    var contents = this._cytoscapeObj.children().getActive()
     this.innerContext = new Context(contents)
   }
 
@@ -157,7 +160,9 @@ class LambdaNode extends ExecutionNode {
   get nearBoundVariables () {
     // TODO: this should be done using the object structure and searching
     // recursively.
-    var boundVars = this._cytoscapeObj.children()
+    var boundVars = this._cytoscapeObj
+      .children()
+      .getActive()
       .filter("node[type = 'NearBoundVariable']")
       .map(n => getRef(n))
     return boundVars
@@ -179,12 +184,6 @@ class LambdaNode extends ExecutionNode {
 class BasicNode extends ExecutionNode {
   constructor (cytoscapeObj) {
     super(cytoscapeObj)
-    this.incomingEdges = this._cytoscapeObj.incomers('edge')
-      .sort(function (a, b) {
-        return getRef(a).localeCompare(getRef(b))
-      })
-    this.parents = this.incomingEdges
-      .map(edge => createNodeObject(edge.source()))
   }
 
   evaluateContent (contextualBoundVariables = new Set()) {
@@ -212,7 +211,7 @@ class Context {
    */
    // TODO: the methods here should rely more on the constructed objects.
   constructor (cytoscapeNodes) {
-    this._cytoscapeNodes = cytoscapeNodes
+    this._cytoscapeNodes = cytoscapeNodes.getActive()
     this.definitionNodes = this.makeDefinitionNodes()
     this.executionNodes = this.makeExecutionNodes()
 
@@ -244,11 +243,18 @@ class Context {
 
   makeExecutionNodes () {
     return this._cytoscapeNodes.filter(
-      n => (Context.typ(n) !== 'Define' &&
-      this._cytoscapeNodes.leaves().contains(n)))
+        n => (Context.typ(n) !== 'Define' &&
+        this._cytoscapeNodes
+          .filter( function (ele, i, eles) {
+            return ele.outgoers('edge').getActive().empty()
+          })
+          .getActive()
+          .contains(n))
+      )
       .map(function (ele, i, eles) {
         return createNodeObject(ele)
-      })
+      }
+    )
   }
 
   evaluate (baseBoundVariables = new Set()) {
@@ -318,7 +324,8 @@ function compileCanvas (graph) {
    */
 
   // We begin with a call to evaluate the global context.
-  var compiledLisp = new Context(graph).evaluate()
+  var activeGraph = graph.getActive()
+  var compiledLisp = new Context(activeGraph).evaluate()
   //var compiledLisp = "(let* ( (SQRT (lambda (x) (let* ( (square (lambda ( a1a68690-6b60-42ac-aec7-9227e83f54b8) (* a1a68690-6b60-42ac-aec7-9227e83f54b8 a1a68690-6b60-42ac-aec7-9227e83f54b8))) (MIN 1) (good-enough? (lambda ( guess) (< (abs (- (square guess) x)) MIN))) (average (lambda ( 35b68c47-24de-4ed5-ab77-36efcf85e582 985c01aa-9a75-4e18-a885-5379fb7128e3) (/ (+ 35b68c47-24de-4ed5-ab77-36efcf85e582 985c01aa-9a75-4e18-a885-5379fb7128e3) 2.0))) (improve-guess (lambda ( guess) (average (/ x guess) guess))) (sqrt-iter (lambda ( guess) (if (good-enough? guess) guess (sqrt-iter (improve-guess guess))))) ) (sqrt-iter 8) ))) ) (SQRT 95) )"
   console.log(compiledLisp)
   var result = execute(compiledLisp)

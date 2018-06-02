@@ -82,20 +82,6 @@ function createCanvas () {
           'content': 'data(name)'
         }
       }, {
-        selector: 'node[type = "Parens"]',
-        style: {
-          // Compound node, by definition.
-          'background-color': 'white',
-          'border-width': 5,
-          'border-style': 'dotted',
-          'shape': 'roundrectangle',
-          'border-color': '#DEDDC5',
-          'padding': '10px',
-          'text-margin-y': '3px',
-          'font-size': '20px',
-          'content': ''
-        }
-      }, {
         selector: 'edge',
         style: {
           'curve-style': 'bezier',
@@ -108,6 +94,34 @@ function createCanvas () {
           'color': 'white',
           'text-outline-width': 2,
           'text-outline-color': 'black'
+        }
+      }, {
+        selector: 'node[active = "false"]',
+        style: {
+          'border-color': 'LightGray',
+          'background-color': 'LightGray',
+          'content': 'data(name)',
+          'text-outline-color': 'DarkGray',
+        }
+      }, {
+        selector: 'node[type = "Define"][active = "false"]',
+        style: {
+          'background-color': 'white',
+          'text-background-color': 'LightGray',
+        }
+      },
+      {
+        selector: 'node[type = "Lambda"][active = "false"]',
+        style: {
+          'background-color': 'white',
+          'text-background-color': 'LightGray',
+        }
+      }, {
+        selector: 'edge[active = "false"]',
+        style: {
+          'line-color': 'LightGray',
+          'text-outline-color': 'DarkGray',
+          'target-arrow-color': 'LightGray'
         }
       }, {
         selector: 'edge:selected',
