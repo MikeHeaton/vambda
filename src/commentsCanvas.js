@@ -51,13 +51,18 @@ function CommentsCanvas (cyObj) {
     stage.update();
   }
 
+  this.addText = function (evt) {
+    addText(evt)
+    thisThing.disableDrawingMode()
+  }
+
   this.enableDrawingMode = function () {
     this.drawingMode = true
     cy.userPanningEnabled(false)
     cy.boxSelectionEnabled(false)
     cy.on('mousedown', this.startDrawing)
     cy.on('mouseup', this.stopDrawing)
-    cy.on('tap', addText)
+    //cy.on('tap', this.addText)
     haveAddedText = false
   }
 
@@ -67,7 +72,7 @@ function CommentsCanvas (cyObj) {
     cy.boxSelectionEnabled(true)
     cy.off('mousedown', this.startDrawing)
     cy.off('mouseup', this.stopDrawing)
-    cy.off('tap', addText)
+    //cy.off('tap', this.addText)
     haveAddedText = false
   }
 
@@ -198,4 +203,4 @@ var serialize = function (comObj) {
   }
 }
 
-module.exports = {CommentsCanvas}
+module.exports = {CommentsCanvas, addText}

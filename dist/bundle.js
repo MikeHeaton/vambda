@@ -38346,7 +38346,7 @@ function buildEditor() {
 
         selectOnly(n);
       } else if (tapTarget === cy && keysPressed.has('w')) {
-        // Click on the background with 'e'
+        // Click on the background with 'w'
         n = newNode(event.position);
         dclickTappedTimeout = false;
 
@@ -38356,9 +38356,14 @@ function buildEditor() {
         }
 
         selectOnly(eSelected);
+      } else if (tapTarget === cy && keysPressed.has('c')) {
+        // Click on the background with 'w'
+        comments.addText(event);
+        keysPressed.delete('c');
+        commentPoints.disableDrawingMode();
       } else if (dclickTappedTimeout && dclickPrevTap) {
         clearTimeout(dclickTappedTimeout);
-      } // If double clicked:
+      } // If double click on the background:
 
 
       if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
@@ -38369,7 +38374,7 @@ function buildEditor() {
     } else {
       if (tapTarget.isNode() && dclickTappedTimeout && dclickPrevTap) {
         clearTimeout(dclickTappedTimeout);
-      } // If double clicked:
+      } // If double click on a node or edge, rename it:
 
 
       if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
@@ -46746,13 +46751,18 @@ function CommentsCanvas(cyObj) {
     stage.update();
   };
 
+  this.addText = function (evt) {
+    addText(evt);
+    thisThing.disableDrawingMode();
+  };
+
   this.enableDrawingMode = function () {
     this.drawingMode = true;
     cy.userPanningEnabled(false);
     cy.boxSelectionEnabled(false);
     cy.on('mousedown', this.startDrawing);
-    cy.on('mouseup', this.stopDrawing);
-    cy.on('tap', addText);
+    cy.on('mouseup', this.stopDrawing); //cy.on('tap', this.addText)
+
     haveAddedText = false;
   };
 
@@ -46761,8 +46771,8 @@ function CommentsCanvas(cyObj) {
     cy.userPanningEnabled(true);
     cy.boxSelectionEnabled(true);
     cy.off('mousedown', this.startDrawing);
-    cy.off('mouseup', this.stopDrawing);
-    cy.off('tap', addText);
+    cy.off('mouseup', this.stopDrawing); //cy.off('tap', this.addText)
+
     haveAddedText = false;
   };
 
@@ -46913,7 +46923,8 @@ var serialize = function serialize(comObj) {
 };
 
 module.exports = {
-  CommentsCanvas: CommentsCanvas
+  CommentsCanvas: CommentsCanvas,
+  addText: addText
 };
 
 /***/ }),

@@ -224,8 +224,10 @@ function buildEditor () {
           n = n.setParent(eSelected.parent())
         }
         selectOnly(n)
+
       } else if (tapTarget === cy && keysPressed.has('w')) {
-        // Click on the background with 'e'
+        // Click on the background with 'w'
+
         n = newNode(event.position)
         dclickTappedTimeout = false
         if (eSelected.length === 1) {
@@ -233,10 +235,19 @@ function buildEditor () {
           n = n.setParent(eSelected.parent())
         }
         selectOnly(eSelected)
+
+      } else if (tapTarget === cy && keysPressed.has('c')) {
+        // Click on the background with 'w'
+
+        comments.addText(event)
+        keysPressed.delete('c')
+        commentPoints.disableDrawingMode()
+
       } else if (dclickTappedTimeout && dclickPrevTap) {
         clearTimeout(dclickTappedTimeout)
       }
-      // If double clicked:
+
+      // If double click on the background:
       if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
         n = newNode(event.position)
         selectOnly(n)
@@ -246,7 +257,7 @@ function buildEditor () {
       if (tapTarget.isNode() && dclickTappedTimeout && dclickPrevTap) {
         clearTimeout(dclickTappedTimeout)
       }
-      // If double clicked:
+      // If double click on a node or edge, rename it:
       if (dclickPrevTap === tapTarget && dclickTappedTimeout) {
         rename(tapTarget)
       }
