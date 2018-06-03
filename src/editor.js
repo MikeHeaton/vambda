@@ -302,7 +302,7 @@ function buildEditor () {
     } else {
       var parent = newNode()
       parent.setType('Lambda')
-      var closure = selected.connectedClosure()
+      var closure = selected.orphans().connectedClosure()
       closure.setParent(parent)
       selectOnly(parent)
     }
@@ -319,7 +319,7 @@ function buildEditor () {
     } else {
       var parent = newNode()
       parent.setType('Define')
-      var closure = selected.connectedClosure()
+      var closure = selected.orphans().connectedClosure()
       parent.rename()
       closure.setParent(parent)
       selectOnly(parent)
