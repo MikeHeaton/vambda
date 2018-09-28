@@ -218,10 +218,10 @@ class Context {
     if (this.executionNodes.length !== 1) {
       // Throw a shit-fit
       console.log(`Error, context with ${this.executionNodes.length} execution nodes found.` +
-      '\nContexts must have exactly one execution node.')
+      '\nContexts must have exactly one execution node. ${this._cytoscapeNodes}')
     }
 
-    //console.log("Context: defns, executions", this.definitionNodes, this.executionNodes)
+    console.log("Context: defns, executions", this.definitionNodes, this.executionNodes)
   }
 
   static typ (node) {
@@ -326,8 +326,6 @@ function compileCanvas (graph) {
   // We begin with a call to evaluate the global context.
   var activeGraph = graph.getActive()
   var compiledLisp = new Context(activeGraph).evaluate()
-  //var compiledLisp = "(let* ( (SQRT (lambda (x) (let* ( (square (lambda ( a1a68690-6b60-42ac-aec7-9227e83f54b8) (* a1a68690-6b60-42ac-aec7-9227e83f54b8 a1a68690-6b60-42ac-aec7-9227e83f54b8))) (MIN 1) (good-enough? (lambda ( guess) (< (abs (- (square guess) x)) MIN))) (average (lambda ( 35b68c47-24de-4ed5-ab77-36efcf85e582 985c01aa-9a75-4e18-a885-5379fb7128e3) (/ (+ 35b68c47-24de-4ed5-ab77-36efcf85e582 985c01aa-9a75-4e18-a885-5379fb7128e3) 2.0))) (improve-guess (lambda ( guess) (average (/ x guess) guess))) (sqrt-iter (lambda ( guess) (if (good-enough? guess) guess (sqrt-iter (improve-guess guess))))) ) (sqrt-iter 8) ))) ) (SQRT 95) )"
-  console.log(compiledLisp)
   var result = execute(compiledLisp)
   return [result, compiledLisp]
 }

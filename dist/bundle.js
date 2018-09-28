@@ -46712,7 +46712,7 @@ var oldX, oldY;
 var haveAddedText = false;
 var PENCOLOUR = createjs.Graphics.getRGB(100, 100, 100);
 var PENSIZE = 20;
-var TEXTFONT = '60px Helvetica';
+var TEXTFONT = '30px Helvetica';
 
 function CommentsCanvas(cyObj) {
   /* ******************\
@@ -79096,13 +79096,23 @@ var _cytoscape = _interopRequireDefault(__webpack_require__(3));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread(); }
+
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance"); }
+
+function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter); }
+
+function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
 
 function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
-function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
 
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -79399,9 +79409,10 @@ function () {
 
     if (this.executionNodes.length !== 1) {
       // Throw a shit-fit
-      console.log("Error, context with ".concat(this.executionNodes.length, " execution nodes found.") + '\nContexts must have exactly one execution node.');
-    } //console.log("Context: defns, executions", this.definitionNodes, this.executionNodes)
+      console.log("Error, context with ".concat(this.executionNodes.length, " execution nodes found.") + '\nContexts must have exactly one execution node. ${this._cytoscapeNodes}');
+    }
 
+    console.log("Context: defns, executions", this.definitionNodes, this.executionNodes);
   }
 
   _createClass(Context, [{
@@ -79509,9 +79520,7 @@ function compileCanvas(graph) {
    */
   // We begin with a call to evaluate the global context.
   var activeGraph = graph.getActive();
-  var compiledLisp = new Context(activeGraph).evaluate(); //var compiledLisp = "(let* ( (SQRT (lambda (x) (let* ( (square (lambda ( a1a68690-6b60-42ac-aec7-9227e83f54b8) (* a1a68690-6b60-42ac-aec7-9227e83f54b8 a1a68690-6b60-42ac-aec7-9227e83f54b8))) (MIN 1) (good-enough? (lambda ( guess) (< (abs (- (square guess) x)) MIN))) (average (lambda ( 35b68c47-24de-4ed5-ab77-36efcf85e582 985c01aa-9a75-4e18-a885-5379fb7128e3) (/ (+ 35b68c47-24de-4ed5-ab77-36efcf85e582 985c01aa-9a75-4e18-a885-5379fb7128e3) 2.0))) (improve-guess (lambda ( guess) (average (/ x guess) guess))) (sqrt-iter (lambda ( guess) (if (good-enough? guess) guess (sqrt-iter (improve-guess guess))))) ) (sqrt-iter 8) ))) ) (SQRT 95) )"
-
-  console.log(compiledLisp);
+  var compiledLisp = new Context(activeGraph).evaluate();
   var result = execute(compiledLisp);
   return [result, compiledLisp];
 }
