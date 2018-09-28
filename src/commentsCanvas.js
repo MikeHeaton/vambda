@@ -9,7 +9,7 @@ var oldX, oldY
 var haveAddedText = false
 var PENCOLOUR = createjs.Graphics.getRGB(100, 100, 100)
 var PENSIZE = 20
-var TEXTFONT = '60px Helvetica'
+var TEXTFONT = '30px Helvetica'
 
 function CommentsCanvas (cyObj) {
   /* ******************\
