@@ -4,7 +4,7 @@ This documentation is written for people who have some experience with programmi
 
 ## Basic Layout
 
-![image](./images/canvas.png)
+![image](./images/overview.jpg)
 
 1. Canvas area: where programs are designed and drawn.
 2. Program results: click 'run' to run the program on the canvas. The result will be printed (prefaced by '>>'), along with the program compiled to Scheme.
@@ -43,11 +43,11 @@ This documentation is written for people who have some experience with programmi
 * Nodes represent objects. But programs consist of relations between objects! These are specified by directed edges, or arrows, between nodes.
 * An edge from B to A colloquially means "evaluate A with input B".
 
-![image](./images/B-A.png)
+![image](./images/fx.jpg)
 
 * Edges from B and C to A means "evaluate A with inputs B and C".
 
-![image](./images/plus12.png)
+![image](./images/3plus8.jpg)
 
 | Do this            | On this                      | To...                   |
 | ------------------ | ---------------------------- | ----------------------- |
@@ -62,11 +62,11 @@ This documentation is written for people who have some experience with programmi
 * By default, inputs in Vambda are ordered _alphabetically by the names of their inputs_.
   * For example: if the two nodes which are inputs to F are named 'a' and 'b', they will evaluate as F(a, b) not F(b, a).
 
-![image](./images/minus2a.png)
+![image](./images/xminusy.jpg)
 
 * This can be controlled using *edge names*. If an edge into a node is named, the name of that edge will be used for determining evaluation order, instead of the name of the node.
 
-![image](./images/minusmn.png)
+![image](./images/orderedminus.jpg)
 
 * This alphabetical evaluation is confusing at first! But it makes the UI really clean, and enables some very neat behaviour which will become apparent soon.
 * Best practice: if there's any potential confusion, *label your edges*.
@@ -80,13 +80,13 @@ This documentation is written for people who have some experience with programmi
 * This will be easiest to understand using an example. We'll write a function which adds 2 to an input value.
 * To designate a group of nodes as a function, highlight them all _(shift + drag)_ and press 'l'.
 
-![image](./images/selectedNodes.png) _--> press 'L' -->_ ![image](./images/basicFunction.png)
+![image](./images/functionification.jpg)
 
 * A function has to be closed: you can't have edges across a function border! The function will automatically expand to include all nodes attached to any node inside it. So we only actually had to select any one of the nodes in the group before pressing 'l'.
 * In the above example, Vambda doesn't know which of the nodes in the function is a variable. When evaluating the example above, Vambda would look for an already defined variable called 'x' and raise an error when x can't be found.
 * To designate a node as an input variable to a function, select it and press shift+'v'. It will turn into a diamond shape to show that it's an input variable.
 
-![image](./images/functionWithXInput.png)
+![image](./images/inputvariable.jpg)
 
 | Do this            | On this                      | To...                     |
 | ------------------ | ---------------------------- | ------------------------- |
@@ -100,14 +100,12 @@ This documentation is written for people who have some experience with programmi
   * In particular: if your input edges have the same labels as your variables inside the function then the inputs will match to the function exactly.
   * This is recommended wherever possible, but not enforced.
 
-![image](./images/multiVariablesWithSameNames.png)
-
-![image](./images/multiVariablesWithDifferentNames.png)
+![image](./images/namingofinputs.jpg)
 
 * Creating an edge from a lambda function L _to_ another node A will evaluate A with L as an input. A is a higher-order function.
   * This can be a confusing concept, but it's absolutely key to understanding any functional programming language.
 
-![image](./images/higherOrderFunction.png)
+![image](./images/higherOrderFunctions.jpg)
 
 
 #### Nested functions (Advanced!)
@@ -116,17 +114,14 @@ This documentation is written for people who have some experience with programmi
 * But Vambda needs to be able to tell which input variables 'belong' to the inner function, and which belong to the outer function.
 * For example, take the picture below. G could be a function of two variables x and y, but F could also be a function of x instead.
 
-![image](./images/nestedMultivariateFunctions.png)
+![image](./images/scopingvariables.jpg)
 
 * By default, Vambda assumes that every node marked as an input variable belongs to the scope just above it. That is, the innermost scope wrapping it. So in the example, x and y are both variables of G.
 * We can override this by specifying a lambda function's variables explicitly. To do this: press 'r' while the lambda bubble is selected, and enter the names of any names you want to explicitly make variables of this function as a comma-separated list.
-* Variables which belong to a scope other than the innermost one also must *not* be designated as a variable in a diamond. By convention, we use a square instead to show that the node is a variable, but of an upper scope.
+* Variables which belong to a scope other than the innermost one also must *not* be designated as a variable in a diamond. By convention, we use a square instead to show that the node is a variable  of an upper scope.
   * This is not enforced, and you could make the node a circle as usual.
   * But if it is a diamond, Vambda will look for its value in the scope immediately above which will create unexpected behaviour.
-* For example, in this picture, F is a function of a and x and G is a function of y only.
-
-![image](./images/nestedMultivariateFunctions2.png)
-
+* For example, in the above picture, the outermost function is a function of x and G is a function of y only.
 
 ### 5. Defining
 
