@@ -9,8 +9,7 @@ To start the server:
 
 ```
 npm install (to install local dependencies)
-npm run watch
-webpack-dev-server
+node_modules/.bin/webpack-dev-server
 ```
 
 Then visit http://localhost:8080/.
