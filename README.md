@@ -1,4 +1,7 @@
 # Vambda
+
+<img src="./docs/images/demo.jpg" width=75%>
+
 ## Write beautiful programs with graphs.
 
 Vambda is a visual editor for writing lisp programs, with an emphasis on beauty and visualizing logical structures. You can build and run programs completely in the browser (only tested in Chrome), no installation required.
