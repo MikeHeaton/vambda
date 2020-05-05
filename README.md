@@ -2,7 +2,7 @@
 
 This picture solves a Sudoku.
 
-<img src="./docs/images/sudoku_demo.jpg" width=60%>
+<img src="./docs/images/sudoku_demo_2.jpeg" width=60%>
 
 No really, it does!
 
