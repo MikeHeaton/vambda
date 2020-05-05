@@ -36,6 +36,6 @@
   "devDependencies": {
     "@babel/core": "^7.0.0-beta.49",
     "webpack": "^3.10.0",
-    "webpack-dev-server": "^2.11.2"
+    "webpack-dev-server": "^3.1.11"
   }
 }
