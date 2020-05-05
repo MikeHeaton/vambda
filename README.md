@@ -1,7 +1,13 @@
 # Vambda
 
-This picture solves a Sudoku. No really, it does.
-<img src="./docs/images/sudoku_demo.jpg" width=75%>
+This picture solves a Sudoku.
+
+<img src="./docs/images/sudoku_demo.jpg" width=60%>
+
+No really, it does!
+
+<img src="./docs/images/sudoku_output.jpg" width=75%>
+
 
 ## Write beautiful programs with graphs.
 
@@ -32,3 +38,23 @@ I don't actively maintain this -- it served its purpose as interesting experimen
 and if I want to come back to it it'll probably require a rewrite in a proper front-end framework!
 Some things I know are broken.
 * Comments' locations don't match up to the canvas. 
+
+## A Closer look
+
+Code is visual:
+
+<img src="./docs/images/sudoku_grid.jpg" width=75%>
+
+Functions are clear:
+
+<img src="./docs/images/sudoku_simplefunctions.jpg" width=40%>
+
+Algorithms are beautiful:
+
+<img src="./docs/images/sudoku_algo.png" width=40%>
+
+Output is correct:
+
+<img src="./docs/images/sudoku_output.jpg" width=75%>
+
+(even for this difficult sparse Sudoku puzzle!)
